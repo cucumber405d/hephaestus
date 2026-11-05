@@ -43,7 +43,7 @@ hephaestus/
 ├── docs/
 │   ├── start.md             ← команды сборки/запуска
 │   ├── technology-catalog.md
-│   ├── domain.md            ← модель домена (выносится из раздела 6 при реализации)
+│   ├── domain.md            ← модель домена
 │   ├── adr/NNNN-*.md        ← MADR
 │   └── superpowers/specs|plans/
 ├── platform/                ← общий kind-кластер (наполняется в 05)
@@ -55,8 +55,8 @@ hephaestus/
 
 ### 3.1 Корневой POM (`hephaestus-parent`)
 - `groupId de.ibikus.appa.hephaestus`, `artifactId hephaestus-parent`, `packaging pom`.
-- `dependencyManagement`: import Spring Boot 4 BOM, Testcontainers BOM, явные версии остального (Resilience4j, ArchUnit, springdoc/openapi-generator, …).
-- `pluginManagement`: maven-compiler (`release 25`), surefire (unit), failsafe (`*IT`), jacoco, spring-boot-maven-plugin (build-image/buildpacks), jib, spotless.
+- Наследуется от `spring-boot-starter-parent` (см. [ADR 0001](../../adr/0001-parent-inherits-spring-boot-starter-parent.md)); версии Testcontainers/JUnit/Mockito — из BOM Boot; явные версии остального (ArchUnit, Jib, Spotless, …) — в `<properties>`.
+- Активные плагины: enforcer (JDK 25+, Maven 3.9+), spotless (check), jacoco (report), failsafe (`*IT`); `maven.compiler.release` = `java.version` = 25.
 - Подпроекты наследуют через `<relativePath>../pom.xml</relativePath>`; сборка подпроекта: `mvn -f NN-<name>/pom.xml verify`.
 
 ### 3.2 Структура подпроекта
@@ -150,30 +150,7 @@ NN-<name>/
 
 ## 6. Домен «Мастерская Гефеста»
 
-Мастерская продаёт изделия со склада и куёт на заказ. Код и термины — английский, документация — русский.
-
-| Контекст | Ответственность | Ключевые понятия | Подпроекты |
-|---|---|---|---|
-| Catalog | Изделия, цены | `Item`, `Price`, `Category` | 02–04 |
-| Ordering | Жизненный цикл заказа | `Order`, `OrderLine`, `OrderStatus` | 06, 09, 10, 16 |
-| Inventory | Остатки, резервирование | `StockItem`, `Reservation` | 06, 08, 10 |
-| Forge | Изготовление на заказ | `WorkOrder`, `Material`, `Smith` | 01, 13, 17 |
-| Payment | Оплата, возвраты (fake-провайдер) | `Payment`, `Refund` | 10, 17 |
-| Delivery | Отправка | `Shipment`, `Courier` | 10 |
-| Notification | Уведомления | `Notification`, `Channel` | 09, 11 |
-| Customer | Профиль клиента (auth — Keycloak) | `Customer` | 07 |
-| Supplier (внешний) | Нестабильный поставщик материалов | — | 01, 08, 13 |
-
-**Карта контекстов**
-- Catalog → Ordering: upstream / conformist.
-- Ordering — центр саги. Хореография: `OrderPlaced` → Payment, Inventory → `PaymentAuthorized`, `StockReserved` → Delivery. Оркестрация (10): `OrderSaga` в Ordering.
-- Supplier → Inventory/Forge через Anti-Corruption Layer.
-- Роли Keycloak: `customer`, `smith`, `admin`.
-
-**Доменные события:** `OrderPlaced`, `OrderCancelled`, `PaymentAuthorized`, `PaymentFailed`, `StockReserved`,
-`StockReservationFailed`, `WorkOrderCompleted`, `ShipmentDispatched`.
-
-Подпроект берёт нужный срез и может упрощать модель под свою тему.
+Описан в [docs/domain.md](../../domain.md).
 
 ## 7. Twelve-Factor → подпроекты
 
