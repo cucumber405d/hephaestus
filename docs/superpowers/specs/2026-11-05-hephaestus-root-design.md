@@ -40,6 +40,8 @@ Hephaestus — учебный монорепозиторий для глубок
 hephaestus/
 ├── pom.xml                  ← hephaestus-parent (только parent, не агрегатор)
 ├── README.md
+├── CLAUDE.md                ← правила для агента
+├── impacts/                 ← impact-файлы задач
 ├── docs/
 │   ├── start.md             ← команды сборки/запуска
 │   ├── technology-catalog.md
@@ -138,6 +140,7 @@ NN-<name>/
 - Корневой `docs/` и `docs/` каждого подпроекта; `docs/start.md` везде.
 - Диаграммы — Mermaid (C4-стиль) в Markdown.
 - Сквозные решения — ADR (MADR) в `docs/adr/`.
+- Каждая задача/фикс/фича — impact-файл `impacts/impact_YYYY_MM_DD_HH.MM.SS.md` (≤ 1 экран; YAML `name`, `description`; далее смысл на RU и EN) в том же коммите.
 
 ### 5.5 Definition of Done подпроекта
 1. `mvn -f NN-<name>/pom.xml verify` зелёный локально и в CI.
