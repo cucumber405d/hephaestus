@@ -16,7 +16,7 @@
 
 - groupId `de.ibikus.appa.hephaestus`; пакеты `de.ibikus.appa.hephaestus.<subproject>.<service>` (для шаблона: `de.ibikus.appa.hephaestus.template.greeting`).
 - Java `release 25`; `--enable-preview` запрещён везде, кроме `01-modern-java`.
-- Spring Boot: последняя patch-версия линии **4.1** на момент реализации (не ниже 4.1.1). Версии плагинов, не управляемых Boot, — последний release с Maven Central, фиксируются в `<properties>` корневого POM.
+- Spring Boot: последняя patch-версия линии **4.1** на момент реализации (зафиксирована 4.1.2). Версии плагинов, не управляемых Boot, — последний release с Maven Central, фиксируются в `<properties>` корневого POM.
 - Корневой POM — только parent (`packaging pom`, без `<modules>`).
 - Сборка подпроекта: `./mvnw -f <subproject>/pom.xml verify` — без кластера и без Compose.
 - Unit — surefire (`*Test`), интеграционные — failsafe (`*IT`).
