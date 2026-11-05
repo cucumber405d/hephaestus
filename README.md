@@ -1,5 +1,7 @@
 # Hephaestus
 
+[![_template](https://github.com/cucumber405d/hephaestus/actions/workflows/_template.yml/badge.svg)](https://github.com/cucumber405d/hephaestus/actions/workflows/_template.yml)
+
 Учебный монорепозиторий: микросервисы на современной Java (25 LTS, Spring Boot 4) в Kubernetes по принципам Twelve-Factor App.
 Набор независимых подпроектов, пронумерованных как учебный маршрут; общий домен — «Мастерская Гефеста».
 

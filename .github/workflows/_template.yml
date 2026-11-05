@@ -1,0 +1,33 @@
+# Образец caller-workflow: при копировании подпроекта заменить _template на NN-<name>.
+name: _template
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "_template/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/_template.yml"
+  pull_request:
+    paths:
+      - "_template/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/_template.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-subproject.yml
+    with:
+      subproject: _template

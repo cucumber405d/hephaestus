@@ -1,0 +1,41 @@
+# Reusable: сборка и тесты одного подпроекта. Вызывается из NN-<name>.yml.
+name: build-subproject
+
+on:
+  workflow_call:
+    inputs:
+      subproject:
+        description: "Каталог подпроекта, например _template или 02-rest-service"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Verify
+        run: ./mvnw -B -ntp -f "${{ inputs.subproject }}/pom.xml" verify
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: reports-${{ inputs.subproject }}
+          path: |
+            ${{ inputs.subproject }}/**/target/surefire-reports/
+            ${{ inputs.subproject }}/**/target/failsafe-reports/
+            ${{ inputs.subproject }}/**/target/site/jacoco/
+          if-no-files-found: ignore
+          retention-days: 14
