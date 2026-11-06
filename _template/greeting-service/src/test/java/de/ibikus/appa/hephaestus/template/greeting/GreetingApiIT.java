@@ -35,4 +35,13 @@ class GreetingApiIT {
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody()).contains("\"status\":\"UP\"");
     }
+
+    @Test
+    void reportsLiveness() {
+        ResponseEntity<String> response =
+                client().get().uri("/actuator/health/liveness").retrieve().toEntity(String.class);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).contains("\"status\":\"UP\"");
+    }
 }

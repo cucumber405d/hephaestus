@@ -189,7 +189,7 @@
 | **Testcontainers** (+ Spring Boot `@ServiceConnection`) | ★ | Интеграционные тесты с реальными Postgres/Kafka/Keycloak |
 | Spring Boot test slices, MockMvc / RestTestClient | ★ | |
 | WireMock | ★ | Стабы внешних сервисов |
-| ArchUnit | ◆ | Архитектурные правила как тесты |
+| ArchUnit | ★ | Архитектурные правила как тесты (обязателен с 02) |
 | Contract tests (Spring Cloud Contract / Pact) | ◆ | |
 | Нагрузочное: **Gatling** (Java DSL) / k6 | ◆ | |
 | Chaos engineering: Chaos Mesh / LitmusChaos, Toxiproxy | ○ | |

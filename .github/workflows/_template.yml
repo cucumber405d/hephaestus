@@ -8,6 +8,9 @@ on:
       - "_template/**"
       - "pom.xml"
       - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
       - ".github/workflows/build-subproject.yml"
       - ".github/workflows/_template.yml"
   pull_request:
@@ -15,13 +18,17 @@ on:
       - "_template/**"
       - "pom.xml"
       - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
       - ".github/workflows/build-subproject.yml"
       - ".github/workflows/_template.yml"
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # отменять устаревшие сборки только в PR; на main собирается каждый коммит
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

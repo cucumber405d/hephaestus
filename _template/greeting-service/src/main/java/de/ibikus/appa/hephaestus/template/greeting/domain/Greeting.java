@@ -7,10 +7,10 @@ public record Greeting(String recipient) {
 
     public Greeting {
         if (recipient == null || recipient.isBlank()) {
-            throw new IllegalArgumentException("Recipient must not be blank");
+            throw new InvalidRecipientException("Recipient must not be blank");
         }
         if (recipient.length() > MAX_RECIPIENT_LENGTH) {
-            throw new IllegalArgumentException("Recipient must be at most " + MAX_RECIPIENT_LENGTH + " characters");
+            throw new InvalidRecipientException("Recipient must be at most " + MAX_RECIPIENT_LENGTH + " characters");
         }
     }
 

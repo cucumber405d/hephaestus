@@ -1,6 +1,6 @@
 # Hephaestus — корневая спецификация
 
-- **Статус:** утверждено в брейншторме, ждёт ревью спеки
+- **Статус:** утверждено; корневой каркас реализован (план `plans/2026-11-05-root-scaffold.md`)
 - **Дата:** 2026-11-05
 - **Автор:** Dmitry
 - **Связанные документы:** [Каталог технологий](../../technology-catalog.md)
@@ -133,7 +133,7 @@ NN-<name>/
 
 ### 5.3 CI
 - Reusable workflow `build-subproject.yml`: checkout → JDK 25 (Temurin) → Maven cache → `mvn -B verify` → (опц.) build image → push в GHCR → (опц.) kind smoke.
-- На каждый подпроект — свой workflow с `paths: [NN-<name>/**, pom.xml]`.
+- На каждый подпроект — свой workflow (копия `_template.yml`) с `paths`: каталог подпроекта, `pom.xml`, `.mvn/**`, `mvnw`, `mvnw.cmd`, `.gitattributes`, оба workflow-файла.
 - Изменение корневого `pom.xml` запускает сборку всех подпроектов.
 
 ### 5.4 Документация (Documentation as Code)

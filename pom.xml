@@ -21,15 +21,32 @@
     <description>Parent POM for Hephaestus learning subprojects: Java 25 + Spring Boot microservices on Kubernetes</description>
     <url>https://github.com/cucumber405d/hephaestus</url>
 
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>cucumber405d</id>
+            <name>Dmitry Ibikus</name>
+        </developer>
+    </developers>
+
     <scm>
         <url>https://github.com/cucumber405d/hephaestus</url>
         <connection>scm:git:https://github.com/cucumber405d/hephaestus.git</connection>
+        <developerConnection>scm:git:https://github.com/cucumber405d/hephaestus.git</developerConnection>
     </scm>
 
     <!-- Только parent: без <modules>. Подпроект собирается сам: ./mvnw -f <subproject>/pom.xml verify -->
 
     <properties>
         <java.version>25</java.version>
+        <!-- Пустое значение по умолчанию: @{argLine} не останется литералом, если JaCoCo пропущен или тесты запускает IDE -->
+        <argLine/>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Версии, не управляемые Spring Boot -->
@@ -38,6 +55,15 @@
         <spotless-maven-plugin.version>3.11.0</spotless-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.16</jacoco-maven-plugin.version>
     </properties>
+
+    <!-- Во всех модулях: даёт свойство ${org.mockito:mockito-core:jar} для -javaagent, в т.ч. в модулях без spring-boot-starter-test -->
+    <dependencies>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <dependencyManagement>
         <dependencies>
@@ -72,7 +98,8 @@
         </pluginManagement>
 
         <plugins>
-            <!-- Mockito как javaagent (JDK 21+ запрещает self-attach); свойство ${org.mockito:mockito-core:jar} -->
+            <!-- Mockito как javaagent: с JDK 21 динамическая загрузка агентов выдаёт предупреждение (JEP 451),
+                 будущие JDK её запретят. -Xshare:off гасит предупреждение CDS при добавлении агента в bootclasspath. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -134,7 +161,8 @@
                         <goals>
                             <goal>check</goal>
                         </goals>
-                        <phase>verify</phase>
+                        <!-- до компиляции и тестов: быстрая обратная связь -->
+                        <phase>process-sources</phase>
                     </execution>
                 </executions>
             </plugin>

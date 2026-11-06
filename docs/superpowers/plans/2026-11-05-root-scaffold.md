@@ -48,11 +48,11 @@
 **Interfaces:**
 - Produces: `de.ibikus.appa.hephaestus:hephaestus-parent:0.1.0-SNAPSHOT` (packaging `pom`); properties `java.version=25`, `archunit.version`, `jib-maven-plugin.version`, `spotless-maven-plugin.version`; profile-независимые плагины в `<build><plugins>`: enforcer, spotless, jacoco, failsafe (все наследуются подпроектами автоматически).
 
-- [ ] **Step 1: Проверить окружение**
+- [x] **Step 1: Проверить окружение**
 Run: `java -version` и `mvn -v`
 Expected: Java 25 (Temurin), Maven ≥ 3.9. Если нет — `winget install EclipseAdoptium.Temurin.25.JDK` / Maven через SDKMAN в WSL; зафиксировать в `docs/start.md` раздел «Требования».
 
-- [ ] **Step 2: Написать `pom.xml`**
+- [x] **Step 2: Написать `pom.xml`**
 - `<parent>`: `org.springframework.boot:spring-boot-starter-parent:<4.1.x>` с `<relativePath/>`.
 - `dependencyManagement`: `com.tngtech.archunit:archunit-junit5:${archunit.version}` (scope test).
 - `pluginManagement`: `jib-maven-plugin`, `spotless-maven-plugin` с версиями из properties.
@@ -63,21 +63,21 @@ Expected: Java 25 (Temurin), Maven ≥ 3.9. Если нет — `winget install 
   - `maven-failsafe-plugin`: goals `integration-test`, `verify`.
 - `<description>`, `<url>https://github.com/cucumber405d/hephaestus</url>`, `<scm>`.
 
-- [ ] **Step 3: Проверить POM**
+- [x] **Step 3: Проверить POM**
 Run: `mvn -N validate` и `mvn -N help:effective-pom -Doutput=target/effective-pom.xml`
 Expected: `BUILD SUCCESS`; в effective-pom `<maven.compiler.release>25</maven.compiler.release>` (из `java.version`).
 
-- [ ] **Step 4: Сгенерировать Maven Wrapper**
+- [x] **Step 4: Сгенерировать Maven Wrapper**
 Run: `mvn -N wrapper:wrapper -Dmaven=<последний 3.9.x>`; затем `./mvnw -v` (WSL) и `.\mvnw.cmd -v` (PowerShell)
 Expected: обе команды печатают зафиксированную версию Maven. В `.gitattributes` добавить `mvnw text eol=lf` (уже покрыто `* text=auto eol=lf`, проверить `git ls-files --eol mvnw` → `i/lf`).
 
-- [ ] **Step 5: ADR и домен**
+- [x] **Step 5: ADR и домен**
 - `0000-template.md` — шаблон MADR (Context, Decision Drivers, Considered Options, Decision Outcome, Consequences).
 - `0001-…` — решение: parent наследует `spring-boot-starter-parent`, а не импортирует BOM. Причина: Boot уже настраивает compiler/surefire/failsafe/resources/buildpacks; минус: один parent-слот занят Boot (не критично — подпроекты наследуют от нашего parent).
 - `docs/domain.md` — перенести §6 спеки дословно; в спеке §6 оставить ссылку.
 - `docs/start.md` — «Требования» (Java 25, Docker для Testcontainers) и команда `./mvnw -f <subproject>/pom.xml verify`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 ```bash
 git add pom.xml mvnw mvnw.cmd .mvn docs README.md .gitattributes
 git commit -m "build: hephaestus-parent POM, Maven Wrapper, ADR 0001, domain model"
@@ -110,7 +110,7 @@ git commit -m "build: hephaestus-parent POM, Maven Wrapper, ADR 0001, domain mod
   - `GET /api/greetings/{recipient}` → `200 {"message":"Hello, Hephaestus!"}`; невалидный `recipient` → `400` `application/problem+json` (RFC 9457) с `title` = `"Invalid recipient"`.
   - Actuator: `/actuator/health/liveness`, `/actuator/health/readiness` → `UP`.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [x] **Step 1: Написать падающие тесты**
 ```java
 // GreetingTest
 assertThat(new Greeting("Hephaestus").message()).isEqualTo("Hello, Hephaestus!");
@@ -131,27 +131,27 @@ GET /api/greetings/Hephaestus → 200
 GET /actuator/health/readiness → 200, $.status == "UP"
 ```
 
-- [ ] **Step 2: Убедиться, что тесты падают**
+- [x] **Step 2: Убедиться, что тесты падают**
 Run: `./mvnw -f _template/pom.xml verify`
 Expected: FAIL — ошибки компиляции (классов нет).
 
-- [ ] **Step 3: Реализовать классы из Interfaces**
+- [x] **Step 3: Реализовать классы из Interfaces**
 `GreetingController` ловит `IllegalArgumentException` через `@ExceptionHandler` → `ProblemDetail.forStatusAndDetail(400, ex.getMessage())` с `setTitle("Invalid recipient")`. `application.yaml`: `spring.application.name=greeting-service`, `spring.threads.virtual.enabled=true`, `spring.mvc.problemdetails.enabled=true`, `logging.structured.format.console=ecs`, `management.endpoint.health.probes.enabled=true`, `server.shutdown=graceful`, `server.port=${PORT:8080}`.
 
-- [ ] **Step 4: Тесты зелёные**
+- [x] **Step 4: Тесты зелёные**
 Run: `./mvnw -f _template/pom.xml verify`
 Expected: `BUILD SUCCESS`; surefire: 3 класса тестов, failsafe: `GreetingApiIT` — 2 теста; spotless check проходит; `target/site/jacoco/index.html` создан.
 
-- [ ] **Step 5: Проверки из Review Focus**
+- [x] **Step 5: Проверки из Review Focus**
 - `cd _template; ..\mvnw.cmd verify` → `BUILD SUCCESS` (RF1).
 - Временно добавить в `Greeting` импорт `org.springframework.util.Assert` и использовать → `verify` FAIL в `HexagonalArchitectureTest` (RF5); откатить.
 - Запустить с JDK 21 (`JAVA_HOME` на 21) → FAIL на enforcer с `requireJavaVersion` (RF2), если JDK 21 есть; иначе пропустить и отметить.
 - `./mvnw -f _template/pom.xml spring-boot:run` → `curl localhost:8080/api/greetings/Hephaestus` возвращает JSON; лог в stdout — ECS JSON.
 
-- [ ] **Step 6: Документация шаблона**
+- [x] **Step 6: Документация шаблона**
 `README.md`: «эталон для копирования: `cp -r _template NN-<name>`, переименовать artifactId/пакеты». `docs/start.md`: команды verify и spring-boot:run. `docs/architecture.md`: Mermaid-диаграмма пакетов (adapter.in.web → application → domain). `docs/learning-notes.md`: заголовки «Выводы», «Подводные камни», «Вопросы для собеседования».
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 ```bash
 git add _template
 git commit -m "feat(template): reference subproject with hexagonal greeting-service"
@@ -172,22 +172,22 @@ git commit -m "feat(template): reference subproject with hexagonal greeting-serv
 - Caller-шаблон для каждого подпроекта (`_template.yml`):
   `on: push/pull_request` с `paths: ['_template/**', 'pom.xml', '.mvn/**', '.github/workflows/build-subproject.yml', '.github/workflows/_template.yml']`; `uses: ./.github/workflows/build-subproject.yml`, `with: subproject: _template`; `concurrency: group: ${{ github.workflow }}-${{ github.ref }}, cancel-in-progress: true`.
 
-- [ ] **Step 1: Написать оба workflow**
+- [x] **Step 1: Написать оба workflow**
 
-- [ ] **Step 2: Линт**
+- [x] **Step 2: Линт**
 Run: `actionlint` (если установлен; `winget install rhysd.actionlint`)
 Expected: без ошибок.
 
-- [ ] **Step 3: Commit и push**
+- [x] **Step 3: Commit и push**
 ```bash
 git add .github README.md
 git commit -m "ci: reusable build-subproject workflow and _template pipeline"
 git push
 ```
 
-- [ ] **Step 4: Проверить запуск**
+- [x] **Step 4: Проверить запуск**
 Run: `gh run watch` → затем `gh run list --workflow _template.yml --limit 1`
 Expected: `completed success`; артефакт с отчётами есть.
 
-- [ ] **Step 5: Проверить path-фильтр (RF4)**
+- [x] **Step 5: Проверить path-фильтр (RF4)**
 Изменить только `docs/start.md`, push → `gh run list --limit 1` не показывает новый запуск `_template`. Изменить комментарий в корневом `pom.xml`, push → запуск `_template` есть.

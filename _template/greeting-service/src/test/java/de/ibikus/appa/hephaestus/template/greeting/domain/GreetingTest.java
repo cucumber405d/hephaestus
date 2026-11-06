@@ -14,12 +14,12 @@ class GreetingTest {
 
     @Test
     void rejectsBlankRecipient() {
-        assertThatThrownBy(() -> new Greeting(" ")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Greeting(" ")).isInstanceOf(InvalidRecipientException.class);
     }
 
     @Test
     void rejectsNullRecipient() {
-        assertThatThrownBy(() -> new Greeting(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Greeting(null)).isInstanceOf(InvalidRecipientException.class);
     }
 
     @Test
@@ -29,6 +29,6 @@ class GreetingTest {
 
     @Test
     void rejectsTooLongRecipient() {
-        assertThatThrownBy(() -> new Greeting("x".repeat(51))).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Greeting("x".repeat(51))).isInstanceOf(InvalidRecipientException.class);
     }
 }

@@ -1,6 +1,6 @@
 package de.ibikus.appa.hephaestus.template.greeting;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 /** Гексагональные правила. Обычный JUnit-тест: не зависит от ArchUnit test engine. */
 class HexagonalArchitectureTest {
 
-    private static final String BASE = "de.ibikus.appa.hephaestus.template.greeting";
+    /** Из класса, а не строкой: переживает переименование пакета при копировании шаблона. */
+    private static final String BASE = GreetingApplication.class.getPackageName();
 
     private final JavaClasses classes = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
@@ -25,25 +26,29 @@ class HexagonalArchitectureTest {
                 .definedBy(BASE + ".domain..")
                 .layer("Application")
                 .definedBy(BASE + ".application..")
-                .layer("Adapter")
-                .definedBy(BASE + ".adapter..")
-                .whereLayer("Adapter")
+                .optionalLayer("AdapterIn")
+                .definedBy(BASE + ".adapter.in..")
+                .optionalLayer("AdapterOut")
+                .definedBy(BASE + ".adapter.out..")
+                .whereLayer("AdapterIn")
+                .mayNotBeAccessedByAnyLayer()
+                .whereLayer("AdapterOut")
                 .mayNotBeAccessedByAnyLayer()
                 .whereLayer("Application")
-                .mayOnlyBeAccessedByLayers("Adapter")
+                .mayOnlyBeAccessedByLayers("AdapterIn", "AdapterOut")
                 .whereLayer("Domain")
-                .mayOnlyBeAccessedByLayers("Application", "Adapter")
+                .mayOnlyBeAccessedByLayers("Application", "AdapterIn", "AdapterOut")
                 .check(classes);
     }
 
     @Test
-    void domainIsFrameworkFree() {
-        noClasses()
+    void domainDependsOnlyOnJdk() {
+        classes()
                 .that()
                 .resideInAPackage(BASE + ".domain..")
                 .should()
-                .dependOnClassesThat()
-                .resideInAnyPackage("org.springframework..", "jakarta..")
+                .onlyDependOnClassesThat()
+                .resideInAnyPackage(BASE + ".domain..", "java..")
                 .check(classes);
     }
 }

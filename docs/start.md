@@ -4,7 +4,8 @@
 
 - JDK 25 (Temurin): `winget install EclipseAdoptium.Temurin.25.JDK`; проверить `java --version`
 - Docker (Desktop или Podman) — для Testcontainers в `*IT`-тестах
-- Maven ставить не нужно — используется Maven Wrapper (`mvnw` / `mvnw.cmd`)
+- Maven ставить не нужно — используется Maven Wrapper (`mvnw` / `mvnw.cmd`), зафиксирован Maven 3.10.0 (сознательно новее 3.9.x из плана)
+- Windows: если git предупреждает о CRLF/LF — `git add --renormalize .`
 
 ## Команды
 
@@ -24,4 +25,3 @@ docker compose -f <subproject>/compose.yaml up -d
 ```
 
 Команды платформы (`platform/`) появятся в подпроекте 05.
-

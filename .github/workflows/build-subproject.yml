@@ -26,7 +26,9 @@ jobs:
           cache: maven
 
       - name: Verify
-        run: ./mvnw -B -ntp -f "${{ inputs.subproject }}/pom.xml" verify
+        env:
+          SUBPROJECT: ${{ inputs.subproject }}
+        run: ./mvnw -B -ntp -f "$SUBPROJECT/pom.xml" verify
 
       - name: Upload test reports
         if: always()
