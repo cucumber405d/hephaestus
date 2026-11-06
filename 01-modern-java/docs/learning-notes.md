@@ -171,3 +171,38 @@ LTS. Окончательно убрана нелегальная рефлекс
 3. *Чем switch pattern matching с sealed лучше visitor'а?* — Исчерпываемость проверяет компилятор,
    нет двойной диспетчеризации и boilerplate; новый подтип — ошибка компиляции во всех switch.
 4. *Как в Spring Boot включить VT?* — `spring.threads.virtual.enabled=true` (см. `_template`).
+
+## Java 22
+
+**Что появилось.** Foreign Function & Memory API (JEP 454, превью в 19–21) — вызов нативных функций и работа
+с памятью вне кучи без JNI; unnamed variables и patterns `_` (JEP 456); запуск многофайловых программ
+`java Main.java` (JEP 458).
+
+**FFM — из чего состоит.** `Linker` (downcall: Java → C, upcall: C → Java), `SymbolLookup` (поиск функций),
+`FunctionDescriptor` (сигнатура в терминах `ValueLayout`), `Arena` (время жизни памяти: `ofConfined`,
+`ofShared`, `ofAuto`, `global`), `MemorySegment` (безопасный указатель с границами).
+Пример `NativeSort`: C `qsort` вызывает Java-компаратор через upcall stub.
+
+**Подводные камни.**
+- Restricted-методы (`downcallHandle`, `upcallStub`) с JDK 24 печатают предупреждение без
+  `--enable-native-access=ALL-UNNAMED` (настроено в surefire), в будущем — ошибка.
+- Исключение, вылетевшее из upcall, **убивает JVM** — в upcall'е всё ловить.
+- Память `Arena.ofConfined()` доступна только создавшему потоку; после `close()` — `IllegalStateException`
+  вместо segfault.
+- Типы C зависят от платформы: `long` в C на Windows — 32 бита, `size_t` — 64; описывать честно.
+- `jextract` генерирует биндинги из `.h` — вручную писать дескрипторы для больших библиотек не надо.
+
+**Вопросы.**
+1. *Чем FFM лучше JNI?* — Без C-кода и компиляции под каждую ОС, безопасная память с проверкой границ
+   и времени жизни, производительность сопоставима, JIT инлайнит downcall'ы.
+2. *Что такое `Arena`?* — Область владения памятью: все сегменты освобождаются при закрытии, детерминированно.
+3. *Где `_` полезен?* — `catch (Exception _)`, неиспользуемые компоненты в паттернах, `for (var _ : …)`,
+   лямбды `(_, v) -> …`; несколько паттернов в одном `case` без биндингов.
+
+## Java 23
+
+**Что появилось.** Markdown в doc-комментариях `///` (JEP 467); ZGC generational по умолчанию.
+Остальное — превью (primitive patterns, module imports, structured concurrency…).
+
+**Вопросы.** *Как писать javadoc в Markdown?* — `///` вместо `/** */`, CommonMark + таблицы,
+ссылки `[Type#method]`.
