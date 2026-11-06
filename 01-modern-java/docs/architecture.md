@@ -17,3 +17,4 @@
 | 21 | `java21` | `SupplierFanOut`, `PaymentHandler`, `ForgeQueue`, `WorkItem` | JEP 444 (virtual threads), JEP 440 (record patterns), JEP 441 (switch patterns), JEP 431 (sequenced collections), `Math.clamp`, `StringBuilder.repeat` |
 | 22 | `java22` | `NativeStrings`, `NativeSort`, `OffHeapBuffer`, `UnnamedExamples` | JEP 454 (FFM API), JEP 456 (unnamed variables & patterns) |
 | 23 | `java23` | `MaterialGrade` | JEP 467 (Markdown doc comments) |
+| 24 | `java24` | `PriceGatherers`, `ClassInspector`; тест `PinningTest` | JEP 485 (Stream Gatherers), JEP 484 (Class-File API), JEP 491 (VT без pinning на `synchronized`) |

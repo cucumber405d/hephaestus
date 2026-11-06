@@ -206,3 +206,37 @@ LTS. Окончательно убрана нелегальная рефлекс
 
 **Вопросы.** *Как писать javadoc в Markdown?* — `///` вместо `/** */`, CommonMark + таблицы,
 ссылки `[Type#method]`.
+
+## Java 24
+
+**Что появилось.** Stream Gatherers (JEP 485, превью в 22–23); Class-File API (JEP 484);
+**virtual threads без pinning на `synchronized`** (JEP 491); пост-квантовые ML-KEM/ML-DSA;
+AOT class loading & linking (JEP 483, → `18-fast-startup`).
+
+**Gatherers.** `Gatherer<T, A, R>` = initializer (состояние `A`) + integrator (элемент → 0..n результатов,
+`push` возвращает `false`, если downstream больше не хочет) + combiner (параллельность) + finisher.
+Встроенные: `windowFixed`, `windowSliding`, `fold`, `scan`, `mapConcurrent` (на virtual threads, порядок сохраняется).
+Свой пример — `distinctBy`.
+
+**JEP 491 — что доказывает `PinningTest`.** Через JFR `RecordingStream` слушаем `jdk.VirtualThreadPinned`
+(порог 0):
+- блокировка (`sleep`) внутри `synchronized` в VT → **событий нет**: монитор теперь принадлежит
+  виртуальному потоку, carrier освобождается;
+- блокировка внутри upcall'а из C `qsort` (нативный кадр на стеке) → **событие есть**: нативный стек
+  нельзя выгрузить в кучу. Pinning остаётся и для class initializer'ов (`<clinit>`).
+- До Java 24 совет «заменяйте `synchronized` на `ReentrantLock`» был обязательным для VT; теперь — нет.
+
+**Подводные камни.**
+- `Gatherers.windowSliding(n)` на входе короче `n` даёт **одно** неполное окно, а не пустой результат.
+- Состояние gatherer'а в `ofSequential` не потокобезопасно — для параллельных стримов нужен combiner.
+- JFR-события доставляются асинхронно (≈ раз в секунду) — в тестах ждать через latch, а не `sleep`.
+
+**Вопросы.**
+1. *Gatherer vs Collector?* — Collector — терминальная операция (одна свёртка), gatherer —
+   промежуточная: может преобразовывать, фильтровать, держать состояние, обрывать поток.
+2. *Что такое pinning и что изменил JEP 491?* — VT не может отпустить carrier во время блокировки;
+   раньше — внутри `synchronized` и нативных кадров, с 24 — только нативные кадры и `<clinit>`.
+3. *Как диагностировать pinning?* — JFR-событие `jdk.VirtualThreadPinned` (с 21);
+   `-Djdk.tracePinnedThreads` удалён в 24.
+4. *Зачем Class-File API, если есть ASM?* — ASM отстаёт от новых версий class-файла; JDK-API всегда
+   актуален (JDK сам на него переходит).
