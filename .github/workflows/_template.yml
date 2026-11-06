@@ -1,4 +1,4 @@
-# Образец caller-workflow: при копировании подпроекта заменить _template на NN-<name>.
+# Caller workflow template: when copying a subproject, replace _template with NN-<name>.
 name: _template
 
 on:
@@ -27,7 +27,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  # отменять устаревшие сборки только в PR; на main собирается каждый коммит
+  # cancel stale runs only for PRs; every commit on main gets built
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:

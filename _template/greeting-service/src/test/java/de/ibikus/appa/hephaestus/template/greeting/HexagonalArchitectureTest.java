@@ -8,10 +8,10 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
 
-/** Гексагональные правила. Обычный JUnit-тест: не зависит от ArchUnit test engine. */
+/** Hexagonal architecture rules. Plain JUnit test: no dependency on the ArchUnit test engine. */
 class HexagonalArchitectureTest {
 
-    /** Из класса, а не строкой: переживает переименование пакета при копировании шаблона. */
+    /** Derived from a class, not a string literal: survives package renames when the template is copied. */
     private static final String BASE = GreetingApplication.class.getPackageName();
 
     private final JavaClasses classes = new ClassFileImporter()

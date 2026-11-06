@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.ibikus.appa.hephaestus</groupId>
+        <artifactId>hephaestus-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>modern-java</artifactId>
+    <packaging>pom</packaging>
+    <name>Hephaestus :: 01-modern-java</name>
+    <description>Java 9-27 language and API features, one package per release</description>
+
+    <properties>
+        <!-- palantir-java-format relies on javac internals that changed in JDK 27
+             (NoSuchFieldError JCCompilationUnit.endPositions), so the formatter cannot run on JDK 27.
+             The check is skipped here; format with JDK 25 instead (goal only, no lifecycle):
+             JAVA_HOME=<jdk-25> ./mvnw -f 01-modern-java/pom.xml spotless:apply -->
+        <spotless.check.skip>true</spotless.check.skip>
+    </properties>
+
+    <modules>
+        <module>features</module>
+        <module>next</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- the "next" module compiles with release 27 -->
+                        <id>enforce-jdk27</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[27,)</version>
+                                    <message>01-modern-java builds on JDK 27 (see 01-modern-java/docs/start.md).</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

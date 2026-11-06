@@ -6,7 +6,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/** Перевод доменных исключений в RFC 9457 Problem Details. Только известные исключения — остальное отдаёт Spring (500). */
+/** Maps domain exceptions to RFC 9457 Problem Details. Known exceptions only; everything else is left to Spring (500). */
 @RestControllerAdvice(basePackageClasses = GreetingExceptionHandler.class)
 class GreetingExceptionHandler {
 
