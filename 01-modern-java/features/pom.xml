@@ -34,6 +34,18 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <java>
+                        <excludes>
+                            <!-- palantir-java-format cannot parse "import module" (Java 25) yet -->
+                            <exclude>src/main/java/**/java25/ModuleImportExample.java</exclude>
+                        </excludes>
+                    </java>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>

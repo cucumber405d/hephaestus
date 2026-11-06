@@ -240,3 +240,36 @@ AOT class loading & linking (JEP 483, → `18-fast-startup`).
    `-Djdk.tracePinnedThreads` удалён в 24.
 4. *Зачем Class-File API, если есть ASM?* — ASM отстаёт от новых версий class-файла; JDK-API всегда
    актуален (JDK сам на него переходит).
+
+## Java 25
+
+**Что появилось.** Scoped Values (JEP 506, превью в 21–24); flexible constructor bodies (JEP 513);
+module import declarations (JEP 511); compact source files и instance `main` (JEP 512, `java.lang.IO`);
+Key Derivation Function API; compact object headers (product), AOT-эргономика (→ `18-fast-startup`). LTS.
+**Structured concurrency — всё ещё превью** (в 27 — седьмое), поэтому она в модуле `next`.
+
+**Scoped Values vs ThreadLocal.**
+| | `ThreadLocal` | `ScopedValue` |
+|---|---|---|
+| Изменяемость | `set` в любой момент | неизменяемо в пределах привязки |
+| Время жизни | до `remove()` или смерти потока | ровно на время `call/run` |
+| Утечки в пуле | да (тест `threadLocalLeaksIntoTheNextTaskOnAPooledThread`) | невозможны |
+| Наследование | `InheritableThreadLocal` копирует | разделяется с форками `StructuredTaskScope` |
+| Стоимость на миллион VT | миллион копий | ~0 |
+
+**Подводные камни.**
+- `ScopedValue` не наследуется в произвольно созданные потоки и `ExecutorService` — только в подзадачи
+  `StructuredTaskScope`.
+- Flexible constructor: до `super(...)` нельзя обращаться к `this` (поля, методы экземпляра), но можно
+  **присваивать** поля — это закрывает класс багов «суперконструктор вызвал переопределённый метод до
+  инициализации поля».
+- `import module` может создать неоднозначность имён (`java.util.List` vs `java.awt.List` при импорте
+  `java.desktop`) — явный single-type import её разрешает.
+
+**Вопросы.**
+1. *Почему Scoped Values появились вместе с virtual threads?* — `ThreadLocal` на миллионах VT дорог и
+   опасен утечками; контекст запроса (tenant, traceId, security principal) нужен неизменяемый и ограниченный вызовом.
+2. *Что позволяет JEP 513?* — Валидацию и подготовку аргументов до `super(...)`/`this(...)`, без
+   статических helper-методов.
+3. *Что такое compact source file?* — Файл без объявления класса: `void main()` + методы/поля; неявный
+   `import module java.base`; для скриптов и обучения.

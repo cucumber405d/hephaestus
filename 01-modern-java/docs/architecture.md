@@ -18,3 +18,4 @@
 | 22 | `java22` | `NativeStrings`, `NativeSort`, `OffHeapBuffer`, `UnnamedExamples` | JEP 454 (FFM API), JEP 456 (unnamed variables & patterns) |
 | 23 | `java23` | `MaterialGrade` | JEP 467 (Markdown doc comments) |
 | 24 | `java24` | `PriceGatherers`, `ClassInspector`; тест `PinningTest` | JEP 485 (Stream Gatherers), JEP 484 (Class-File API), JEP 491 (VT без pinning на `synchronized`) |
+| 25 | `java25` | `RequestContext`, `WorkOrder`, `SmithOrder`, `ModuleImportExample`; `scripts/Inventory.java` | JEP 506 (scoped values), JEP 513 (flexible constructor bodies), JEP 511 (module imports), JEP 512 (compact source files) |
