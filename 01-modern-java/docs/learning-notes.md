@@ -38,3 +38,36 @@
 1. *Делает ли `var` Java динамически типизированной?* — Нет, тип выводится при компиляции и фиксирован.
 2. *`List.copyOf` vs `new ArrayList<>(list)`?* — Первый — неизменяемый снимок без `null`, второй —
    изменяемая копия.
+
+## Java 11
+
+**Что появилось.** Стандартный `java.net.http.HttpClient` (JEP 321: HTTP/2, async, WebSocket);
+`String.isBlank/strip/lines/repeat`; `Files.readString/writeString`; `Predicate.not`; `var` в параметрах
+лямбд (JEP 323) — чтобы вешать аннотации: `(@NonNull var x) -> …`; запуск single-file программ `java Hello.java`.
+Первая LTS после 8 — на ней «застряла» значительная часть enterprise.
+
+**Подводные камни.**
+- `strip()` ≠ `trim()`: `strip` понимает Unicode-пробелы (`\u2000` и т. п.), `trim` — только ≤ `\u0020`.
+- `HttpClient` — дорогой объект с пулом соединений: создавать один на сервис, а не на запрос.
+- `send()` не бросает исключение на 4xx/5xx — статус проверять самому.
+- Без `timeout(...)` у запроса ожидание ответа не ограничено (`connectTimeout` — только на соединение).
+
+**Вопросы для собеседования.**
+1. *Чем `HttpClient` лучше `HttpURLConnection`?* — Fluent API, HTTP/2, асинхронность через
+   `CompletableFuture`, неизменяемые запросы, пул соединений, WebSocket.
+2. *`strip` vs `trim`?* — см. выше: Unicode-aware.
+3. *Зачем `var` в лямбдах, если типы и так выводятся?* — Ради аннотаций на параметрах.
+
+## Java 12
+
+**Что появилось.** `Collectors.teeing` — два коллектора за один проход + функция слияния;
+`String.indent/transform`; `CompactNumberFormat`. Switch expressions — только превью (финал в 14).
+
+**Подводные камни.**
+- В `teeing` оба коллектора видят **все** элементы; функция слияния вызывается один раз в конце.
+- Среднее из `BigDecimal` требует явного scale и `RoundingMode`, иначе `ArithmeticException` на `1/3`.
+
+**Вопросы для собеседования.**
+1. *Как за один проход посчитать сумму и среднее?* — `teeing(summing…, counting(), merger)` или
+   `summaryStatistics()` для примитивов.
+2. *Почему `BigDecimal.divide` может бросить исключение?* — Бесконечная десятичная дробь без заданного scale.
