@@ -23,6 +23,29 @@ class PaymentResultTest {
         assertThat(id).hasSize(16).matches("[0-9a-f]{16}");
     }
 
+    /** Each byte uses the full 0-255 range: across many ids, high nibbles are not all zero. */
+    @Test
+    void transactionIdUsesFullByteRange() {
+        var random = RandomGeneratorFactory.of("L64X128MixRandom").create(42);
+        var highNibbles = new StringBuilder();
+        for (int i = 0; i < 100; i++) {
+            var id = PaymentResult.newTransactionId(random);
+            for (int c = 0; c < id.length(); c += 2) {
+                highNibbles.append(id.charAt(c));
+            }
+        }
+
+        assertThat(highNibbles.toString()).matches(".*[1-9a-f].*");
+    }
+
+    @Test
+    void differentSeedsGiveDifferentIds() {
+        var factory = RandomGeneratorFactory.of("L64X128MixRandom");
+
+        assertThat(PaymentResult.newTransactionId(factory.create(1)))
+                .isNotEqualTo(PaymentResult.newTransactionId(factory.create(2)));
+    }
+
     @Test
     void transactionIdIsReproducibleForSameSeed() {
         var factory = RandomGeneratorFactory.of("L64X128MixRandom");

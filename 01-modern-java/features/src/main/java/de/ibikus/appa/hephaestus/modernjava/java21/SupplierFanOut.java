@@ -24,7 +24,7 @@ public final class SupplierFanOut {
                 int supplier = i;
                 futures.add(executor.submit(() -> {
                     Thread.sleep(latency);
-                    return "supplier-" + supplier;
+                    return "supplier-" + supplier + (Thread.currentThread().isVirtual() ? "@virtual" : "@platform");
                 }));
             }
             var answers = new ArrayList<String>(suppliers);

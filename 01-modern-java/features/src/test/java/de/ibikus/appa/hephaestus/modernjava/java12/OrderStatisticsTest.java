@@ -26,6 +26,11 @@ class OrderStatisticsTest {
     }
 
     @Test
+    void indentShiftsEveryLine() {
+        assertThat("BRZ\nIRN".indent(2)).isEqualTo("  BRZ\n  IRN\n");
+    }
+
+    @Test
     void labelUsesTransform() {
         assertThat(OrderStatistics.label("  a-17 ")).isEqualTo("ORDER A-17");
     }

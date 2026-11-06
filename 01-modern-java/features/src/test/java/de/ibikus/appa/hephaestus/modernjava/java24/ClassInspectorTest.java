@@ -10,7 +10,8 @@ class ClassInspectorTest {
 
     @Test
     void readsMethodNamesFromClassFileBytes() throws Exception {
-        assertThat(ClassInspector.methodNames(OrderLine.class)).contains("total", "expandUnits", "describe");
+        // "<init>" exists only in the class file, reflection never reports it
+        assertThat(ClassInspector.methodNames(OrderLine.class)).contains("total", "expandUnits", "describe", "<init>");
     }
 
     @Test

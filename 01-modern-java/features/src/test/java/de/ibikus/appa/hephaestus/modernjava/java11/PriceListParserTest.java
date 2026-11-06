@@ -20,6 +20,11 @@ class PriceListParserTest {
     }
 
     @Test
+    void stringRepeatBuildsSeparator() {
+        assertThat("-".repeat(5)).isEqualTo("-----");
+    }
+
+    @Test
     void readsPriceListFromFile(@TempDir Path dir) throws Exception {
         var file = Files.writeString(dir.resolve("prices.txt"), "STL;4.80\n");
 

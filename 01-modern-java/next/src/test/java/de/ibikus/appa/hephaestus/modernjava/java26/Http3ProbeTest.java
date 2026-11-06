@@ -15,5 +15,7 @@ class Http3ProbeTest {
         var response = Http3Probe.fetch(URI.create("https://cloudflare-quic.com/"));
 
         assertThat(response.statusCode()).isEqualTo(200);
+        // 200 alone would also pass after a silent fallback to HTTP/2
+        assertThat(response.version()).isEqualTo(java.net.http.HttpClient.Version.HTTP_3);
     }
 }

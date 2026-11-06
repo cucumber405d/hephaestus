@@ -53,6 +53,25 @@ class RequestContextTest {
         }
     }
 
+    /** Pair to the ThreadLocal counterexample: a scoped binding is gone for the next task of the same thread. */
+    @Test
+    void scopedValueDoesNotLeakIntoTheNextTaskOnAPooledThread() throws Exception {
+        try (var pool = Executors.newSingleThreadExecutor()) {
+            pool.submit(() -> RequestContext.callWith(ACME, () -> "done")).get();
+
+            var tenantSeenByNextTask = pool.submit(() -> {
+                        try {
+                            return RequestContext.current().tenant();
+                        } catch (IllegalStateException e) {
+                            return "none";
+                        }
+                    })
+                    .get();
+
+            assertThat(tenantSeenByNextTask).isEqualTo("none");
+        }
+    }
+
     private static String auditLine() {
         var context = RequestContext.current();
         return "[" + context.traceId() + "] " + context.tenant();

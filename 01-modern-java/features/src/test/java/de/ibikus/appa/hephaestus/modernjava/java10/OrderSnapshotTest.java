@@ -20,6 +20,15 @@ class OrderSnapshotTest {
     }
 
     @Test
+    void java10CollectorsAndOptional() {
+        var codes = java.util.stream.Stream.of("BRZ", "IRN").collect(java.util.stream.Collectors.toUnmodifiableList());
+
+        assertThatThrownBy(() -> codes.add("X")).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> java.util.Optional.empty().orElseThrow())
+                .isInstanceOf(java.util.NoSuchElementException.class);
+    }
+
+    @Test
     void snapshotIsUnmodifiable() {
         var snapshot = OrderSnapshot.of(List.of("BRZ"));
 

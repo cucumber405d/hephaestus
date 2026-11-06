@@ -26,6 +26,25 @@ class StreamAndOptionalTest {
     }
 
     @Test
+    void setOfRejectsDuplicates() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> java.util.Set.of("BRZ", "BRZ"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void optionalIfPresentOrElseAndStream() {
+        var log = new StringBuilder();
+        Optional.of("IRN").ifPresentOrElse(log::append, () -> log.append("none"));
+        Optional.empty().ifPresentOrElse(log::append, () -> log.append("|none"));
+
+        assertThat(log.toString()).isEqualTo("IRN|none");
+        assertThat(Stream.of(Optional.of("A"), Optional.<String>empty(), Optional.of("B"))
+                        .flatMap(Optional::stream)
+                        .toList())
+                .containsExactly("A", "B");
+    }
+
+    @Test
     void optionalOrSuppliesAlternative() {
         assertThat(Optional.<String>empty().or(() -> Optional.of("IRN")).orElseThrow())
                 .isEqualTo("IRN");

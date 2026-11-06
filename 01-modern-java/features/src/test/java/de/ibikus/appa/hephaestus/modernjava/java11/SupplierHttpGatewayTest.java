@@ -19,6 +19,11 @@ class SupplierHttpGatewayTest {
     void startStubSupplier() throws Exception {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/prices/", exchange -> {
+            if (!exchange.getRequestURI().getPath().equals("/prices/STL")) {
+                exchange.sendResponseHeaders(404, -1);
+                exchange.close();
+                return;
+            }
             var body = "4.80".getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, body.length);
             try (var out = exchange.getResponseBody()) {
@@ -39,5 +44,15 @@ class SupplierHttpGatewayTest {
                 URI.create("http://localhost:" + server.getAddress().getPort()));
 
         assertThat(gateway.price("STL")).isEqualByComparingTo(new BigDecimal("4.80"));
+    }
+
+    @Test
+    void unknownMaterialIsAnError() {
+        var gateway = new SupplierHttpGateway(
+                URI.create("http://localhost:" + server.getAddress().getPort()));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> gateway.price("XXX"))
+                .isInstanceOf(java.io.IOException.class)
+                .hasMessageContaining("404");
     }
 }

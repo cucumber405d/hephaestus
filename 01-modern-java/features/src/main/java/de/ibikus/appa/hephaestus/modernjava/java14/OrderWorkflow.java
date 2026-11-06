@@ -8,6 +8,17 @@ public final class OrderWorkflow {
 
     private OrderWorkflow() {}
 
+    /** A block on the right of {@code ->} returns its value with {@code yield}. */
+    public static String label(OrderStatus status) {
+        return switch (status) {
+            case IN_FORGE -> {
+                String base = status.name().toLowerCase().replace('_', ' ');
+                yield base + " (being made)";
+            }
+            default -> status.name().toLowerCase();
+        };
+    }
+
     public static OrderStatus next(OrderStatus current) {
         return switch (current) {
             case NEW -> OrderStatus.PAID;

@@ -20,8 +20,13 @@ class SupplierFanOutTest {
         var answers = SupplierFanOut.queryAll(10_000, Duration.ofMillis(100));
 
         var elapsed = Duration.ofNanos(System.nanoTime() - start);
-        assertThat(answers).hasSize(10_000).contains("supplier-0", "supplier-9999");
+        assertThat(answers).hasSize(10_000).contains("supplier-0@virtual", "supplier-9999@virtual");
         assertThat(elapsed).isLessThan(Duration.ofSeconds(2));
+    }
+
+    @Test
+    void everyCallRunsOnAVirtualThread() throws Exception {
+        assertThat(SupplierFanOut.queryAll(100, Duration.ZERO)).allMatch(answer -> answer.endsWith("@virtual"));
     }
 
     @Test

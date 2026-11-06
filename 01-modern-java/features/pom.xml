@@ -49,7 +49,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- FFM restricted methods (Linker, upcalls) print a warning since JDK 24 unless native access is granted -->
+                    <!-- FFM restricted methods (Linker, upcalls) print a warning since JDK 22 unless native access is granted -->
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Xshare:off --enable-native-access=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>

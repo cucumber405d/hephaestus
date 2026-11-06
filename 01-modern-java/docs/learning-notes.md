@@ -74,7 +74,8 @@
 
 ## Java 14
 
-**Что появилось.** Switch expressions (JEP 361, превью в 12–13): `->` без fall-through, `yield` в блоке,
+**Что появилось.** Switch expressions (JEP 361, превью в 12–13): `->` без fall-through, `yield` в блоке
+(`OrderWorkflow.label`),
 обязательная исчерпываемость; helpful NullPointerExceptions (JEP 358) — сообщение называет, что именно `null`.
 
 **Подводные камни.**
@@ -85,8 +86,9 @@
 **Вопросы.**
 1. *Чем switch expression отличается от оператора?* — Возвращает значение, нет fall-through, проверка
    исчерпываемости.
-2. *Что даёт helpful NPE?* — `Cannot invoke "String.length()" because "order.customer().name()" is null` —
-   цепочка видна без отладчика.
+2. *Что даёт helpful NPE?* — Сообщение называет, что именно `null`: для локальной переменной —
+   `because "statuses[0]" is null` (нужна отладочная информация `-g`, иначе `"<local1>"`), для цепочки вызовов —
+   `Cannot invoke "String.length()" because the return value of "Customer.name()" is null`.
 
 ## Java 15
 
@@ -137,7 +139,8 @@ LTS. Окончательно убрана нелегальная рефлекс
 **Что появилось.** UTF-8 по умолчанию на всех ОС (JEP 400) — конец «кракозябр» на Windows (`Cp1252`);
 `@snippet` в javadoc (JEP 413) — компилируемые примеры; простой веб-сервер `jwebserver` (JEP 408).
 
-**Подводные камни.** Консольный вывод на Windows по-прежнему зависит от `stdout.encoding`; файлы без явной
+**Подводные камни.** Консольный вывод на Windows по-прежнему зависит от кодировки консоли (свойство
+`stdout.encoding` появилось только в JDK 19); файлы без явной
 кодировки теперь читаются как UTF-8 — старые файлы в Windows-1252 «поплывут».
 
 **Вопросы.** *Что изменилось для `new FileReader(file)` в Java 18?* — Читает в UTF-8 независимо от ОС.
@@ -184,8 +187,9 @@ LTS. Окончательно убрана нелегальная рефлекс
 Пример `NativeSort`: C `qsort` вызывает Java-компаратор через upcall stub.
 
 **Подводные камни.**
-- Restricted-методы (`downcallHandle`, `upcallStub`) с JDK 24 печатают предупреждение без
-  `--enable-native-access=ALL-UNNAMED` (настроено в surefire), в будущем — ошибка.
+- Restricted-методы (`downcallHandle`, `upcallStub`) печатают предупреждение без
+  `--enable-native-access=ALL-UNNAMED` с JDK 22 (JEP 454); с JDK 24 то же и для JNI (JEP 472). Настроено в surefire;
+  в будущем — ошибка.
 - Исключение, вылетевшее из upcall, **убивает JVM** — в upcall'е всё ловить.
 - Память `Arena.ofConfined()` доступна только создавшему потоку; после `close()` — `IllegalStateException`
   вместо segfault.
@@ -253,7 +257,7 @@ Key Derivation Function API; compact object headers (product), AOT-эргоно�
 |---|---|---|
 | Изменяемость | `set` в любой момент | неизменяемо в пределах привязки |
 | Время жизни | до `remove()` или смерти потока | ровно на время `call/run` |
-| Утечки в пуле | да (тест `threadLocalLeaksIntoTheNextTaskOnAPooledThread`) | невозможны |
+| Утечки в пуле | да (тест `threadLocalLeaksIntoTheNextTaskOnAPooledThread`) | нет (тест `scopedValueDoesNotLeakIntoTheNextTaskOnAPooledThread`) |
 | Наследование | `InheritableThreadLocal` копирует | разделяется с форками `StructuredTaskScope` |
 | Стоимость на миллион VT | миллион копий | ~0 |
 
@@ -294,8 +298,9 @@ Key Derivation Function API; compact object headers (product), AOT-эргоно�
   `ExecutionException` (поймано компилятором при сборке этого модуля). Поэтому превью — в отдельном модуле.
 - **Primitive patterns** (JEP 532, 5-е превью): `case int c when c >= 500` на `int`-селекторе.
 - **Lazy Constants** (JEP 531, 3-е превью; в 25 назывались Stable Values): инициализация один раз, лениво,
-  потокобезопасно, JIT считает константой. Замена double-checked locking и holder-класса.
-- **PEM** (JEP 538, превью): `PEMEncoder`/`PEMDecoder` без Bouncy Castle.
+  потокобезопасно; JIT сворачивает значение в константу, если сам `LazyConstant` достижим из константы
+  (`static final` поле) — для поля экземпляра, как в `TariffTable`, только когда константен объект-владелец. Замена double-checked locking и holder-класса.
+- **PEM** (JEP 538, **3-е** превью: JEP 470 в 25, JEP 524 в 26): `PEMEncoder`/`PEMDecoder` без Bouncy Castle.
 
 **Подводные камни превью.** Нужен `--enable-preview` и для `javac`, и для запуска (surefire); class-файлы
 привязаны к точной версии JDK — собранное на 27 не запустится на 28. Не для production.

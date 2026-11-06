@@ -21,6 +21,12 @@ class OrderWorkflowTest {
     }
 
     @Test
+    void labelUsesYieldInsideABlock() {
+        assertThat(OrderWorkflow.label(OrderStatus.IN_FORGE)).isEqualTo("in forge (being made)");
+        assertThat(OrderWorkflow.label(OrderStatus.NEW)).isEqualTo("new");
+    }
+
+    @Test
     void helpfulNullPointerExceptionNamesTheNullExpression() {
         OrderStatus[] statuses = {null};
 

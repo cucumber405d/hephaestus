@@ -30,6 +30,7 @@ class ForgeQueueTest {
     @Test
     void java21SmallApiAdditions() {
         assertThat(Math.clamp(150, 0, 100)).isEqualTo(100);
+        assertThat("=".repeat(3)).isEqualTo("===");
         assertThat(new StringBuilder().repeat("=", 3).toString()).isEqualTo("===");
     }
 }
