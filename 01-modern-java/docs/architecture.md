@@ -14,3 +14,4 @@
 | 16 | `java16` | `Money`, `OrderLine` | JEP 395 (records), JEP 394 (`instanceof` patterns), `Stream.toList/mapMulti` |
 | 17 | `java17` | `PaymentResult` | JEP 409 (sealed), JEP 356 (`RandomGenerator`), `HexFormat` |
 | 18 | `java18` | — (learning test) | JEP 400 (UTF-8 by default), JEP 413 (`@snippet`, см. `Money`) |
+| 21 | `java21` | `SupplierFanOut`, `PaymentHandler`, `ForgeQueue`, `WorkItem` | JEP 444 (virtual threads), JEP 440 (record patterns), JEP 441 (switch patterns), JEP 431 (sequenced collections), `Math.clamp`, `StringBuilder.repeat` |
