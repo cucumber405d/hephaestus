@@ -19,3 +19,5 @@
 | 23 | `java23` | `MaterialGrade` | JEP 467 (Markdown doc comments) |
 | 24 | `java24` | `PriceGatherers`, `ClassInspector`; тест `PinningTest` | JEP 485 (Stream Gatherers), JEP 484 (Class-File API), JEP 491 (VT без pinning на `synchronized`) |
 | 25 | `java25` | `RequestContext`, `WorkOrder`, `SmithOrder`, `ModuleImportExample`; `scripts/Inventory.java` | JEP 506 (scoped values), JEP 513 (flexible constructor bodies), JEP 511 (module imports), JEP 512 (compact source files) |
+| 26 | `java26` (`next`) | `Http3Probe` | JEP 517 (HTTP/3 для `HttpClient`) — финальная |
+| 27 | `java27` (`next`) | `SupplierAggregator`, `SupplierOffer`, `StatusCodes`, `TariffTable`, `KeyPem` | JEP 533 (structured concurrency, 7-е превью), JEP 532 (primitive patterns, 5-е превью), JEP 531 (lazy constants, 3-е превью), JEP 538 (PEM, превью) |

@@ -273,3 +273,38 @@ Key Derivation Function API; compact object headers (product), AOT-эргоно�
    статических helper-методов.
 3. *Что такое compact source file?* — Файл без объявления класса: `void main()` + методы/поля; неявный
    `import module java.base`; для скриптов и обучения.
+
+## Java 26 (модуль `next`)
+
+**Что появилось (финально).** HTTP/3 в `HttpClient` (JEP 517) — поверх QUIC/UDP; `Version.HTTP_3`
+означает «попробуй HTTP/3», с откатом на HTTP/2/1.1. Предупреждения при изменении `final`-полей через
+рефлексию (JEP 500, «final значит final»). Удалён Applet API.
+
+**Подводные камни.** UDP/443 часто режут корпоративные файрволы — поэтому откат обязателен; тест помечен
+`@Tag("network")` и запускается вручную (`-Dgroups=network`).
+
+## Java 27 (модуль `next`, превью)
+
+**Финально в 27:** G1 — GC по умолчанию во всех окружениях (JEP 523), гибридный пост-квантовый обмен ключами
+в TLS 1.3 (JEP 527), compact object headers по умолчанию (JEP 534), JFR-редактирование чувствительных данных.
+**Превью — то, что разобрано в коде:**
+- **Structured Concurrency** (JEP 533, 7-е превью). `StructuredTaskScope.open()` → `fork` × N → `join()`.
+  Тест: одна подзадача падает → две другие прерываются, ни одна не досчитала (`completed == 0`), всё < 1 с.
+  **Дрейф API между превью:** в JDK 25 `join()` бросал unchecked `FailedException`, в 27 — checked
+  `ExecutionException` (поймано компилятором при сборке этого модуля). Поэтому превью — в отдельном модуле.
+- **Primitive patterns** (JEP 532, 5-е превью): `case int c when c >= 500` на `int`-селекторе.
+- **Lazy Constants** (JEP 531, 3-е превью; в 25 назывались Stable Values): инициализация один раз, лениво,
+  потокобезопасно, JIT считает константой. Замена double-checked locking и holder-класса.
+- **PEM** (JEP 538, превью): `PEMEncoder`/`PEMDecoder` без Bouncy Castle.
+
+**Подводные камни превью.** Нужен `--enable-preview` и для `javac`, и для запуска (surefire); class-файлы
+привязаны к точной версии JDK — собранное на 27 не запустится на 28. Не для production.
+
+**Вопросы.**
+1. *Чем structured concurrency лучше `ExecutorService` + `Future`?* — Время жизни подзадач ограничено
+   блоком: нет утечек потоков, ошибка одной отменяет остальные, отмена родителя распространяется вниз,
+   в thread dump видна иерархия.
+2. *Почему structured concurrency до сих пор превью?* — API несколько раз менялся (joiner'ы, исключения);
+   пример — смена `FailedException` на `ExecutionException`.
+3. *Lazy constant vs `static final` с holder-idiom?* — Работает и для полей экземпляра, без отдельного
+   класса, с гарантией однократной инициализации и constant folding в JIT.
