@@ -1,0 +1,41 @@
+# Builds 01-modern-java on JDK 27.
+name: 01-modern-java
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "01-modern-java/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/01-modern-java.yml"
+  pull_request:
+    paths:
+      - "01-modern-java/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/01-modern-java.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-subproject.yml
+    with:
+      subproject: 01-modern-java
+      java-version: "27"

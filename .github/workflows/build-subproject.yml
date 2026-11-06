@@ -8,6 +8,11 @@ on:
         description: "Subproject directory, e.g. _template or 02-rest-service"
         required: true
         type: string
+      java-version:
+        description: "JDK version to build with"
+        required: false
+        type: string
+        default: "25"
 
 permissions:
   contents: read
@@ -22,7 +27,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "25"
+          java-version: ${{ inputs.java-version }}
           cache: maven
 
       - name: Verify
