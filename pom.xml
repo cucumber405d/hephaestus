@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- ADR 0001: наследуем starter-parent, а не импортируем BOM -->
+    <!-- ADR 0001: inherit spring-boot-starter-parent instead of importing the BOM -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -41,22 +41,22 @@
         <developerConnection>scm:git:https://github.com/cucumber405d/hephaestus.git</developerConnection>
     </scm>
 
-    <!-- Только parent: без <modules>. Подпроект собирается сам: ./mvnw -f <subproject>/pom.xml verify -->
+    <!-- Parent only, no <modules>. Each subproject builds on its own: ./mvnw -f <subproject>/pom.xml verify -->
 
     <properties>
         <java.version>25</java.version>
-        <!-- Пустое значение по умолчанию: @{argLine} не останется литералом, если JaCoCo пропущен или тесты запускает IDE -->
+        <!-- Empty default so @{argLine} never stays a literal when JaCoCo is skipped or an IDE runs the tests -->
         <argLine/>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- Версии, не управляемые Spring Boot -->
+        <!-- Versions not managed by Spring Boot -->
         <archunit.version>1.5.1</archunit.version>
         <jib-maven-plugin.version>3.5.2</jib-maven-plugin.version>
         <spotless-maven-plugin.version>3.11.0</spotless-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.16</jacoco-maven-plugin.version>
     </properties>
 
-    <!-- Во всех модулях: даёт свойство ${org.mockito:mockito-core:jar} для -javaagent, в т.ч. в модулях без spring-boot-starter-test -->
+    <!-- In every module: provides ${org.mockito:mockito-core:jar} for -javaagent, including modules without spring-boot-starter-test -->
     <dependencies>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -98,8 +98,8 @@
         </pluginManagement>
 
         <plugins>
-            <!-- Mockito как javaagent: с JDK 21 динамическая загрузка агентов выдаёт предупреждение (JEP 451),
-                 будущие JDK её запретят. -Xshare:off гасит предупреждение CDS при добавлении агента в bootclasspath. -->
+            <!-- Mockito as a javaagent: since JDK 21 dynamic agent loading prints a warning (JEP 451)
+                 and future JDKs will disallow it. -Xshare:off silences the CDS warning caused by the bootclasspath append. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -161,7 +161,7 @@
                         <goals>
                             <goal>check</goal>
                         </goals>
-                        <!-- до компиляции и тестов: быстрая обратная связь -->
+                        <!-- before compile and tests: fast feedback -->
                         <phase>process-sources</phase>
                     </execution>
                 </executions>

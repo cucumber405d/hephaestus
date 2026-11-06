@@ -1,11 +1,11 @@
-# Reusable: сборка и тесты одного подпроекта. Вызывается из NN-<name>.yml.
+# Reusable: builds and tests one subproject. Called from NN-<name>.yml.
 name: build-subproject
 
 on:
   workflow_call:
     inputs:
       subproject:
-        description: "Каталог подпроекта, например _template или 02-rest-service"
+        description: "Subproject directory, e.g. _template or 02-rest-service"
         required: true
         type: string
 

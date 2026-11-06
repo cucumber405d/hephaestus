@@ -2,7 +2,7 @@ spring:
   application:
     name: greeting-service
   lifecycle:
-    # < terminationGracePeriodSeconds (30s по умолчанию в K8s)
+    # must stay below terminationGracePeriodSeconds (30s by default in K8s)
     timeout-per-shutdown-phase: 20s
   threads:
     virtual:

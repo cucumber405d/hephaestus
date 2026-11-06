@@ -1,6 +1,6 @@
 package de.ibikus.appa.hephaestus.template.greeting.domain;
 
-/** Приветствие адресату. Чистый домен: без зависимостей от Spring и адаптеров. */
+/** Greeting for a recipient. Pure domain: no dependencies on Spring or adapters. */
 public record Greeting(String recipient) {
 
     public static final int MAX_RECIPIENT_LENGTH = 50;
