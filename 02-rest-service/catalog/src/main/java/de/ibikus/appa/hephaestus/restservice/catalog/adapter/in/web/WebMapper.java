@@ -3,6 +3,7 @@ package de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web;
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.CategoryDto;
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.ItemDto;
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.ItemInputDto;
+import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.ItemPageDto;
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.MoneyDto;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Category;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryId;
@@ -10,6 +11,7 @@ import de.ibikus.appa.hephaestus.restservice.catalog.domain.Item;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemId;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Money;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.NewItem;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.Page;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -25,6 +27,17 @@ interface WebMapper {
     ItemDto toDto(Item item);
 
     NewItem toNewItem(ItemInputDto input);
+
+    /** Written by hand: totalPages() is derived, not a record component MapStruct would see. */
+    default ItemPageDto toDto(Page<Item> page) {
+        var dto = new ItemPageDto();
+        dto.setContent(page.content().stream().map(this::toDto).toList());
+        dto.setPage(page.page());
+        dto.setSize(page.size());
+        dto.setTotalElements(page.totalElements());
+        dto.setTotalPages(page.totalPages());
+        return dto;
+    }
 
     default MoneyDto toDto(Money money) {
         return money == null ? null : new MoneyDto(money.amount().toPlainString(), money.currency());

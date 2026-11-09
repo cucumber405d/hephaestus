@@ -4,8 +4,12 @@ import de.ibikus.appa.hephaestus.restservice.catalog.application.port.out.ItemRe
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryId;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Item;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemId;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemSearchCriteria;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.Page;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.PageRequest;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -34,6 +38,13 @@ public class InMemoryItemRepository implements ItemRepository {
     @Override
     public Optional<Item> findById(ItemId id) {
         return Optional.ofNullable(store.get(id));
+    }
+
+    /** Pass-through for web slice tests: no filtering, only the page envelope. */
+    @Override
+    public Page<Item> search(ItemSearchCriteria criteria, PageRequest pageRequest) {
+        var all = List.copyOf(store.values());
+        return new Page<>(all, pageRequest.page(), pageRequest.size(), all.size());
     }
 
     @Override

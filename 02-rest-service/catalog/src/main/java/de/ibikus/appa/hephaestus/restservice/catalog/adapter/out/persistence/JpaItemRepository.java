@@ -4,6 +4,9 @@ import de.ibikus.appa.hephaestus.restservice.catalog.application.port.out.ItemRe
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryId;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Item;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemId;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemSearchCriteria;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.Page;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.PageRequest;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.UnknownCategoryException;
 import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,6 +36,18 @@ class JpaItemRepository implements ItemRepository {
     @Override
     public Optional<Item> findById(ItemId id) {
         return repository.findById(id.value()).map(mapper::toDomain);
+    }
+
+    @Override
+    public Page<Item> search(ItemSearchCriteria criteria, PageRequest pageRequest) {
+        var pageable = org.springframework.data.domain.PageRequest.of(
+                pageRequest.page(), pageRequest.size(), ItemSpecifications.sort(criteria.sort()));
+        var result = repository.findAll(ItemSpecifications.matching(criteria), pageable);
+        return new Page<>(
+                result.getContent().stream().map(mapper::toDomain).toList(),
+                pageRequest.page(),
+                pageRequest.size(),
+                result.getTotalElements());
     }
 
     @Override

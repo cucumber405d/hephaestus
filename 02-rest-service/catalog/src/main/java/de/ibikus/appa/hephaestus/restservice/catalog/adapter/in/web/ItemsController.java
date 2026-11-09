@@ -5,8 +5,14 @@ import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.It
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.ItemInputDto;
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.ItemPageDto;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.ManageItemsUseCase;
+import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.SearchItemsQuery;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryId;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemId;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemSearchCriteria;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.PageRequest;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.SortOrder;
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,10 +25,12 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 class ItemsController implements ItemsApi {
 
     private final ManageItemsUseCase items;
+    private final SearchItemsQuery search;
     private final WebMapper mapper;
 
-    ItemsController(ManageItemsUseCase items, WebMapper mapper) {
+    ItemsController(ManageItemsUseCase items, SearchItemsQuery search, WebMapper mapper) {
         this.items = items;
+        this.search = search;
         this.mapper = mapper;
     }
 
@@ -52,7 +60,17 @@ class ItemsController implements ItemsApi {
             List<String> sort,
             Integer page,
             Integer size) {
-        throw new UnsupportedOperationException("Task 6");
+        var orders = sort == null
+                ? List.<SortOrder>of()
+                : sort.stream()
+                        .flatMap(value -> Arrays.stream(value.split(",")))
+                        .map(String::strip)
+                        .filter(value -> !value.isEmpty())
+                        .map(SortOrder::parse)
+                        .toList();
+        var criteria = new ItemSearchCriteria(
+                category == null ? null : new CategoryId(category), minPrice, maxPrice, q, orders);
+        return ResponseEntity.ok(mapper.toDto(search.search(criteria, new PageRequest(page, size))));
     }
 
     @Override

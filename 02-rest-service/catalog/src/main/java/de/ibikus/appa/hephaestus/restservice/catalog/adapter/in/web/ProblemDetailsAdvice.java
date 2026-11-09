@@ -7,6 +7,7 @@ import de.ibikus.appa.hephaestus.restservice.catalog.domain.InvalidValueExceptio
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemNotFoundException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.UnknownCategoryException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.VersionConflictException;
+import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
 import java.util.Map;
 import java.util.Objects;
@@ -62,6 +63,22 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.BAD_REQUEST, "invalid-request", "Invalid request", ex.getMessage());
     }
 
+    /**
+     * The generated API interfaces carry {@code @Validated}, so Spring's method-validation proxy checks parameters
+     * (page size, ...) before MVC does and throws the plain Bean Validation exception.
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    ProblemDetail constraintViolation(ConstraintViolationException ex) {
+        var body = problem(HttpStatus.BAD_REQUEST, "invalid-request", "Invalid request", "Request validation failed");
+        body.setProperty(
+                "errors",
+                ex.getConstraintViolations().stream()
+                        .map(violation ->
+                                fieldError(lastNode(violation.getPropertyPath().toString()), violation.getMessage()))
+                        .toList());
+        return body;
+    }
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -114,6 +131,11 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
 
     private static Map<String, String> fieldError(String field, String message) {
         return Map.of("field", Objects.toString(field, "request"), "message", Objects.toString(message, "invalid"));
+    }
+
+    /** "searchItems.size" -> "size". */
+    private static String lastNode(String path) {
+        return path.substring(path.lastIndexOf('.') + 1);
     }
 
     private static String slugFor(HttpStatusCode status) {
