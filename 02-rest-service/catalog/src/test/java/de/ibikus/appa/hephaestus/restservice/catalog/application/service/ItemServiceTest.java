@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryCategoryRepository;
+import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryIdempotencyStore;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryItemRepository;
+import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.IdempotencyKey;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.ItemPatch;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.PatchValue;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Category;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryId;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.IdempotencyConflictException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Item;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemId;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemNotFoundException;
@@ -27,7 +30,9 @@ class ItemServiceTest {
 
     private final InMemoryItemRepository items = new InMemoryItemRepository();
     private final InMemoryCategoryRepository categories = new InMemoryCategoryRepository(items);
-    private final ItemService service = new ItemService(items, categories, Clock.fixed(NOW, ZoneOffset.UTC));
+    private final InMemoryIdempotencyStore idempotency = new InMemoryIdempotencyStore();
+    private final ItemService service =
+            new ItemService(items, categories, idempotency, Clock.fixed(NOW, ZoneOffset.UTC));
     private final Category swords = categories.insert(new Category(CategoryId.newId(), "Swords", 0));
 
     @Test
@@ -50,6 +55,52 @@ class ItemServiceTest {
     void rejectsUnknownCategory() {
         assertThatThrownBy(() -> service.create(new NewItem("Sword", null, Money.of("1", "EUR"), CategoryId.newId())))
                 .isInstanceOf(UnknownCategoryException.class);
+    }
+
+    @Test
+    void retryWithSameKeyAndDataReturnsTheFirstItem() {
+        var key = new IdempotencyKey("key-1");
+        var data = new NewItem("Bronze sword", "Sharp", Money.of("120", "EUR"), swords.id());
+
+        var first = service.create(data, key);
+        var retry = service.create(new NewItem("Bronze sword", "Sharp", Money.of("120.00", "EUR"), swords.id()), key);
+
+        assertThat(first.replayed()).isFalse();
+        assertThat(retry.replayed()).isTrue();
+        assertThat(retry.item()).isEqualTo(first.item());
+        assertThat(items.size()).isEqualTo(1);
+    }
+
+    @Test
+    void sameKeyWithDifferentDataIsAConflict() {
+        var key = new IdempotencyKey("key-2");
+        service.create(new NewItem("Bronze sword", null, Money.of("120", "EUR"), swords.id()), key);
+
+        assertThatThrownBy(
+                        () -> service.create(new NewItem("Iron sword", null, Money.of("120", "EUR"), swords.id()), key))
+                .isInstanceOf(IdempotencyConflictException.class);
+        assertThat(items.size()).isEqualTo(1);
+    }
+
+    @Test
+    void replayOfADeletedItemIsAConflict() {
+        var key = new IdempotencyKey("key-3");
+        var created = service.create(new NewItem("Bronze sword", null, Money.of("120", "EUR"), swords.id()), key);
+        service.delete(created.item().id(), 0);
+
+        assertThatThrownBy(() ->
+                        service.create(new NewItem("Bronze sword", null, Money.of("120", "EUR"), swords.id()), key))
+                .isInstanceOf(IdempotencyConflictException.class);
+    }
+
+    @Test
+    void failedCreationDoesNotConsumeTheKey() {
+        var key = new IdempotencyKey("key-4");
+        assertThatThrownBy(
+                        () -> service.create(new NewItem("Sword", null, Money.of("1", "EUR"), CategoryId.newId()), key))
+                .isInstanceOf(UnknownCategoryException.class);
+
+        assertThat(idempotency.find("key-4")).isEmpty();
     }
 
     @Test

@@ -3,6 +3,7 @@ package de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryCategoryRepository;
+import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryIdempotencyStore;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryItemRepository;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.service.ItemService;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Category;
@@ -36,8 +37,8 @@ class ItemSearchControllerTest {
         }
 
         @Bean
-        ItemService itemService(InMemoryItemRepository items, Clock clock) {
-            return new ItemService(items, new InMemoryCategoryRepository(items), clock);
+        ItemService itemService(InMemoryItemRepository items, InMemoryIdempotencyStore idempotency, Clock clock) {
+            return new ItemService(items, new InMemoryCategoryRepository(items), idempotency, clock);
         }
     }
 
@@ -77,6 +78,16 @@ class ItemSearchControllerTest {
     void pageSizeOutsideBoundsIsABadRequest() {
         assertThat(mvc.get().uri("/api/items?size=0")).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(mvc.get().uri("/api/items?size=101")).hasStatus(HttpStatus.BAD_REQUEST);
+    }
+
+    /** A huge exponent must be rejected by the contract, not reach the database as a numeric overflow. */
+    @Test
+    void priceFilterOutOfRangeIsABadRequest() {
+        var result = mvc.get().uri("/api/items?minPrice=1e999999999").exchange();
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.type").isEqualTo(PROBLEMS + "invalid-request");
+        assertThat(mvc.get().uri("/api/items?maxPrice=-1")).hasStatus(HttpStatus.BAD_REQUEST);
     }
 
     @Test

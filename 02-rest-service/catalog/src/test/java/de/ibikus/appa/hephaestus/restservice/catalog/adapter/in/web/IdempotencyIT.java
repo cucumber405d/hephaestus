@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
-/** Idempotency-Key behaviour through the full filter chain against PostgreSQL. */
+/** Idempotency-Key behaviour end to end against PostgreSQL. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(PostgresTestcontainers.class)
@@ -74,7 +74,7 @@ class IdempotencyIT {
     }
 
     @Test
-    void retryWithSameKeyAndBodyReplaysTheFirstResponse() {
+    void retryWithSameKeyAndBodyReplaysTheFirstResponse() throws Exception {
         var key = UUID.randomUUID().toString();
         var name = "Retry " + key;
 
@@ -87,6 +87,9 @@ class IdempotencyIT {
                 .isEqualTo(first.getResponse().getHeader("Location"));
         assertThat(second.getResponse().getHeader("ETag"))
                 .isEqualTo(first.getResponse().getHeader("ETag"));
+        assertThat(first.getResponse().getHeader("Idempotent-Replayed")).isNull();
+        assertThat(second.getResponse().getHeader("Idempotent-Replayed")).isEqualTo("true");
+        assertThat(second).bodyJson().isStrictlyEqualTo(first.getResponse().getContentAsString());
         assertThat(itemsNamed(name)).isEqualTo(1);
     }
 
@@ -114,6 +117,25 @@ class IdempotencyIT {
         assertThat(invalid).hasStatus(HttpStatus.BAD_REQUEST);
 
         assertThat(post(key, "After failure " + key)).hasStatus(HttpStatus.CREATED);
+    }
+
+    @Test
+    void retryAfterAnUnprocessableRequestIsStillUnprocessable() {
+        var key = UUID.randomUUID().toString();
+        var body = """
+                {"name":"Lost %s","price":{"amount":"10","currency":"EUR"},"categoryId":"%s"}""".formatted(key, UUID.randomUUID());
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            var result = mvc.post()
+                    .uri("/api/items")
+                    .header("Idempotency-Key", key)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body)
+                    .exchange();
+            assertThat(result).hasStatus(HttpStatus.valueOf(422));
+        }
+        assertThat(jdbc.queryForObject("select count(*) from idempotency_key where key = ?", Integer.class, key))
+                .isZero();
     }
 
     @Test

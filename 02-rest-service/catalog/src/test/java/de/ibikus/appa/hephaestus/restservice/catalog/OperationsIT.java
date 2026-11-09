@@ -51,10 +51,10 @@ class OperationsIT {
 
     @Test
     void cleanupRemovesKeysOlderThan24Hours() {
-        jdbc.update("insert into idempotency_key (key, request_hash, response_status, created_at)"
-                + " values ('old-key', repeat('a', 64), 201, now() - interval '25 hours')");
-        jdbc.update("insert into idempotency_key (key, request_hash, response_status, created_at)"
-                + " values ('fresh-key', repeat('b', 64), 201, now())");
+        jdbc.update("insert into idempotency_key (key, request_hash, item_id, created_at)"
+                + " values ('old-key', repeat('a', 64), gen_random_uuid(), now() - interval '25 hours')");
+        jdbc.update("insert into idempotency_key (key, request_hash, item_id, created_at)"
+                + " values ('fresh-key', repeat('b', 64), gen_random_uuid(), now())");
 
         cleanup.run();
 

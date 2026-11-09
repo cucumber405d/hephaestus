@@ -4,6 +4,7 @@ import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.ItemsApi
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.ItemDto;
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.ItemInputDto;
 import de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web.api.model.ItemPageDto;
+import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.IdempotencyKey;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.ManageItemsUseCase;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.SearchItemsQuery;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryId;
@@ -34,15 +35,19 @@ class ItemsController implements ItemsApi {
         this.mapper = mapper;
     }
 
-    /** The Idempotency-Key itself is handled by IdempotencyFilter before this method runs. */
     @Override
     public ResponseEntity<ItemDto> createItem(String idempotencyKey, ItemInputDto itemInputDto) {
-        var item = items.create(mapper.toNewItem(itemInputDto));
+        var result = items.create(mapper.toNewItem(itemInputDto), new IdempotencyKey(idempotencyKey));
+        var item = result.item();
         var location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(item.id().value())
                 .toUri();
-        return ResponseEntity.created(location).eTag(ETags.of(item.version())).body(mapper.toDto(item));
+        var response = ResponseEntity.created(location).eTag(ETags.of(item.version()));
+        if (result.replayed()) {
+            response.header("Idempotent-Replayed", "true");
+        }
+        return response.body(mapper.toDto(item));
     }
 
     @Override

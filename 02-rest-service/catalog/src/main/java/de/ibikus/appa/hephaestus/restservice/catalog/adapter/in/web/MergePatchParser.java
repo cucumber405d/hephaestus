@@ -82,10 +82,11 @@ final class MergePatchParser {
     }
 
     private static String decimal(Object value, String field) {
-        if (value instanceof String || value instanceof Number) {
-            return value.toString();
+        // Only strings, as in the contract: a JSON number arrives as a Double or BigDecimal and would bypass the format
+        if (value instanceof String text) {
+            return text;
         }
-        throw new InvalidValueException(field + " must be a decimal number");
+        throw new InvalidValueException(field + " must be a decimal number in a string, e.g. \"12.50\"");
     }
 
     private static CategoryId categoryId(Object value, String field) {

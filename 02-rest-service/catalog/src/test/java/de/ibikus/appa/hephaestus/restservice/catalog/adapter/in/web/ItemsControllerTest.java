@@ -42,8 +42,12 @@ class ItemsControllerTest {
         }
 
         @Bean
-        ItemService itemService(InMemoryItemRepository items, InMemoryCategoryRepository categories, Clock clock) {
-            return new ItemService(items, categories, clock);
+        ItemService itemService(
+                InMemoryItemRepository items,
+                InMemoryCategoryRepository categories,
+                InMemoryIdempotencyStore idempotency,
+                Clock clock) {
+            return new ItemService(items, categories, idempotency, clock);
         }
     }
 
@@ -99,6 +103,14 @@ class ItemsControllerTest {
 
         assertThat(result).hasStatus(HttpStatus.valueOf(422));
         assertThat(result).bodyJson().extractingPath("$.type").isEqualTo(PROBLEMS + "unknown-category");
+    }
+
+    @Test
+    void priceWithMoreThanTenIntegerDigitsIsRejected() {
+        var result = post(item(swords.id().value().toString(), "10000000000"));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.type").isEqualTo(PROBLEMS + "invalid-request");
     }
 
     @Test

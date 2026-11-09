@@ -1,17 +1,21 @@
 package de.ibikus.appa.hephaestus.restservice.catalog.adapter.out.persistence;
 
+import de.ibikus.appa.hephaestus.restservice.catalog.application.port.out.IdempotencyRecord;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.port.out.IdempotencyStore;
-import de.ibikus.appa.hephaestus.restservice.catalog.application.port.out.StoredResponse;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.IdempotencyConflictException;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemId;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 /**
- * Idempotency keys in PostgreSQL. Plain JDBC on purpose: the reservation needs {@code INSERT ... ON CONFLICT DO
- * NOTHING}, which makes "claim the key" atomic across concurrent requests. Each statement auto-commits, so other
- * requests see a reservation immediately.
+ * Idempotency keys in PostgreSQL via JDBC. JdbcTemplate joins the JPA transaction (same connection), so the key and
+ * the item commit or roll back together. A concurrent insert of the same key waits on the primary key until the
+ * first transaction ends, then fails with a duplicate key.
  */
 @Repository
 class JdbcIdempotencyStore implements IdempotencyStore {
@@ -23,44 +27,33 @@ class JdbcIdempotencyStore implements IdempotencyStore {
     }
 
     @Override
-    public boolean reserve(String key, String requestHash, Instant now) {
-        return jdbc.update(
-                        "insert into idempotency_key (key, request_hash, response_status, created_at)"
-                                + " values (?, ?, 0, ?) on conflict (key) do nothing",
-                        key,
-                        requestHash,
-                        now.atOffset(ZoneOffset.UTC))
-                == 1;
-    }
-
-    @Override
-    public void complete(String key, StoredResponse response) {
-        jdbc.update(
-                "update idempotency_key set response_status = ?, response_body = ?::jsonb, location = ?, etag = ?"
-                        + " where key = ?",
-                response.status(),
-                response.body(),
-                response.location(),
-                response.etag(),
-                key);
-    }
-
-    @Override
-    public void release(String key) {
-        jdbc.update("delete from idempotency_key where key = ? and response_status = 0", key);
-    }
-
-    @Override
-    public Optional<StoredResponse> find(String key) {
+    public Optional<IdempotencyRecord> find(String key) {
         return jdbc
                 .query(
-                        "select request_hash, response_status, response_body::text, location, etag"
-                                + " from idempotency_key where key = ?",
-                        (rs, row) -> new StoredResponse(
-                                rs.getString(1), rs.getInt(2), rs.getString(3), rs.getString(4), rs.getString(5)),
+                        "select key, request_hash, item_id, created_at from idempotency_key where key = ?",
+                        (rs, row) -> new IdempotencyRecord(
+                                rs.getString(1),
+                                rs.getString(2),
+                                new ItemId(rs.getObject(3, UUID.class)),
+                                rs.getObject(4, java.time.OffsetDateTime.class).toInstant()),
                         key)
                 .stream()
                 .findFirst();
+    }
+
+    @Override
+    public void insert(IdempotencyRecord record) {
+        try {
+            jdbc.update(
+                    "insert into idempotency_key (key, request_hash, item_id, created_at) values (?, ?, ?, ?)",
+                    record.key(),
+                    record.requestHash(),
+                    record.itemId().value(),
+                    record.createdAt().atOffset(ZoneOffset.UTC));
+        } catch (DuplicateKeyException e) {
+            throw new IdempotencyConflictException(
+                    "A request with this Idempotency-Key was processed concurrently; retry to get its result");
+        }
     }
 
     @Override

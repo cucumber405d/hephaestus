@@ -3,6 +3,7 @@ package de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryInUseException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryNotFoundException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.DuplicateCategoryNameException;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.IdempotencyConflictException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.InvalidValueException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemNotFoundException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.UnknownCategoryException;
@@ -11,6 +12,8 @@ import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -34,6 +37,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
 
     static final String TYPE_BASE = "https://hephaestus.ibikus.de/problems/";
+
+    private static final Logger LOG = LoggerFactory.getLogger(ProblemDetailsAdvice.class);
 
     @ExceptionHandler({CategoryNotFoundException.class, ItemNotFoundException.class})
     ProblemDetail notFound(RuntimeException ex) {
@@ -74,6 +79,26 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
     ProblemDetail preconditionRequired(PreconditionRequiredException ex) {
         return problem(
                 HttpStatus.PRECONDITION_REQUIRED, "precondition-required", "Precondition required", ex.getMessage());
+    }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    ProblemDetail idempotencyConflict(IdempotencyConflictException ex) {
+        return problem(HttpStatus.CONFLICT, "idempotency-conflict", "Idempotency conflict", ex.getMessage());
+    }
+
+    /**
+     * Last resort: still Problem Details, but the message stays in the log. Exception texts carry SQL, host names
+     * and stack details that must not reach the client. Spring's own exceptions are matched more specifically by
+     * the inherited handler and never get here.
+     */
+    @ExceptionHandler(Exception.class)
+    ProblemDetail unexpected(Exception ex) {
+        LOG.error("Unexpected error", ex);
+        return problem(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "internal-error",
+                "Internal error",
+                "The request could not be processed; the error has been logged");
     }
 
     @ExceptionHandler(InvalidValueException.class)

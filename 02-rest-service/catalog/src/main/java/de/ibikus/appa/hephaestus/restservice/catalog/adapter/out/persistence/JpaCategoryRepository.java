@@ -30,7 +30,10 @@ class JpaCategoryRepository implements CategoryRepository {
         try {
             return mapper.toDomain(repository.saveAndFlush(mapper.toNewEntity(category)));
         } catch (DataIntegrityViolationException e) {
-            throw new DuplicateCategoryNameException("Category '" + category.name() + "' already exists");
+            if (Constraints.violated(e, "category_name_ci")) {
+                throw new DuplicateCategoryNameException("Category '" + category.name() + "' already exists");
+            }
+            throw e;
         }
     }
 
@@ -57,7 +60,10 @@ class JpaCategoryRepository implements CategoryRepository {
             repository.deleteById(id.value());
             repository.flush();
         } catch (DataIntegrityViolationException e) {
-            throw new CategoryInUseException("Category " + id.value() + " still has items");
+            if (Constraints.violated(e, "item_category_fk")) {
+                throw new CategoryInUseException("Category " + id.value() + " still has items");
+            }
+            throw e;
         }
     }
 }

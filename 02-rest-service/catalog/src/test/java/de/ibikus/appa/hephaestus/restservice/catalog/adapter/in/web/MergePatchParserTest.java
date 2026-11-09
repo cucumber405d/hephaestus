@@ -45,10 +45,11 @@ class MergePatchParserTest {
         assertThat(patch.priceCurrency()).isEqualTo(PatchValue.absent());
     }
 
+    /** The contract says amount is a string; a JSON number would bypass the format check (e.g. 1E+999999999). */
     @Test
-    void numericAmountIsAccepted() {
-        assertThat(MergePatchParser.parse(body("price", Map.of("amount", 12.5))).priceAmount())
-                .isEqualTo(PatchValue.set("12.5"));
+    void numericAmountIsRejected() {
+        assertThatThrownBy(() -> MergePatchParser.parse(body("price", Map.of("amount", 12.5))))
+                .isInstanceOf(InvalidValueException.class);
     }
 
     @Test

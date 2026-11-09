@@ -16,4 +16,15 @@ class ProblemDetailsAdviceTest {
         assertThat(problem.getStatus()).isEqualTo(412);
         assertThat(problem.getType().toString()).endsWith("/precondition-failed");
     }
+
+    /** Anything unexpected is still Problem Details, and its message never leaks to the client. */
+    @Test
+    void unexpectedExceptionIsAnInternalErrorWithoutDetails() {
+        var problem = new ProblemDetailsAdvice().unexpected(new IllegalStateException("secret connection string"));
+
+        assertThat(problem.getStatus()).isEqualTo(500);
+        assertThat(problem.getType()).isNotNull();
+        assertThat(problem.getType().toString()).endsWith("/internal-error");
+        assertThat(problem.getDetail()).isNotNull().doesNotContain("secret");
+    }
 }

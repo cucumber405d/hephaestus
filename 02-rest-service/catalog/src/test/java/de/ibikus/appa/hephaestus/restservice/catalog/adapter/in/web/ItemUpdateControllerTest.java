@@ -3,6 +3,7 @@ package de.ibikus.appa.hephaestus.restservice.catalog.adapter.in.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryCategoryRepository;
+import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryIdempotencyStore;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryItemRepository;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.service.ItemService;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Category;
@@ -46,8 +47,12 @@ class ItemUpdateControllerTest {
         }
 
         @Bean
-        ItemService itemService(InMemoryItemRepository items, InMemoryCategoryRepository categories, Clock clock) {
-            return new ItemService(items, categories, clock);
+        ItemService itemService(
+                InMemoryItemRepository items,
+                InMemoryCategoryRepository categories,
+                InMemoryIdempotencyStore idempotency,
+                Clock clock) {
+            return new ItemService(items, categories, idempotency, clock);
         }
     }
 

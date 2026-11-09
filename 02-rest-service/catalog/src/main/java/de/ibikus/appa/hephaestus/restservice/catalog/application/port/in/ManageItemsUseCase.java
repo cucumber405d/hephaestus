@@ -10,6 +10,12 @@ public interface ManageItemsUseCase {
     /** Creates an item; a category that does not exist raises UnknownCategoryException. */
     Item create(NewItem data);
 
+    /**
+     * Creates an item at most once per Idempotency-Key: a retry with the same key and the same data returns the item
+     * created first; the same key with different data raises IdempotencyConflictException.
+     */
+    CreationResult create(NewItem data, IdempotencyKey key);
+
     Item get(ItemId id);
 
     /** Replaces all client fields; {@code expectedVersion} differing from the current one raises VersionConflict. */

@@ -13,7 +13,7 @@ import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
-/** Item persistence; the foreign key to category is translated into UnknownCategoryException. */
+/** Item persistence; a violation of the category foreign key is translated into UnknownCategoryException. */
 @Repository
 class JpaItemRepository implements ItemRepository {
 
@@ -30,7 +30,7 @@ class JpaItemRepository implements ItemRepository {
         try {
             return mapper.toDomain(repository.saveAndFlush(mapper.toNewEntity(item)));
         } catch (DataIntegrityViolationException e) {
-            throw new UnknownCategoryException("Category " + item.categoryId().value() + " does not exist");
+            throw translate(e, item);
         }
     }
 
@@ -54,9 +54,17 @@ class JpaItemRepository implements ItemRepository {
             // failure
             repository.saveAndFlush(entity);
         } catch (DataIntegrityViolationException e) {
-            throw new UnknownCategoryException("Category " + item.categoryId().value() + " does not exist");
+            throw translate(e, item);
         }
         return mapper.toDomain(entity);
+    }
+
+    /** Only the category foreign key is the client's mistake; any other violation is a bug and stays a 500. */
+    private static RuntimeException translate(DataIntegrityViolationException e, Item item) {
+        if (Constraints.violated(e, "item_category_fk")) {
+            return new UnknownCategoryException("Category " + item.categoryId().value() + " does not exist");
+        }
+        return e;
     }
 
     @Override

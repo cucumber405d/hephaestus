@@ -7,7 +7,7 @@ import java.time.ZoneOffset;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 
-/** Beans every @WebMvcTest needs because the slice also loads servlet filters (IdempotencyFilter). */
+/** Shared fakes for the @WebMvcTest slices: the Idempotency-Key store and a fixed clock. */
 @TestConfiguration
 public class WebSliceFakes {
 

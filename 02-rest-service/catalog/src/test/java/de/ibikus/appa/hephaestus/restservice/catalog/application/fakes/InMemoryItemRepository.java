@@ -20,6 +20,10 @@ public class InMemoryItemRepository implements ItemRepository {
     private final Map<ItemId, Item> store = new LinkedHashMap<>();
     private final Set<CategoryId> categoriesInUse = new HashSet<>();
 
+    public int size() {
+        return store.size();
+    }
+
     public void clear() {
         store.clear();
         categoriesInUse.clear();

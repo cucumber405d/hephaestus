@@ -9,7 +9,8 @@ info:
     - Errors are RFC 9457 Problem Details (`application/problem+json`).
     - `ETag` is the strong entity version (`"0"`, `"1"`, ...). `PUT`, `PATCH` and `DELETE` on items require
       `If-Match`: missing header -> 428, stale or malformed value -> 412.
-    - `POST /api/items` requires `Idempotency-Key`; a retry with the same key and body returns the stored response.
+    - `POST /api/items` requires `Idempotency-Key`; a retry with the same key and the same item returns the item
+      created first (`Idempotent-Replayed: true`); the same key with another item, or a concurrent duplicate -> 409.
     - API version is selected with the `API-Version` request header; supported: `1` (default).
   license:
     name: Apache-2.0
@@ -103,10 +104,14 @@ paths:
           in: query
           schema:
             type: number
+            minimum: 0
+            maximum: 9999999999.99
         - name: maxPrice
           in: query
           schema:
             type: number
+            minimum: 0
+            maximum: 9999999999.99
         - name: q
           in: query
           description: Case-insensitive substring of the item name; % and _ match literally.
@@ -170,6 +175,11 @@ paths:
               $ref: "#/components/headers/Location"
             ETag:
               $ref: "#/components/headers/ETag"
+            Idempotent-Replayed:
+              description: Present with value `true` when this is the result of an earlier request with the same key.
+              schema:
+                type: string
+                enum: ["true"]
           content:
             application/json:
               schema:
@@ -335,9 +345,10 @@ components:
       required: [amount, currency]
       properties:
         amount:
-          description: Decimal as a string to keep precision, at most 2 fraction digits, not negative.
+          description: >-
+            Decimal as a string to keep precision: not negative, at most 10 integer and 2 fraction digits, no exponent.
           type: string
-          pattern: '^-?\d+(\.\d+)?$'
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
           examples: ["12.50"]
         currency:
           description: ISO 4217 code
