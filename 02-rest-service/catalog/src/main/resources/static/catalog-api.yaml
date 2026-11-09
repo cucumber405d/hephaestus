@@ -1,0 +1,490 @@
+openapi: 3.1.0
+info:
+  title: Hephaestus Catalog API
+  version: "1"
+  description: |
+    Catalog of the Hephaestus workshop: categories and the items made there.
+
+    Cross-cutting rules:
+    - Errors are RFC 9457 Problem Details (`application/problem+json`).
+    - `ETag` is the strong entity version (`"0"`, `"1"`, ...). `PUT`, `PATCH` and `DELETE` on items require
+      `If-Match`: missing header -> 428, stale or malformed value -> 412.
+    - `POST /api/items` requires `Idempotency-Key`; a retry with the same key and the same item returns the item
+      created first (`Idempotent-Replayed: true`); the same key with another item, or a concurrent duplicate -> 409.
+    - API version is selected with the `API-Version` request header; supported: `1` (default).
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+tags:
+  - name: Categories
+  - name: Items
+paths:
+  /api/categories:
+    get:
+      tags: [Categories]
+      operationId: listCategories
+      summary: List all categories ordered by name
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      tags: [Categories]
+      operationId: createCategory
+      summary: Create a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewCategory"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/categories/{categoryId}:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags: [Categories]
+      operationId: getCategory
+      summary: Get a category
+      responses:
+        "200":
+          description: The category
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Categories]
+      operationId: deleteCategory
+      summary: Delete a category that has no items
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/items:
+    get:
+      tags: [Items]
+      operationId: searchItems
+      summary: Search items with filters, sorting and offset pagination
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            minimum: 0
+            maximum: 9999999999.99
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            minimum: 0
+            maximum: 9999999999.99
+        - name: q
+          in: query
+          description: Case-insensitive substring of the item name; % and _ match literally.
+          schema:
+            type: string
+            maxLength: 100
+        - name: sort
+          in: query
+          description: "Comma-separated sort fields name, price, createdAt; prefix - for descending, e.g. sort=-price,name."
+          schema:
+            type: string
+            maxLength: 100
+            examples: ["-price,name"]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: One page of items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    post:
+      tags: [Items]
+      operationId: createItem
+      summary: Create an item (idempotent by Idempotency-Key)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemInput"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Idempotent-Replayed:
+              description: Present with value `true` when this is the result of an earlier request with the same key.
+              schema:
+                type: string
+                enum: ["true"]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableContent"
+  /api/items/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/ItemId"
+    get:
+      tags: [Items]
+      operationId: getItem
+      summary: Get an item
+      responses:
+        "200":
+          description: The item
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Items]
+      operationId: replaceItem
+      summary: Replace an item (requires If-Match)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemInput"
+      responses:
+        "200":
+          description: Replaced
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/UnprocessableContent"
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
+    patch:
+      tags: [Items]
+      operationId: patchItem
+      summary: Change some fields of an item with JSON Merge Patch (RFC 7386, requires If-Match)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/ItemMergePatch"
+      responses:
+        "200":
+          description: Patched
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableContent"
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
+    delete:
+      tags: [Items]
+      operationId: deleteItem
+      summary: Delete an item (requires If-Match)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
+components:
+  parameters:
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IfMatch:
+      name: If-Match
+      in: header
+      description: ETag of the version being changed. Required by the API; a missing header yields 428.
+      required: false
+      schema:
+        type: string
+  headers:
+    Location:
+      description: URI of the created resource
+      schema:
+        type: string
+    ETag:
+      description: Strong entity version, e.g. "3"
+      schema:
+        type: string
+  schemas:
+    NewCategory:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    Category:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          description: >-
+            Decimal as a string to keep precision: not negative, at most 10 integer and 2 fraction digits, no exponent.
+          type: string
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
+          examples: ["12.50"]
+        currency:
+          description: ISO 4217 code
+          type: string
+          pattern: '^[A-Z]{3}$'
+          examples: ["EUR"]
+    ItemInput:
+      type: object
+      required: [name, price, categoryId]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        price:
+          $ref: "#/components/schemas/Money"
+        categoryId:
+          type: string
+          format: uuid
+    Item:
+      type: object
+      required: [id, name, price, categoryId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          $ref: "#/components/schemas/Money"
+        categoryId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    ItemPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    ItemMergePatch:
+      description: |
+        JSON Merge Patch (RFC 7386) for an item. Allowed keys: name, description, price (amount, currency),
+        categoryId. A null value removes description; null for other keys and any other key are rejected with 400.
+        Kept as a free-form object on purpose: a generated class could not tell an absent key from a null value.
+      type: object
+      additionalProperties: true
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+  responses:
+    BadRequest:
+      description: Invalid request (validation, malformed JSON, unsupported sort field or API version)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: Conflict with the current state (duplicate name, category in use, idempotency key reused)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    PreconditionFailed:
+      description: If-Match does not match the current version
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    PreconditionRequired:
+      description: If-Match header missing
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnsupportedMediaType:
+      description: Content-Type is not application/merge-patch+json
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnprocessableContent:
+      description: Referenced category does not exist
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"

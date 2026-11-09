@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: catalog
+  lifecycle:
+    # must stay below terminationGracePeriodSeconds (30s by default in K8s)
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    # optional fields (description) are omitted, not null: the contract types them as string, not nullable
+    default-property-inclusion: non_null
+  mvc:
+    apiversion:
+      # API-Version request header; only version 1 exists, and it is the default when the header is absent
+      use:
+        header: API-Version
+      supported: 1
+      default: 1
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  docker:
+    compose:
+      enabled: false
+
+springdoc:
+  # Swagger UI shows the hand-written contract; documentation generated from code is switched off
+  api-docs:
+    enabled: false
+  swagger-ui:
+    url: /catalog-api.yaml
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs

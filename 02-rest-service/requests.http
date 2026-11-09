@@ -1,0 +1,43 @@
+### Hephaestus Catalog — IntelliJ HTTP Client scenarios (run the service with the "local" profile first)
+@base = http://localhost:8080
+
+### Create a category
+POST {{base}}/api/categories
+Content-Type: application/json
+
+{"name": "Swords"}
+
+> {% client.global.set("categoryId", response.body.id); %}
+
+### Create an item (idempotent: resend with the same key -> same response, Idempotent-Replayed: true)
+POST {{base}}/api/items
+Content-Type: application/json
+Idempotency-Key: demo-key-1
+
+{"name": "Bronze sword", "description": "Sharp", "price": {"amount": "120.00", "currency": "EUR"}, "categoryId": "{{categoryId}}"}
+
+> {% client.global.set("itemId", response.body.id); %}
+
+### Search
+GET {{base}}/api/items?category={{categoryId}}&q=sword&sort=-price&page=0&size=20
+
+### Patch with the current ETag -> 200, ETag "1"
+PATCH {{base}}/api/items/{{itemId}}
+Content-Type: application/merge-patch+json
+If-Match: "0"
+
+{"description": null, "price": {"amount": "99.90"}}
+
+### Replace with a stale ETag -> 412 Precondition Failed
+PUT {{base}}/api/items/{{itemId}}
+Content-Type: application/json
+If-Match: "0"
+
+{"name": "Stale", "price": {"amount": "1.00", "currency": "EUR"}, "categoryId": "{{categoryId}}"}
+
+### Delete without If-Match -> 428 Precondition Required
+DELETE {{base}}/api/items/{{itemId}}
+
+### Unsupported API version -> 400
+GET {{base}}/api/categories
+API-Version: 2

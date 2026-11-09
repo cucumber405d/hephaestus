@@ -1,0 +1,10 @@
+# Local PostgreSQL for "spring-boot:run" with the "local" profile (Spring Boot Docker Compose support).
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: catalog
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: catalog
+    ports:
+      - "5432"

@@ -1,0 +1,40 @@
+# Builds 02-rest-service (Catalog) on JDK 25; Testcontainers uses the runner's Docker.
+name: 02-rest-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "02-rest-service/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/02-rest-service.yml"
+  pull_request:
+    paths:
+      - "02-rest-service/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/02-rest-service.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-subproject.yml
+    with:
+      subproject: 02-rest-service
