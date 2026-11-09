@@ -18,6 +18,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.web.accept.InvalidApiVersionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -140,7 +141,8 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
                 && response.getBody() instanceof ProblemDetail problem
                 && (problem.getType() == null
                         || "about:blank".equals(problem.getType().toString()))) {
-            problem.setType(URI.create(TYPE_BASE + slugFor(status)));
+            var slug = ex instanceof InvalidApiVersionException ? "unsupported-api-version" : slugFor(status);
+            problem.setType(URI.create(TYPE_BASE + slug));
         }
         return response;
     }

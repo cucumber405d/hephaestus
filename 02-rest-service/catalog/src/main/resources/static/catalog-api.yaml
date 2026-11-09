@@ -115,13 +115,11 @@ paths:
             maxLength: 100
         - name: sort
           in: query
-          description: "Sort fields name, price, createdAt; prefix - for descending, e.g. sort=-price&sort=name."
-          style: form
-          explode: true
+          description: "Comma-separated sort fields name, price, createdAt; prefix - for descending, e.g. sort=-price,name."
           schema:
-            type: array
-            items:
-              type: string
+            type: string
+            maxLength: 100
+            examples: ["-price,name"]
         - name: page
           in: query
           schema:

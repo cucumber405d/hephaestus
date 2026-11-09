@@ -57,13 +57,12 @@ class ItemsController implements ItemsApi {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String q,
-            List<String> sort,
+            String sort,
             Integer page,
             Integer size) {
         var orders = sort == null
                 ? List.<SortOrder>of()
-                : sort.stream()
-                        .flatMap(value -> Arrays.stream(value.split(",")))
+                : Arrays.stream(sort.split(","))
                         .map(String::strip)
                         .filter(value -> !value.isEmpty())
                         .map(SortOrder::parse)

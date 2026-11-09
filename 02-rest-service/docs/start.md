@@ -9,6 +9,9 @@
 # Локальный запуск: Postgres из compose.yaml стартует автоматически (профиль local)
 .\mvnw.cmd -f 02-rest-service/catalog/pom.xml spring-boot:run "-Dspring-boot.run.profiles=local"
 
+# Swagger UI (рукописный контракт): http://localhost:8080/swagger-ui/index.html
+# Готовые запросы: 02-rest-service/requests.http (IntelliJ HTTP Client)
+
 # Проверить новые версии библиотек
 .\mvnw.cmd -f 02-rest-service/pom.xml -N versions:display-property-updates
 ```
