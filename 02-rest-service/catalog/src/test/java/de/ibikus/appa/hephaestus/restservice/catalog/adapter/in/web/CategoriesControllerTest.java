@@ -19,7 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
 @WebMvcTest(CategoriesController.class)
-@Import({WebMapperImpl.class, ProblemDetailsAdvice.class, CategoriesControllerTest.Fakes.class})
+@Import({WebMapperImpl.class, ProblemDetailsAdvice.class, CategoriesControllerTest.Fakes.class, WebSliceFakes.class})
 class CategoriesControllerTest {
 
     private static final String PROBLEMS = "https://hephaestus.ibikus.de/problems/";
