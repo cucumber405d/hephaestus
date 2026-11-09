@@ -75,16 +75,28 @@ class ItemsController implements ItemsApi {
 
     @Override
     public ResponseEntity<ItemDto> replaceItem(UUID itemId, ItemInputDto itemInputDto, String ifMatch) {
-        throw new UnsupportedOperationException("Task 7");
+        var item = items.replace(new ItemId(itemId), requireIfMatch(ifMatch), mapper.toNewItem(itemInputDto));
+        return ResponseEntity.ok().eTag(ETags.of(item.version())).body(mapper.toDto(item));
     }
 
     @Override
     public ResponseEntity<ItemDto> patchItem(UUID itemId, Map<String, Object> requestBody, String ifMatch) {
-        throw new UnsupportedOperationException("Task 7");
+        long expectedVersion = requireIfMatch(ifMatch);
+        var item = items.patch(new ItemId(itemId), expectedVersion, MergePatchParser.parse(requestBody));
+        return ResponseEntity.ok().eTag(ETags.of(item.version())).body(mapper.toDto(item));
     }
 
     @Override
     public ResponseEntity<Void> deleteItem(UUID itemId, String ifMatch) {
-        throw new UnsupportedOperationException("Task 7");
+        items.delete(new ItemId(itemId), requireIfMatch(ifMatch));
+        return ResponseEntity.noContent().build();
+    }
+
+    /** If-Match is optional in the contract only so that its absence can be answered with 428 instead of 400. */
+    private static long requireIfMatch(String ifMatch) {
+        if (ifMatch == null || ifMatch.isBlank()) {
+            throw new PreconditionRequiredException("If-Match header is required for this operation");
+        }
+        return ETags.parseIfMatch(ifMatch);
     }
 }

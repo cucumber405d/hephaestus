@@ -5,13 +5,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryCategoryRepository;
 import de.ibikus.appa.hephaestus.restservice.catalog.application.fakes.InMemoryItemRepository;
+import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.ItemPatch;
+import de.ibikus.appa.hephaestus.restservice.catalog.application.port.in.PatchValue;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Category;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryId;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.Item;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemId;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemNotFoundException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Money;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.NewItem;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.UnknownCategoryException;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.VersionConflictException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -51,5 +55,83 @@ class ItemServiceTest {
     @Test
     void unknownItemIsNotFound() {
         assertThatThrownBy(() -> service.get(ItemId.newId())).isInstanceOf(ItemNotFoundException.class);
+    }
+
+    private Item newSword() {
+        return service.create(new NewItem("Sword", "Sharp", Money.of("120", "EUR"), swords.id()));
+    }
+
+    @Test
+    void replaceWithCurrentVersionChangesFieldsAndBumpsVersion() {
+        var sword = newSword();
+
+        var replaced = service.replace(sword.id(), 0, new NewItem("Axe", null, Money.of("80", "EUR"), swords.id()));
+
+        assertThat(replaced.name()).isEqualTo("Axe");
+        assertThat(replaced.description()).isNull();
+        assertThat(replaced.version()).isEqualTo(1);
+    }
+
+    @Test
+    void replaceWithStaleVersionIsAConflict() {
+        var sword = newSword();
+
+        assertThatThrownBy(() ->
+                        service.replace(sword.id(), 5, new NewItem("Axe", null, Money.of("80", "EUR"), swords.id())))
+                .isInstanceOf(VersionConflictException.class);
+    }
+
+    @Test
+    void replaceIntoUnknownCategoryIsRejected() {
+        var sword = newSword();
+
+        assertThatThrownBy(() -> service.replace(
+                        sword.id(), 0, new NewItem("Axe", null, Money.of("80", "EUR"), CategoryId.newId())))
+                .isInstanceOf(UnknownCategoryException.class);
+    }
+
+    @Test
+    void patchMergesOnlyGivenFields() {
+        var sword = newSword();
+        var patch = new ItemPatch(
+                PatchValue.absent(),
+                PatchValue.remove(),
+                PatchValue.set("9.99"),
+                PatchValue.absent(),
+                PatchValue.absent());
+
+        var patched = service.patch(sword.id(), 0, patch);
+
+        assertThat(patched.name()).isEqualTo("Sword");
+        assertThat(patched.description()).isNull();
+        assertThat(patched.price()).isEqualTo(Money.of("9.99", "EUR"));
+        assertThat(patched.version()).isEqualTo(1);
+    }
+
+    @Test
+    void patchWithStaleVersionIsAConflict() {
+        var sword = newSword();
+        var rename = new ItemPatch(
+                PatchValue.set("Axe"),
+                PatchValue.absent(),
+                PatchValue.absent(),
+                PatchValue.absent(),
+                PatchValue.absent());
+
+        assertThatThrownBy(() -> service.patch(sword.id(), 1, rename)).isInstanceOf(VersionConflictException.class);
+    }
+
+    @Test
+    void deleteChecksVersionAndRemoves() {
+        var sword = newSword();
+
+        assertThatThrownBy(() -> service.delete(sword.id(), 3)).isInstanceOf(VersionConflictException.class);
+        service.delete(sword.id(), 0);
+        assertThatThrownBy(() -> service.get(sword.id())).isInstanceOf(ItemNotFoundException.class);
+    }
+
+    @Test
+    void changingAnUnknownItemIsNotFound() {
+        assertThatThrownBy(() -> service.delete(ItemId.newId(), 0)).isInstanceOf(ItemNotFoundException.class);
     }
 }

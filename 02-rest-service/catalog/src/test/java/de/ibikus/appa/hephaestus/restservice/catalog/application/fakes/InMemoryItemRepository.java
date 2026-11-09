@@ -40,6 +40,25 @@ public class InMemoryItemRepository implements ItemRepository {
         return Optional.ofNullable(store.get(id));
     }
 
+    @Override
+    public Item update(Item item) {
+        var updated = new Item(
+                item.id(),
+                item.name(),
+                item.description(),
+                item.price(),
+                item.categoryId(),
+                item.createdAt(),
+                item.version() + 1);
+        store.put(item.id(), updated);
+        return updated;
+    }
+
+    @Override
+    public void delete(ItemId id) {
+        store.remove(id);
+    }
+
     /** Pass-through for web slice tests: no filtering, only the page envelope. */
     @Override
     public Page<Item> search(ItemSearchCriteria criteria, PageRequest pageRequest) {

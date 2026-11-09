@@ -4,6 +4,7 @@ import de.ibikus.appa.hephaestus.restservice.catalog.application.port.out.ItemRe
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.CategoryId;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Item;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemId;
+import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemNotFoundException;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.ItemSearchCriteria;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.Page;
 import de.ibikus.appa.hephaestus.restservice.catalog.domain.PageRequest;
@@ -36,6 +37,32 @@ class JpaItemRepository implements ItemRepository {
     @Override
     public Optional<Item> findById(ItemId id) {
         return repository.findById(id.value()).map(mapper::toDomain);
+    }
+
+    @Override
+    public Item update(Item item) {
+        var entity = repository
+                .findById(item.id().value())
+                .orElseThrow(() -> new ItemNotFoundException("Item " + item.id().value() + " not found"));
+        entity.setName(item.name());
+        entity.setDescription(item.description());
+        entity.setPriceAmount(item.price().amount());
+        entity.setPriceCurrency(item.price().currency());
+        entity.setCategoryId(item.categoryId().value());
+        try {
+            // UPDATE ... WHERE id = ? AND version = ?: a concurrent commit makes it hit 0 rows -> optimistic lock
+            // failure
+            repository.saveAndFlush(entity);
+        } catch (DataIntegrityViolationException e) {
+            throw new UnknownCategoryException("Category " + item.categoryId().value() + " does not exist");
+        }
+        return mapper.toDomain(entity);
+    }
+
+    @Override
+    public void delete(ItemId id) {
+        repository.deleteById(id.value());
+        repository.flush();
     }
 
     @Override

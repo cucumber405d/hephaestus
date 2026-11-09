@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -56,6 +57,22 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
     @ExceptionHandler(VersionConflictException.class)
     ProblemDetail versionConflict(VersionConflictException ex) {
         return problem(HttpStatus.PRECONDITION_FAILED, "precondition-failed", "Precondition failed", ex.getMessage());
+    }
+
+    /** A concurrent change slipped in between the If-Match check and the flush: still the client's stale version. */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    ProblemDetail optimisticLock(ObjectOptimisticLockingFailureException ex) {
+        return problem(
+                HttpStatus.PRECONDITION_FAILED,
+                "precondition-failed",
+                "Precondition failed",
+                "The resource was changed concurrently; reload it and retry with the new ETag");
+    }
+
+    @ExceptionHandler(PreconditionRequiredException.class)
+    ProblemDetail preconditionRequired(PreconditionRequiredException ex) {
+        return problem(
+                HttpStatus.PRECONDITION_REQUIRED, "precondition-required", "Precondition required", ex.getMessage());
     }
 
     @ExceptionHandler(InvalidValueException.class)
@@ -116,10 +133,16 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception ex, Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        if (body instanceof ProblemDetail problem && "about:blank".equals(String.valueOf(problem.getType()))) {
+        // Spring passes body == null for its own exceptions and builds the ProblemDetail inside super, so the type is
+        // set afterwards. Spring 7 leaves it null (= about:blank per RFC 9457); older versions set "about:blank".
+        var response = super.handleExceptionInternal(ex, body, headers, status, request);
+        if (response != null
+                && response.getBody() instanceof ProblemDetail problem
+                && (problem.getType() == null
+                        || "about:blank".equals(problem.getType().toString()))) {
             problem.setType(URI.create(TYPE_BASE + slugFor(status)));
         }
-        return super.handleExceptionInternal(ex, body, headers, status, request);
+        return response;
     }
 
     static ProblemDetail problem(HttpStatusCode status, String slug, String title, String detail) {

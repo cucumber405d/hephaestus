@@ -16,6 +16,11 @@ public interface ItemRepository {
 
     Optional<Item> findById(ItemId id);
 
+    /** Writes changed fields of an existing item; the version increments. A missing category raises UnknownCategory. */
+    Item update(Item item);
+
+    void delete(ItemId id);
+
     boolean existsByCategory(CategoryId categoryId);
 
     Page<Item> search(ItemSearchCriteria criteria, PageRequest pageRequest);

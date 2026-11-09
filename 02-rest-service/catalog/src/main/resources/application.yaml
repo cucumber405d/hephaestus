@@ -7,6 +7,9 @@ spring:
   threads:
     virtual:
       enabled: true
+  jackson:
+    # optional fields (description) are omitted, not null: the contract types them as string, not nullable
+    default-property-inclusion: non_null
   jpa:
     open-in-view: false
     hibernate:
