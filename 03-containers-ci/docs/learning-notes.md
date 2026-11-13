@@ -24,3 +24,10 @@
   `internal-error` без текста исключения: в нём бывают SQL, имена хостов и URL базы (в контейнере это
   `jdbc:postgresql://postgres:5432/...` — ещё и подсказка о топологии).
 - Некорректный UUID в пути или параметре — `TypeMismatchException` Spring MVC → `400 invalid-request`, а не `500`.
+
+## Что видит JVM
+
+`/actuator/runtime` показывает `availableProcessors`, `maxHeapBytes` (`Runtime.maxMemory()`),
+`containerMemoryLimitBytes` (`/sys/fs/cgroup/memory.max`, cgroup v2), имена GC и аргументы JVM. Это та же
+информация, которую JVM использует для эргономики: размера heap, числа потоков GC и ForkJoinPool, выбора GC.
+Таблица опытов — в разделе «JVM в контейнере» ниже.
