@@ -70,7 +70,7 @@ production-grade API (это 02).
 | Тег | Как собирается | База | Особенности |
 |---|---|---|---|
 | `buildpacks` | `./mvnw -f 03-containers-ci/pom.xml -pl catalog spring-boot:build-image` | Paketo (builder `paketobuildpacks/builder-noble-java-tiny`), `BP_JVM_VERSION=25` | Memory calculator Paketo сам ставит `-Xmx`/`-Xss`/metaspace/code cache и `ActiveProcessorCount` — сравнить с `MaxRAMPercentage`; run-образ `tiny` без shell |
-| `jib` | `-Pjib jib:dockerBuild` (локально), `jib:build` (CI → GHCR) | `eclipse-temurin:25-jre` | Без демона, `creationTime` = epoch → воспроизводимость; `user 1000:1000` |
+| `jib` | `jib:dockerBuild` (локально; конфигурация в POM неактивна, пока цель не вызвана — профиль не нужен), `jib:build` (CI → GHCR) | `eclipse-temurin:25-jre` | Без демона, `creationTime` = epoch → воспроизводимость; `user 1000:1000` |
 | `dockerfile` | `docker build -t hephaestus/catalog:dockerfile catalog/` после `package` | `eclipse-temurin:25-jre` | Stage 1: `java -Djarmode=tools -jar app.jar extract --layers --launcher`; stage 2 копирует слои; `USER 1000` |
 | `dockerfile-jlink` | `docker build -f catalog/Dockerfile.jlink …` | stage `eclipse-temurin:25-jdk` → `debian:stable-slim` | `jdeps --print-module-deps` + `jlink --strip-debug --no-header-files --no-man-pages`; свой минимальный JRE |
 
@@ -131,7 +131,7 @@ failsafe с `*ImageIT`. Для других способов образ соби
 
 Триггеры и paths-фильтр — как в 02 (+ `03-containers-ci/**`). Задачи:
 **Новый reusable `publish-image.yml`** (`workflow_call`, входы `subproject`, `module`, `image-name`):
-checkout → JDK 25 → `./mvnw -B -ntp -f <subproject>/pom.xml -pl <module> -am -Pjib package jib:build -DskipTests`
+checkout → JDK 25 → `./mvnw -B -ntp -f <subproject>/pom.xml -pl <module> package jib:build -DskipTests`
 в `ghcr.io/cucumber405d/<image-name>` с тегами `sha-<7>` и `latest`; логин `GITHUB_TOKEN`
 (`permissions: contents: read, packages: write`); digest — в `$GITHUB_STEP_SUMMARY`. Его переиспользуют 04+.
 `build-subproject.yml` не меняется — 01/02/_template не затронуты. Это уточнение строки §5.3 корневой спеки
