@@ -93,8 +93,73 @@
                     <excludes>
                         <exclude>**/*ImageIT.java</exclude>
                     </excludes>
+                    <systemPropertyVariables>
+                        <catalog.image>${catalog.image}</catalog.image>
+                        <catalog.flavor>${catalog.flavor}</catalog.flavor>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!-- Canonical image. Inert until a jib goal runs: jib:dockerBuild (local daemon) or jib:build (registry) -->
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <configuration>
+                    <from>
+                        <image>${jre.image}</image>
+                    </from>
+                    <to>
+                        <image>hephaestus/catalog:jib</image>
+                    </to>
+                    <container>
+                        <user>1000:1000</user>
+                        <ports>
+                            <port>8080</port>
+                        </ports>
+                        <environment>
+                            <JAVA_TOOL_OPTIONS>-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError</JAVA_TOOL_OPTIONS>
+                        </environment>
+                        <labels>
+                            <org.opencontainers.image.source>https://github.com/cucumber405d/hephaestus</org.opencontainers.image.source>
+                            <org.opencontainers.image.revision>${image.revision}</org.opencontainers.image.revision>
+                            <org.opencontainers.image.title>containers-ci-catalog</org.opencontainers.image.title>
+                        </labels>
+                    </container>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <!-- Image tests against -Dcatalog.image (default: the Jib image, built here unless -Djib.skip=true) -->
+            <id>image-it</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>image-for-tests</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>dockerBuild</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*ImageIT.java</include>
+                            </includes>
+                            <excludes combine.self="override"/>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -15,3 +15,19 @@ services:
       interval: 2s
       timeout: 2s
       retries: 30
+
+  catalog:
+    profiles: [app]
+    image: ${CATALOG_IMAGE:-hephaestus/catalog:jib}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/catalog
+      SPRING_DATASOURCE_USERNAME: catalog
+      SPRING_DATASOURCE_PASSWORD: catalog
+    ports:
+      - "8080:8080"
+    # The same limits as the container-limit tests; 768m fits the Paketo memory calculator defaults
+    mem_limit: 768m
+    cpus: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
