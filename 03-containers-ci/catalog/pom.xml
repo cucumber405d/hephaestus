@@ -82,8 +82,21 @@
         <finalName>catalog</finalName>
         <plugins>
             <plugin>
+                <!-- Buildpacks: ./mvnw -f 03-containers-ci/pom.xml -pl catalog spring-boot:build-image -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <image>
+                        <name>hephaestus/catalog:buildpacks</name>
+                        <builder>${paketo.builder}</builder>
+                        <env>
+                            <BP_JVM_VERSION>25</BP_JVM_VERSION>
+                            <BP_OCI_SOURCE>https://github.com/cucumber405d/hephaestus</BP_OCI_SOURCE>
+                            <BP_OCI_REVISION>${image.revision}</BP_OCI_REVISION>
+                            <BP_IMAGE_LABELS>org.opencontainers.image.title=containers-ci-catalog</BP_IMAGE_LABELS>
+                        </env>
+                    </image>
+                </configuration>
             </plugin>
             <plugin>
                 <!-- Image tests need a built image; they run only in the image-it profile -->

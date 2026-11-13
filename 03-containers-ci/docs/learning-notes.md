@@ -72,3 +72,37 @@
   direct buffers, GC). Если сумма превысит cgroup-лимит, ядро убивает процесс **SIGKILL** — код 137, без
   stack trace, без shutdown hooks. Если же кончится heap — `OutOfMemoryError`; с `-XX:+ExitOnOutOfMemoryError`
   JVM сразу выходит (код 3), и оркестратор перезапускает под, вместо зомби-процесса, который «жив», но не работает.
+
+## Buildpacks
+
+- `spring-boot:build-image` = Paketo builder (`builder-noble-java-tiny`): сам определяет JVM (`BP_JVM_VERSION=25`),
+  слои по `layers.idx`, run-образ «tiny» без shell и пакетного менеджера, пользователь `cnb` (не root), метки через
+  `BP_OCI_*`/`BP_IMAGE_LABELS`. Dockerfile не нужен, но нужен Docker-демон.
+- **Memory calculator** при старте контейнера считает флаги из лимита: `-Xss1M` × 250 потоков, code cache 240 МБ,
+  metaspace по числу классов, `-Xmx` — остаток; плюс `-XX:ActiveProcessorCount`. Поэтому heap Buildpacks-образа
+  при том же лимите — не 75 %, а «что осталось»; при лимите 512 МБ дефолты могут вообще не уложиться.
+  Фактические цифры — из лога `ContainerLimitsImageIT.oneCpu` с `-Dcatalog.flavor=buildpacks`.
+  Тюнинг: `BPL_JVM_THREAD_COUNT`, `BPL_JVM_HEAD_ROOM`, `JAVA_TOOL_OPTIONS` при запуске.
+
+## Dockerfile
+
+- Двухстадийный: стадия `extract` раскладывает jar на слои (`java -Djarmode=tools -jar app.jar extract --layers
+  --launcher`), финальная копирует их по одному — от редко меняющихся к часто меняющимся. Изменение кода
+  пересобирает только слой `application`.
+- Maven внутри Docker не запускается: образ собирается из готового jar. Так не нужны ни корневой POM в контексте,
+  ни доступ к Maven Central из Docker, а `.dockerignore` оставляет в контексте один файл.
+- `ENTRYPOINT ["java", …]` — exec-форма. `USER 1000:1000` — не root.
+- `HEALTHCHECK` не задан ни в одном образе: Kubernetes его игнорирует (там liveness/readiness probes на Actuator),
+  а Compose проверяет готовность зависимостей своим `healthcheck`.
+
+## jlink
+
+- `jdeps --print-module-deps` по классам приложения и всем jar-зависимостям даёт список модулей JDK; `jlink`
+  собирает из них свой JRE (`--strip-debug --no-header-files --no-man-pages --compress zip-6`) поверх
+  `debian:stable-slim`.
+- jdeps видит только статические ссылки. Spring, Hibernate и драйвер PostgreSQL грузят часть JDK рефлексией —
+  `java.naming` (JNDI), `java.management`/`jdk.management` (JMX, `/actuator/runtime`), `jdk.unsupported`
+  (`sun.misc.Unsafe`), `java.instrument`, `java.security.jgss` (GSS в драйвере), `jdk.zipfs` — они добавлены руками.
+  `jdk.crypto.ec` не нужен: с JDK 22 EC в `java.base`.
+- Цена: свой JRE надо обновлять самому (CVE в JDK → пересборка), а забытый модуль проявится только в рантайме —
+  поэтому тот же `CatalogImageIT` гоняется и против этого образа.
