@@ -50,3 +50,25 @@
   `docker stop` (SIGTERM, ждёт 30 с) и смотрит код выхода: 143 = 128 + 15 (SIGTERM) — норма для JVM.
 - Без базы контейнер должен **упасть** с ненулевым кодом, а не висеть: оркестратор перезапустит его, а «живой»
   процесс без БД только мешает.
+
+## JVM в контейнере
+
+| Опыт | Ожидание (Jib, Dockerfile, jlink) | Проверка |
+|---|---|---|
+| `--cpus=1` | `availableProcessors = 1` | `ContainerLimitsImageIT.oneCpu` |
+| `--cpus=0.5` | всё равно `1` (квота округляется вверх) | `halfCpuRoundsUp` |
+| `JAVA_TOOL_OPTIONS=-XX:ActiveProcessorCount=3` при `--cpus=1` | `3` — флаг сильнее cgroup | `activeProcessorCountOverrides` |
+| `--memory=768m` | лимит `805306368`, heap ≈ 75 % лимита | `oneCpu` |
+| `--cpus=1` | SerialGC (`Copy`, `MarkSweepCompact`) | `oneCpu` |
+| `--cpus=2 --memory=2g` | G1 (`G1 Young Generation`) | `twoCpusTwoGigabytesSelectG1` |
+| без лимита | heap = 25 % RAM хоста (`MaxRAMPercentage` по умолчанию) | только заметки |
+| нехватка памяти | см. ниже | только заметки |
+
+- **Server-class machine:** JVM считает машину «серверной» при ≥ 2 CPU **и** ≥ ~1792 МБ; иначе — SerialGC.
+  Под с `cpu: 1` неожиданно получает SerialGC — для latency-сервисов задают GC явно.
+- **25 % по умолчанию:** без `MaxRAMPercentage` под с лимитом 768 МБ получит heap ~192 МБ и будет
+  простаивать память — или, без лимита, heap от RAM всей ноды и OOMKill.
+- **OOMKill против OutOfMemoryError:** heap — не вся память процесса (metaspace, стеки потоков, code cache,
+  direct buffers, GC). Если сумма превысит cgroup-лимит, ядро убивает процесс **SIGKILL** — код 137, без
+  stack trace, без shutdown hooks. Если же кончится heap — `OutOfMemoryError`; с `-XX:+ExitOnOutOfMemoryError`
+  JVM сразу выходит (код 3), и оркестратор перезапускает под, вместо зомби-процесса, который «жив», но не работает.
