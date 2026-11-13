@@ -15,6 +15,11 @@ public class InMemoryItemRepository implements ItemRepository {
 
     private final Map<ItemId, Item> items = new ConcurrentHashMap<>();
 
+    /** Web-slice contexts are cached and shared between tests; each test starts from an empty store. */
+    public void clear() {
+        items.clear();
+    }
+
     @Override
     public Item insert(Item item) {
         items.put(item.id(), item);

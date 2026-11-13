@@ -9,6 +9,7 @@ import de.ibikus.appa.hephaestus.containersci.catalog.domain.Item;
 import de.ibikus.appa.hephaestus.containersci.catalog.domain.Money;
 import de.ibikus.appa.hephaestus.containersci.catalog.domain.NewItem;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -29,6 +30,11 @@ class ItemsControllerTest {
 
     @Autowired
     InMemoryItemRepository items;
+
+    @BeforeEach
+    void emptyStore() {
+        items.clear();
+    }
 
     @Test
     void createReturns201WithLocation() {

@@ -124,6 +124,8 @@
                         <image>hephaestus/catalog:jib</image>
                     </to>
                     <container>
+                        <!-- Explicit: skips Jib's class-file scan for the main class (Java 25 class files) -->
+                        <mainClass>de.ibikus.appa.hephaestus.containersci.catalog.CatalogApplication</mainClass>
                         <user>1000:1000</user>
                         <ports>
                             <port>8080</port>

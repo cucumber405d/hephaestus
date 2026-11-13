@@ -8,13 +8,14 @@ WORKDIR /work
 COPY target/catalog.jar catalog.jar
 RUN java -Djarmode=tools -jar catalog.jar extract --layers --launcher --destination extracted \
     && mkdir -p extracted/dependencies extracted/spring-boot-loader extracted/snapshot-dependencies extracted/application
-# jdeps finds the modules referenced statically by the application and its libraries. Spring, Hibernate and the
+# jdeps finds the modules referenced statically by the application and, with --recursive, by the libraries it
+# uses. Libraries stay on the class path (unnamed): passing modular jars as roots makes jdeps resolve their
+# module-info and fail on optional requires (e.g. jakarta.transaction -> jakarta.cdi). Spring, Hibernate and the
 # JDBC driver also load JDK classes reflectively (JNDI, JMX, sun.misc.Unsafe, instrumentation), so those modules
 # are added by hand; CatalogImageIT proves the list is complete.
-RUN JARS="$(find extracted/dependencies -name '*.jar' | tr '\n' ' ')" \
-    && CP="$(echo $JARS | tr ' ' ':')" \
-    && jdeps --ignore-missing-deps --multi-release 25 --print-module-deps \
-         --class-path "$CP" extracted/application/BOOT-INF/classes $JARS > modules.txt \
+RUN CP="$(find extracted/dependencies -name '*.jar' | tr '\n' ':')" \
+    && jdeps --ignore-missing-deps -q --recursive --multi-release 25 --print-module-deps \
+         --class-path "$CP" extracted/application/BOOT-INF/classes > modules.txt \
     && echo "jdeps: $(cat modules.txt)" \
     && jlink --add-modules "$(cat modules.txt),java.sql,java.naming,java.management,jdk.management,jdk.unsupported,java.instrument,java.security.jgss,jdk.zipfs" \
          --strip-debug --no-header-files --no-man-pages --compress zip-6 --output /opt/jre

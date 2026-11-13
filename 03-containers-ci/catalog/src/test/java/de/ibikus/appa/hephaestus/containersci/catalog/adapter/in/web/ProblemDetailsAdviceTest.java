@@ -51,7 +51,7 @@ class ProblemDetailsAdviceTest {
     MockMvcTester mvc;
 
     @Test
-    void unexpectedErrorIs500WithoutDetails() {
+    void unexpectedErrorIs500WithoutDetails() throws Exception {
         var result = mvc.get().uri("/api/items/{id}", UUID.randomUUID()).exchange();
 
         assertThat(result).hasStatus(HttpStatus.INTERNAL_SERVER_ERROR);

@@ -123,7 +123,7 @@ class CatalogImageIT {
     @Test
     void exitsWhenDatabaseIsUnreachable() throws Exception {
         try (GenericContainer<?> catalog = CatalogContainers.catalog(NETWORK, CatalogContainers.image())
-                .withEnv("SPRING_DATASOURCE_URL", "jdbc:postgresql://nowhere:5432/catalog")
+                .withEnv("SPRING_DATASOURCE_URL", "jdbc:postgresql://127.0.0.1:1/catalog")
                 .withStartupCheckStrategy(new AlwaysStarted())
                 .waitingFor(new NoWait())) {
             catalog.start();
@@ -138,6 +138,8 @@ class CatalogImageIT {
 
             assertThat(state.getRunning()).isFalse();
             assertThat(state.getExitCodeLong()).isNotZero();
+            // it died because of the database, not for an unrelated reason (e.g. a JDK module missing from jlink)
+            assertThat(catalog.getLogs()).contains("Connection to 127.0.0.1:1 refused");
         }
     }
 

@@ -97,7 +97,8 @@
 
 ## jlink
 
-- `jdeps --print-module-deps` по классам приложения и всем jar-зависимостям даёт список модулей JDK; `jlink`
+- `jdeps --recursive --print-module-deps` по классам приложения (библиотеки — только на class path: модульные jar
+  в роли корней заставляют jdeps разрешать их `module-info` и падать на опциональных `requires`) даёт список модулей JDK; `jlink`
   собирает из них свой JRE (`--strip-debug --no-header-files --no-man-pages --compress zip-6`) поверх
   `debian:stable-slim`.
 - jdeps видит только статические ссылки. Spring, Hibernate и драйвер PostgreSQL грузят часть JDK рефлексией —
