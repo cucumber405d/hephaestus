@@ -1,0 +1,23 @@
+### Categories (seeded by V3 migration)
+GET http://localhost:8080/api/categories
+
+### Create an item in "Weapons"
+POST http://localhost:8080/api/items
+Content-Type: application/json
+
+{"name": "Bronze sword", "description": "Sharp", "price": {"amount": "120.50", "currency": "EUR"},
+  "categoryId": "01900000-0000-7000-8000-000000000003"}
+
+> {% client.global.set("location", response.headers.valueOf("Location")); %}
+
+### Read it back
+GET {{location}}
+
+### Items of "Weapons"
+GET http://localhost:8080/api/items?category=01900000-0000-7000-8000-000000000003
+
+### What the JVM sees inside the container
+GET http://localhost:8080/actuator/runtime
+
+### Readiness probe
+GET http://localhost:8080/actuator/health/readiness
