@@ -1,0 +1,11 @@
+# Local development: Postgres from 03-containers-ci/compose.yaml (default services only), human-readable logs.
+spring:
+  docker:
+    compose:
+      enabled: true
+      file: ../compose.yaml
+
+logging:
+  structured:
+    format:
+      console: ""

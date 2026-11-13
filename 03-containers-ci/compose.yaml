@@ -1,0 +1,17 @@
+# Local stack for 03-containers-ci.
+#   docker compose up -d                 -> PostgreSQL only (also what "spring-boot:run" with profile local starts)
+#   docker compose --profile app up -d   -> PostgreSQL + the catalog image (CATALOG_IMAGE, default the Jib image)
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: catalog
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: catalog
+    ports:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog -d catalog"]
+      interval: 2s
+      timeout: 2s
+      retries: 30

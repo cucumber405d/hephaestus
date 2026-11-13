@@ -1,0 +1,43 @@
+# All runtime configuration comes from environment variables (12-factor III):
+# PORT, SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD.
+spring:
+  application:
+    name: catalog
+  main:
+    # stdout carries JSON log lines only; the banner would be plain text
+    banner-mode: off
+  lifecycle:
+    # must stay below terminationGracePeriodSeconds (30s by default in K8s) and the docker stop timeout
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    # optional fields (description) are omitted, not null
+    default-property-inclusion: non_null
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  docker:
+    compose:
+      enabled: false
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,runtime
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs

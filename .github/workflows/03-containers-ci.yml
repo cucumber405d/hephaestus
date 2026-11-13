@@ -1,0 +1,42 @@
+# Builds 03-containers-ci (slim Catalog); image jobs follow in later steps.
+name: 03-containers-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "03-containers-ci/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/03-containers-ci.yml"
+  pull_request:
+    paths:
+      - "03-containers-ci/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/03-containers-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-subproject.yml
+    with:
+      subproject: 03-containers-ci
