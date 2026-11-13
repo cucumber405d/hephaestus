@@ -126,3 +126,20 @@
   у Buildpacks тоже (время 1980-01-01); `docker build` даёт новый id — в слоях настоящие mtime и время создания
   (лечится `SOURCE_DATE_EPOCH` + BuildKit `rewrite-timestamp`).
 - **memory** из `docker stats` — использование памяти cgroup (включая часть page cache), а не RSS процесса.
+
+## CI и GHCR
+
+- Порядок задач: `verify` → матрица `images` (4 способа, `fail-fast: false` — видно все падения сразу) →
+  `publish`. Публикация `needs: images`: в реестр попадает только версия, у которой образные тесты прошли для
+  **всех** способов, и только при push в `main` (PR из форка не получает `packages: write`).
+- `GITHUB_TOKEN` с `packages: write` — только у job публикации; по умолчанию у workflow `contents: read`.
+  Длинноживущий PAT не нужен. Входы reusable-workflow передаются в `run` через `env`, а не подстановкой
+  `${{ }}` прямо в shell — так их значение не может стать кодом.
+- **Тег vs digest:** `sha-<7>` неизменяем только **по соглашению** — GHCR не запрещает перезапись, перезапуск job
+  перезапишет тег тем же содержимым. По-настоящему неизменяем digest (`image@sha256:…`); его пишет summary.
+  `latest` удобен людям и опасен деплою — в 04+ манифесты ссылаются на `sha-…` или digest. Подпись и проверка
+  digest — тема 21.
+- Jib пушит в реестр без Docker-демона и без `docker build`; авторизацию берёт из `~/.docker/config.json`,
+  который пишет `docker/login-action`.
+- Docker Desktop на Windows: Testcontainers и `docker build` работают через WSL2-бэкенд; bash-скрипты — из
+  Git Bash или WSL. Лимиты `--memory`/`--cpus` применяются внутри VM WSL2, а не к Windows-хосту.
