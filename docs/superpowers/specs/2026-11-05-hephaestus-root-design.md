@@ -133,7 +133,8 @@ NN-<name>/
 - K8s smoke-тесты на kind — отдельный шаг CI начиная с 04.
 
 ### 5.3 CI
-- Reusable workflow `build-subproject.yml`: checkout → JDK 25 (Temurin) → Maven cache → `mvn -B verify` → (опц.) build image → push в GHCR → (опц.) kind smoke.
+- Reusable workflow `build-subproject.yml`: checkout → JDK 25 (Temurin) → Maven cache → `mvn -B verify` → (опц.) kind smoke.
+- Reusable workflow `publish-image.yml` (с 03): Jib → push в GHCR (`sha-<7>` + `latest`); вызывается после образных тестов, только на `main`.
 - На каждый подпроект — свой workflow (копия `_template.yml`) с `paths`: каталог подпроекта, `pom.xml`, `.mvn/**`, `mvnw`, `mvnw.cmd`, `.gitattributes`, оба workflow-файла.
 - Изменение корневого `pom.xml` запускает сборку всех подпроектов.
 

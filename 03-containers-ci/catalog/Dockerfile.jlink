@@ -1,0 +1,40 @@
+# Same layers as Dockerfile, but on a minimal JRE made by jlink on top of debian:stable-slim.
+#   docker build -f 03-containers-ci/catalog/Dockerfile.jlink -t hephaestus/catalog:dockerfile-jlink 03-containers-ci/catalog
+ARG JDK_IMAGE=eclipse-temurin:25-jdk
+ARG RUNTIME_IMAGE=debian:stable-slim
+
+FROM ${JDK_IMAGE} AS jre
+WORKDIR /work
+COPY target/catalog.jar catalog.jar
+RUN java -Djarmode=tools -jar catalog.jar extract --layers --launcher --destination extracted \
+    && mkdir -p extracted/dependencies extracted/spring-boot-loader extracted/snapshot-dependencies extracted/application
+# jdeps finds the modules referenced statically by the application and, with --recursive, by the libraries it
+# uses. Libraries stay on the class path (unnamed): passing modular jars as roots makes jdeps resolve their
+# module-info and fail on optional requires (e.g. jakarta.transaction -> jakarta.cdi). Spring, Hibernate and the
+# JDBC driver also load JDK classes reflectively (JNDI, JMX, sun.misc.Unsafe, instrumentation), so those modules
+# are added by hand; CatalogImageIT proves the list is complete.
+RUN CP="$(find extracted/dependencies -name '*.jar' | tr '\n' ':')" \
+    && jdeps --ignore-missing-deps -q --recursive --multi-release 25 --print-module-deps \
+         --class-path "$CP" extracted/application/BOOT-INF/classes > modules.txt \
+    && echo "jdeps: $(cat modules.txt)" \
+    && jlink --add-modules "$(cat modules.txt),java.sql,java.naming,java.management,jdk.management,jdk.unsupported,java.instrument,java.security.jgss,jdk.zipfs" \
+         --strip-debug --no-header-files --no-man-pages --compress zip-6 --output /opt/jre
+
+FROM ${RUNTIME_IMAGE}
+ARG REVISION=unknown
+LABEL org.opencontainers.image.source="https://github.com/cucumber405d/hephaestus" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.title="containers-ci-catalog"
+RUN useradd --uid 1000 --no-create-home --shell /usr/sbin/nologin catalog
+ENV JAVA_HOME=/opt/jre \
+    PATH="/opt/jre/bin:${PATH}" \
+    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+COPY --from=jre /opt/jre /opt/jre
+WORKDIR /app
+COPY --from=jre /work/extracted/dependencies/ ./
+COPY --from=jre /work/extracted/spring-boot-loader/ ./
+COPY --from=jre /work/extracted/snapshot-dependencies/ ./
+COPY --from=jre /work/extracted/application/ ./
+USER 1000:1000
+EXPOSE 8080
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

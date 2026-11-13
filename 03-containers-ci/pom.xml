@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.ibikus.appa.hephaestus</groupId>
+        <artifactId>hephaestus-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>containers-ci</artifactId>
+    <packaging>pom</packaging>
+    <name>Hephaestus :: 03-containers-ci</name>
+    <description>Slim Catalog service packaged as an OCI image four ways: Buildpacks, Jib, Dockerfile, jlink Dockerfile</description>
+
+    <properties>
+        <!-- Base images and builder; pinned by tag here, pinning by digest is topic 21 -->
+        <jre.image>eclipse-temurin:25-jre</jre.image>
+        <jdk.image>eclipse-temurin:25-jdk</jdk.image>
+        <jlink.runtime.image>debian:stable-slim</jlink.runtime.image>
+        <paketo.builder>paketobuildpacks/builder-noble-java-tiny</paketo.builder>
+        <!-- Git commit of the image; CI passes -Dimage.revision=$GITHUB_SHA -->
+        <image.revision>unknown</image.revision>
+        <!-- Image under test for *ImageIT (profile image-it) and the build method it came from -->
+        <catalog.image>hephaestus/catalog:jib</catalog.image>
+        <catalog.flavor>jib</catalog.flavor>
+    </properties>
+
+    <modules>
+        <module>catalog</module>
+    </modules>
+</project>

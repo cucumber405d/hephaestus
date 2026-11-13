@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.ibikus.appa.hephaestus</groupId>
+        <artifactId>containers-ci</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>containers-ci-catalog</artifactId>
+    <name>Hephaestus :: 03-containers-ci :: catalog</name>
+    <description>Slim Catalog service: categories and items over REST, PostgreSQL, Actuator runtime endpoint</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-docker-compose</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- Stable jar name: the Dockerfiles copy target/catalog.jar -->
+        <finalName>catalog</finalName>
+        <plugins>
+            <plugin>
+                <!-- Buildpacks: ./mvnw -f 03-containers-ci/pom.xml -pl catalog spring-boot:build-image -->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <image>
+                        <name>hephaestus/catalog:buildpacks</name>
+                        <builder>${paketo.builder}</builder>
+                        <env>
+                            <BP_JVM_VERSION>25</BP_JVM_VERSION>
+                            <BP_OCI_SOURCE>https://github.com/cucumber405d/hephaestus</BP_OCI_SOURCE>
+                            <BP_OCI_REVISION>${image.revision}</BP_OCI_REVISION>
+                            <BP_IMAGE_LABELS>org.opencontainers.image.title=containers-ci-catalog</BP_IMAGE_LABELS>
+                        </env>
+                    </image>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!-- Image tests need a built image; they run only in the image-it profile -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*ImageIT.java</exclude>
+                    </excludes>
+                    <systemPropertyVariables>
+                        <catalog.image>${catalog.image}</catalog.image>
+                        <catalog.flavor>${catalog.flavor}</catalog.flavor>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!-- Canonical image. Inert until a jib goal runs: jib:dockerBuild (local daemon) or jib:build (registry) -->
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <configuration>
+                    <from>
+                        <image>${jre.image}</image>
+                    </from>
+                    <to>
+                        <image>hephaestus/catalog:jib</image>
+                    </to>
+                    <container>
+                        <!-- Explicit: skips Jib's class-file scan for the main class (Java 25 class files) -->
+                        <mainClass>de.ibikus.appa.hephaestus.containersci.catalog.CatalogApplication</mainClass>
+                        <user>1000:1000</user>
+                        <ports>
+                            <port>8080</port>
+                        </ports>
+                        <environment>
+                            <JAVA_TOOL_OPTIONS>-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError</JAVA_TOOL_OPTIONS>
+                        </environment>
+                        <labels>
+                            <org.opencontainers.image.source>https://github.com/cucumber405d/hephaestus</org.opencontainers.image.source>
+                            <org.opencontainers.image.revision>${image.revision}</org.opencontainers.image.revision>
+                            <org.opencontainers.image.title>containers-ci-catalog</org.opencontainers.image.title>
+                        </labels>
+                    </container>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <!-- Image tests against -Dcatalog.image (default: the Jib image, built here unless -Djib.skip=true) -->
+            <id>image-it</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>image-for-tests</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>dockerBuild</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*ImageIT.java</include>
+                            </includes>
+                            <excludes combine.self="override"/>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
