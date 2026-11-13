@@ -29,7 +29,8 @@ final class WebMapper {
                 item.id().value(),
                 item.name(),
                 item.description(),
-                new PriceJson(item.price().amount().toPlainString(), item.price().currency()),
+                new PriceJson(
+                        item.price().amount().toPlainString(), item.price().currency()),
                 item.categoryId().value(),
                 item.createdAt());
     }

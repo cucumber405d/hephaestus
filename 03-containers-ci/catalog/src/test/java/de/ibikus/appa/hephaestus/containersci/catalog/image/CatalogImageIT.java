@@ -49,15 +49,15 @@ class CatalogImageIT {
                     HttpRequest.newBuilder(URI.create(base + "/api/items"))
                             .header("Content-Type", "application/json")
                             .POST(HttpRequest.BodyPublishers.ofString("""
-                                    {"name":"Image sword","price":{"amount":"10.00","currency":"EUR"},"categoryId":"%s"}"""
-                                    .formatted(WEAPONS)))
+                                    {"name":"Image sword","price":{"amount":"10.00","currency":"EUR"},"categoryId":"%s"}""".formatted(WEAPONS)))
                             .build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(created.statusCode()).isEqualTo(201);
 
             var location = URI.create(created.headers().firstValue("Location").orElseThrow());
             var read = HTTP.send(
-                    HttpRequest.newBuilder(URI.create(base + location.getPath())).build(),
+                    HttpRequest.newBuilder(URI.create(base + location.getPath()))
+                            .build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(read.statusCode()).isEqualTo(200);
             assertThat(JSON.readTree(read.body()).get("name").asString()).isEqualTo("Image sword");
@@ -70,7 +70,8 @@ class CatalogImageIT {
             catalog.start();
 
             // Paketo helpers print plain-text lines before the JVM starts; only JSON-looking lines are parsed
-            var started = catalog.getLogs().lines()
+            var started = catalog.getLogs()
+                    .lines()
                     .filter(line -> line.startsWith("{"))
                     .map(JSON::readTree)
                     .map(node -> node.path("message").asString(""))
@@ -89,7 +90,11 @@ class CatalogImageIT {
                 .getConfig()
                 .getUser();
 
-        assertThat(user).isNotBlank().isNotIn("0", "root").doesNotStartWith("0:").doesNotStartWith("root:");
+        assertThat(user)
+                .isNotBlank()
+                .isNotIn("0", "root")
+                .doesNotStartWith("0:")
+                .doesNotStartWith("root:");
     }
 
     @Test
@@ -112,8 +117,8 @@ class CatalogImageIT {
             catalog.start();
 
             var readiness = HTTP.send(
-                    HttpRequest.newBuilder(URI.create(
-                                    CatalogContainers.baseUrl(catalog, 9090) + "/actuator/health/readiness"))
+                    HttpRequest.newBuilder(
+                                    URI.create(CatalogContainers.baseUrl(catalog, 9090) + "/actuator/health/readiness"))
                             .build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(readiness.statusCode()).isEqualTo(200);
@@ -130,10 +135,13 @@ class CatalogImageIT {
             var docker = catalog.getDockerClient();
             var deadline = Instant.now().plus(Duration.ofSeconds(60));
 
-            var state = docker.inspectContainerCmd(catalog.getContainerId()).exec().getState();
+            var state =
+                    docker.inspectContainerCmd(catalog.getContainerId()).exec().getState();
             while (Boolean.TRUE.equals(state.getRunning()) && Instant.now().isBefore(deadline)) {
                 Thread.sleep(500);
-                state = docker.inspectContainerCmd(catalog.getContainerId()).exec().getState();
+                state = docker.inspectContainerCmd(catalog.getContainerId())
+                        .exec()
+                        .getState();
             }
 
             assertThat(state.getRunning()).isFalse();

@@ -39,8 +39,7 @@ class ItemsControllerTest {
     @Test
     void createReturns201WithLocation() {
         var result = post("""
-                {"name":"Bronze sword","price":{"amount":"12.5","currency":"EUR"},"categoryId":"%s"}"""
-                .formatted(WEAPONS.value()));
+                {"name":"Bronze sword","price":{"amount":"12.5","currency":"EUR"},"categoryId":"%s"}""".formatted(WEAPONS.value()));
 
         assertThat(result).hasStatus(HttpStatus.CREATED);
         assertThat(result.getResponse().getHeader("Location")).matches(".*/api/items/[0-9a-f-]{36}");
@@ -51,8 +50,7 @@ class ItemsControllerTest {
     @Test
     void createInvalidPriceIs400() {
         var result = post("""
-                {"name":"Sword","price":{"amount":"12.345","currency":"EUR"},"categoryId":"%s"}"""
-                .formatted(WEAPONS.value()));
+                {"name":"Sword","price":{"amount":"12.345","currency":"EUR"},"categoryId":"%s"}""".formatted(WEAPONS.value()));
 
         assertThat(result)
                 .hasStatus(HttpStatus.BAD_REQUEST)
@@ -80,8 +78,7 @@ class ItemsControllerTest {
     @Test
     void createUnknownCategoryIs422() {
         var result = post("""
-                {"name":"Sword","price":{"amount":"1","currency":"EUR"},"categoryId":"%s"}"""
-                .formatted(UUID.randomUUID()));
+                {"name":"Sword","price":{"amount":"1","currency":"EUR"},"categoryId":"%s"}""".formatted(UUID.randomUUID()));
 
         assertThat(result).hasStatus(422);
         assertThat(result).bodyJson().extractingPath("$.type").isEqualTo(PROBLEMS + "unknown-category");
@@ -96,7 +93,10 @@ class ItemsControllerTest {
 
         assertThat(result).hasStatus(HttpStatus.OK);
         assertThat(result).bodyJson().extractingPath("$.name").isEqualTo("Helmet");
-        assertThat(result).bodyJson().extractingPath("$.categoryId").isEqualTo(ARMOR.value().toString());
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.categoryId")
+                .isEqualTo(ARMOR.value().toString());
     }
 
     @Test

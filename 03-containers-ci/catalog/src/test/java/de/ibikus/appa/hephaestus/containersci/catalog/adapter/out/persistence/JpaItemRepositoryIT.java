@@ -49,15 +49,21 @@ class JpaItemRepositoryIT {
         insert("Axe", WEAPONS);
         insert("Helmet", ARMOR);
 
-        assertThat(items.findAll(Optional.of(WEAPONS), 100)).extracting(Item::name).containsExactly("Axe", "Spear");
-        assertThat(items.findAll(Optional.empty(), 100)).extracting(Item::name).containsExactly("Axe", "Helmet", "Spear");
+        assertThat(items.findAll(Optional.of(WEAPONS), 100))
+                .extracting(Item::name)
+                .containsExactly("Axe", "Spear");
+        assertThat(items.findAll(Optional.empty(), 100))
+                .extracting(Item::name)
+                .containsExactly("Axe", "Helmet", "Spear");
     }
 
     @Test
     void findAllRespectsLimit() {
         IntStream.range(0, 5).forEach(i -> insert("Nail " + i, WEAPONS));
 
-        assertThat(items.findAll(Optional.empty(), 3)).extracting(Item::name).containsExactly("Nail 0", "Nail 1", "Nail 2");
+        assertThat(items.findAll(Optional.empty(), 3))
+                .extracting(Item::name)
+                .containsExactly("Nail 0", "Nail 1", "Nail 2");
     }
 
     @Test

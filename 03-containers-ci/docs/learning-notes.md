@@ -113,11 +113,23 @@
 `scripts/compare-images.sh` (после одного прогона `build-images.sh`, чтобы базовые образы и зависимости были в
 кэше). Лимиты запуска — 768 МБ / 1 CPU, как в тестах.
 
-<!-- Results: paste the table printed by compare-images.sh here, with the date and the machine. -->
+Замер 2026-11-13, Windows 11 + Docker Desktop (WSL2), тёплый кэш:
 
 | image | size MB | layers | build s | rebuild s | rebuilt layers | ready s | started in s | memory |
 |---|---|---|---|---|---|---|---|---|
-| _ещё не измерено_ | | | | | | | | |
+| buildpacks | 744 | 20 | 44.2 | 46.9 | 1 | 7.7 | 6.226 | 236.5MiB |
+| jib | 582 | 10 | 21.3 | 23.4 | 1 | 7.5 | 5.807 | 231.8MiB |
+| dockerfile | 582 | 11 | 6.3 | 12.9 | 1 | 7.5 | 6.034 | 234.9MiB |
+| dockerfile-jlink | 335 | 8 | 6.4 | 19.0 | 1 | 8.0 | 6.286 | 228.5MiB |
+
+Выводы:
+- **jlink** — самый маленький (335 МБ против 582 у temurin-JRE): свой JRE без лишних модулей.
+- **Buildpacks** — самый большой (744 МБ) и самый медленный в сборке (~45 с): builder прогоняет детекцию и
+  кладёт JRE плюс helpers (memory calculator, сертификаты). Зато ни строчки Dockerfile.
+- **Dockerfile** собирается быстрее всех (~6 с), потому что берёт готовый jar; в `rebuild` (~13 с) входит
+  `mvnw package`. Jib (~21 с) каждый раз заново проходит Maven-цикл.
+- **rebuilt layers = 1** у всех: правка одного класса меняет только слой с кодом — слоение работает.
+- **Старт и память** почти одинаковы (~6 с Spring, ~230 МиБ): способ сборки на рантайм не влияет, влияют JRE и флаги.
 
 Что смотреть в цифрах:
 - **Размер:** jlink-образ — свой урезанный JRE; tiny-образ Paketo — без shell; temurin-JRE — Ubuntu целиком.

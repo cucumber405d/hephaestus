@@ -28,7 +28,8 @@ class JpaItemRepository implements ItemRepository {
         } catch (DataIntegrityViolationException e) {
             // Only the category foreign key is the client's mistake; any other violation is a bug and stays a 500
             if (Constraints.violated(e, "item_category_fk")) {
-                throw new UnknownCategoryException("Category " + item.categoryId().value() + " does not exist");
+                throw new UnknownCategoryException(
+                        "Category " + item.categoryId().value() + " does not exist");
             }
             throw e;
         }

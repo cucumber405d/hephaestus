@@ -29,8 +29,7 @@ class CatalogScenarioIT {
                 .uri("/api/items")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name":"Scenario sword","price":{"amount":"99.90","currency":"EUR"},"categoryId":"%s"}"""
-                        .formatted(WEAPONS))
+                        {"name":"Scenario sword","price":{"amount":"99.90","currency":"EUR"},"categoryId":"%s"}""".formatted(WEAPONS))
                 .exchange();
         assertThat(created).hasStatus(HttpStatus.CREATED);
         var location = created.getResponse().getHeader("Location");
