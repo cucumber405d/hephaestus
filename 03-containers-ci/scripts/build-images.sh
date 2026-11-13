@@ -5,7 +5,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."   # 03-containers-ci
-MVNW=(../mvnw -B -ntp -f pom.xml)
+# Format checks belong to verify; image builds (and the temporary class of compare-images.sh) skip them
+MVNW=(../mvnw -B -ntp -f pom.xml -Dspotless.check.skip=true)
 REVISION="${IMAGE_REVISION:-$(git rev-parse HEAD 2>/dev/null || echo unknown)}"
 
 # Base images come from the reactor POM, the single source of truth for versions

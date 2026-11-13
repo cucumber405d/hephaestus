@@ -106,3 +106,23 @@
   `jdk.crypto.ec` не нужен: с JDK 22 EC в `java.base`.
 - Цена: свой JRE надо обновлять самому (CVE в JDK → пересборка), а забытый модуль проявится только в рантайме —
   поэтому тот же `CatalogImageIT` гоняется и против этого образа.
+
+## Сравнение образов
+
+`scripts/compare-images.sh` (после одного прогона `build-images.sh`, чтобы базовые образы и зависимости были в
+кэше). Лимиты запуска — 768 МБ / 1 CPU, как в тестах.
+
+<!-- Results: paste the table printed by compare-images.sh here, with the date and the machine. -->
+
+| image | size MB | layers | build s | rebuild s | rebuilt layers | ready s | started in s | memory |
+|---|---|---|---|---|---|---|---|---|
+| _ещё не измерено_ | | | | | | | | |
+
+Что смотреть в цифрах:
+- **Размер:** jlink-образ — свой урезанный JRE; tiny-образ Paketo — без shell; temurin-JRE — Ubuntu целиком.
+- **rebuilt layers:** после изменения одного класса Jib и Dockerfile меняют один слой (`classes` / `application`);
+  push в реестр отправит только его.
+- **Воспроизводимость:** два `jib:dockerBuild` подряд без изменений дают тот же image id (время = epoch);
+  у Buildpacks тоже (время 1980-01-01); `docker build` даёт новый id — в слоях настоящие mtime и время создания
+  (лечится `SOURCE_DATE_EPOCH` + BuildKit `rewrite-timestamp`).
+- **memory** из `docker stats` — использование памяти cgroup (включая часть page cache), а не RSS процесса.
