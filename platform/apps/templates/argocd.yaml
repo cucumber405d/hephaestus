@@ -12,14 +12,14 @@ spec:
   sources:
     - repoURL: https://argoproj.github.io/argo-helm
       chart: argo-cd
-      targetRevision: {{ .Values.argocdChartVersion }}
+      targetRevision: {{ .Values.argocdChartVersion | quote }}
       helm:
         # Same release name as bootstrap.sh, so Argo CD adopts the resources Helm created
         releaseName: argocd
         valueFiles:
           - $values/platform/argocd/values.yaml
     - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.targetRevision }}
+      targetRevision: {{ .Values.targetRevision | quote }}
       ref: values
   destination:
     server: https://kubernetes.default.svc

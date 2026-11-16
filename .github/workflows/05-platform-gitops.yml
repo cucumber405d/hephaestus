@@ -45,18 +45,25 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Three kind nodes exceed the runner's default inotify limits ("too many open files")
+      - name: Raise inotify limits
+        run: sudo sysctl fs.inotify.max_user_instances=1024 fs.inotify.max_user_watches=524288
+
       - uses: helm/kind-action@v1
         with:
           config: platform/kind/cluster.yaml
           cluster_name: hephaestus
 
-      # The PR's head branch (or the pushed branch): Argo CD deploys exactly what is under review
+      # The exact commit under review (works for PRs from forks too: GitHub serves their head commit upstream)
       - name: Bootstrap platform
         env:
-          REVISION: ${{ github.head_ref || github.ref_name }}
+          REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: platform/bootstrap.sh minimal "$REVISION"
 
+      # The first run pulls every image onto two workers
       - name: Smoke test
+        env:
+          SMOKE_TIMEOUT_S: "1200"
         run: 05-platform-gitops/scripts/smoke.sh minimal
 
       - name: Diagnostics

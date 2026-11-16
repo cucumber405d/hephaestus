@@ -33,7 +33,7 @@ spec:
   project: default
   source:
     repoURL: {{ .root.Values.repoURL }}
-    targetRevision: {{ .root.Values.targetRevision }}
+    targetRevision: {{ .root.Values.targetRevision | quote }}
     path: platform/components/{{ .path }}
   destination:
     server: https://kubernetes.default.svc

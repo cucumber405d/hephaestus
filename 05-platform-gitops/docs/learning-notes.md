@@ -23,7 +23,8 @@
 - **Multi-source:** чарт из Helm-репозитория + values из своего Git (`$values/...`).
 - **ServerSideApply:** CRD Envoy Gateway и Strimzi больше лимита аннотации `last-applied-configuration` (256 КБ)
   клиентского apply. **SkipDryRunOnMissingResource:** CR, чей CRD ставит другое Application.
-- **OCI-чарты** (Envoy Gateway, Strimzi) объявляются как репозитории с `enableOCI`.
+- **OCI-чарты** (Envoy Gateway, Strimzi): `repoURL` без схемы + `chart:`; публичные реестры работают и без объявления
+  репозитория, объявление с `enableOCI` — явность и место для кредов приватного реестра.
 
 ## Helm и Kustomize
 

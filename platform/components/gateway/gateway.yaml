@@ -1,5 +1,5 @@
 # The platform's single entry point: Gateway API resources served by Envoy Gateway.
-# Envoy's Service is a NodePort pinned to 30080, which kind publishes on localhost:80.
+# Envoy's Service is a NodePort pinned to 30080, which kind publishes on localhost:80 of the control-plane node.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
@@ -11,6 +11,9 @@ spec:
     kubernetes:
       envoyService:
         type: NodePort
+        # The default (Local) only accepts NodePort traffic on nodes running an Envoy pod; the Envoy pod runs on a
+        # worker, while kind maps host port 80 to the control-plane node. Cluster lets any node forward to it.
+        externalTrafficPolicy: Cluster
         patch:
           type: StrategicMerge
           value:

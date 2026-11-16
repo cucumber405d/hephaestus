@@ -4,7 +4,7 @@
 Как устроено и почему — [05-platform-gitops](../05-platform-gitops/README.md).
 
 ```bash
-platform/bootstrap.sh minimal            # или: full; третий аргумент — ветка Git (по умолчанию main)
+platform/bootstrap.sh minimal            # или: full; второй аргумент — ветка, тег или коммит (по умолчанию main)
 05-platform-gitops/scripts/smoke.sh minimal
 platform/down.sh
 ```

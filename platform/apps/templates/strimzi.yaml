@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: quay.io/strimzi-helm
     chart: strimzi-kafka-operator
-    targetRevision: {{ .Values.versions.strimzi }}
+    targetRevision: {{ .Values.versions.strimzi | quote }}
     helm:
       releaseName: strimzi
       valuesObject:
