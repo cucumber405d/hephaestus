@@ -1,0 +1,69 @@
+# 05-platform-gitops: render the App-of-Apps chart, then bootstrap the platform (profile minimal) on kind from this
+# very branch and run the smoke test. Argo CD reads the repository from GitHub, so the branch must be pushed.
+name: 05-platform-gitops
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "platform/**"
+      - "05-platform-gitops/**"
+      - ".github/workflows/05-platform-gitops.yml"
+  pull_request:
+    paths:
+      - "platform/**"
+      - "05-platform-gitops/**"
+      - ".github/workflows/05-platform-gitops.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Render App-of-Apps for both profiles
+        run: |
+          for profile in minimal full; do
+            helm template platform platform/apps -f "platform/apps/values-$profile.yaml" > "/tmp/apps-$profile.yaml"
+            echo "$profile: $(grep -c '^kind: Application$' "/tmp/apps-$profile.yaml") Applications"
+          done
+
+  smoke:
+    needs: render
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: helm/kind-action@v1
+        with:
+          config: platform/kind/cluster.yaml
+          cluster_name: hephaestus
+
+      # The PR's head branch (or the pushed branch): Argo CD deploys exactly what is under review
+      - name: Bootstrap platform
+        env:
+          REVISION: ${{ github.head_ref || github.ref_name }}
+        run: platform/bootstrap.sh minimal "$REVISION"
+
+      - name: Smoke test
+        run: 05-platform-gitops/scripts/smoke.sh minimal
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl -n argocd get applications -o wide || true
+          kubectl -n argocd get applications -o yaml | grep -A12 'conditions:\|operationState:' | head -200 || true
+          kubectl get pods -A -o wide || true
+          kubectl get events -A --sort-by=.metadata.creationTimestamp | tail -80 || true
+          kubectl -n catalog logs -l app.kubernetes.io/name=catalog --tail=100 || true
