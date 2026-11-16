@@ -9,6 +9,9 @@ configs:
   params:
     # Plain HTTP: the Gateway in front of it has no TLS locally (TLS and cert-manager come in 21)
     server.insecure: true
+    # Diff via a server-side dry-run apply instead of comparing YAML on the client: fields the API server defaults
+    # (HTTPRoute matches/PathPrefix, backendRefs group/kind/weight, ...) no longer show up as permanent OutOfSync
+    controller.diff.server.side: "true"
   cm:
     timeout.reconciliation: 60s
     # Since Argo CD 1.8 an Application is no longer assessed as a resource, so an App-of-Apps would not wait for

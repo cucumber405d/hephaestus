@@ -21,6 +21,11 @@
 - **Sync waves и хуки:** внутри синка ресурсы применяются по возрастанию `sync-wave`, следующая волна ждёт health
   предыдущей. Хук `Sync` с `BeforeHookCreation` пересоздаётся на каждом синке — решение проблемы неизменяемого Job из 04.
 - **Multi-source:** чарт из Helm-репозитория + values из своего Git (`$values/...`).
+- **Server-side diff:** по умолчанию Argo CD сравнивает Git с кластером у себя, и поля, которые дописывает
+  API-сервер (у HTTPRoute — `matches: PathPrefix /`, `backendRefs.group/kind/weight`, `parentRefs.group/kind`),
+  выглядят как вечный `OutOfSync`, а self-heal крутится вхолостую. Так и было при первом запуске: `OutOfSync` ровно
+  у трёх приложений с HTTPRoute. `controller.diff.server.side: "true"` сравнивает через dry-run apply на
+  API-сервере — с его defaulting и вебхуками. В паре с ServerSideApply — рекомендуемая настройка.
 - **ServerSideApply:** CRD Envoy Gateway и Strimzi больше лимита аннотации `last-applied-configuration` (256 КБ)
   клиентского apply. **SkipDryRunOnMissingResource:** CR, чей CRD ставит другое Application.
 - **OCI-чарты** (Envoy Gateway, Strimzi): `repoURL` без схемы + `chart:`; публичные реестры работают и без объявления
