@@ -26,6 +26,11 @@
   выглядят как вечный `OutOfSync`, а self-heal крутится вхолостую. Так и было при первом запуске: `OutOfSync` ровно
   у трёх приложений с HTTPRoute. `controller.diff.server.side: "true"` сравнивает через dry-run apply на
   API-сервере — с его defaulting и вебхуками. В паре с ServerSideApply — рекомендуемая настройка.
+  Результаты server-side diff кэшируются и пересчитываются, когда меняется объект или приложение обновляют
+  принудительно. Включили настройку на живом кластере — `gateway` пересинхронизировался и выздоровел, а
+  `observability` и `catalog` остались `OutOfSync` до **hard refresh**
+  (`kubectl -n argocd annotate application <app> argocd.argoproj.io/refresh=hard --overwrite` или Refresh → Hard
+  Refresh в UI). На свежем кластере не нужно: bootstrap ставит Argo CD уже с этой настройкой.
 - **ServerSideApply:** CRD Envoy Gateway и Strimzi больше лимита аннотации `last-applied-configuration` (256 КБ)
   клиентского apply. **SkipDryRunOnMissingResource:** CR, чей CRD ставит другое Application.
 - **OCI-чарты** (Envoy Gateway, Strimzi): `repoURL` без схемы + `chart:`; публичные реестры работают и без объявления
