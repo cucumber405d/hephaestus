@@ -1,0 +1,11 @@
+# Everything subprojects 06-12 need: adds Kafka (Strimzi), Keycloak and Redis (about 8-10 GB RAM)
+components:
+  argocd: true
+  gateway: true
+  cnpg: true
+  observability: true
+  catalog: true
+  strimzi: true
+  kafka: true
+  keycloak: true
+  redis: true

@@ -1,0 +1,20 @@
+{{- /* Plain-manifest components under platform/components, after the operators they rely on */}}
+{{- if .Values.components.observability }}
+{{ include "platform.componentApp" (dict "root" . "name" "observability" "path" "observability" "namespace" "observability" "wave" "0") }}
+{{- end }}
+{{- if .Values.components.catalog }}
+---
+{{ include "platform.componentApp" (dict "root" . "name" "catalog" "path" "catalog" "namespace" "catalog" "wave" "0") }}
+{{- end }}
+{{- if .Values.components.kafka }}
+---
+{{ include "platform.componentApp" (dict "root" . "name" "kafka" "path" "kafka" "namespace" "kafka" "wave" "0") }}
+{{- end }}
+{{- if .Values.components.keycloak }}
+---
+{{ include "platform.componentApp" (dict "root" . "name" "keycloak" "path" "keycloak" "namespace" "keycloak" "wave" "0") }}
+{{- end }}
+{{- if .Values.components.redis }}
+---
+{{ include "platform.componentApp" (dict "root" . "name" "redis" "path" "redis" "namespace" "redis" "wave" "0") }}
+{{- end }}

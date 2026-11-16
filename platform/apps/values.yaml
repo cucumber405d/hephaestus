@@ -1,0 +1,24 @@
+# Where Argo CD reads the platform from; bootstrap.sh passes the revision (a PR branch in CI)
+repoURL: https://github.com/cucumber405d/hephaestus.git
+targetRevision: main
+
+# Argo CD manages itself with this chart version; bootstrap.sh installs the same one
+argocdChartVersion: 10.7.0
+
+versions:
+  envoyGateway: v1.8.3
+  cloudnativePg: 0.29.0
+  strimzi: 1.2.0
+  keycloak: 26.8.1
+
+# Profiles (values-minimal.yaml, values-full.yaml) switch these
+components:
+  argocd: true
+  gateway: true
+  cnpg: true
+  observability: true
+  catalog: true
+  strimzi: false
+  kafka: false
+  keycloak: false
+  redis: false
