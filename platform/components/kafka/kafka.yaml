@@ -1,0 +1,53 @@
+# Kafka by Strimzi (API kafka.strimzi.io/v1): KRaft, one node in both roles, ephemeral storage.
+# Bootstrap address for clients inside the cluster: platform-kafka-bootstrap.kafka:9092 (plain, no auth).
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: dual-role
+  labels:
+    strimzi.io/cluster: platform
+spec:
+  replicas: 1
+  roles:
+    - controller
+    - broker
+  storage:
+    type: ephemeral
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: platform
+spec:
+  kafka:
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    # A single broker: every replication factor and ISR must be 1
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  entityOperator:
+    topicOperator: {}
+---
+# Topics are declared, not created by clients (auto-creation stays off in later subprojects)
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: platform-smoke
+  labels:
+    strimzi.io/cluster: platform
+spec:
+  partitions: 1
+  replicas: 1
