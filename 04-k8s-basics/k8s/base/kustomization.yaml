@@ -1,0 +1,26 @@
+# Catalog on Kubernetes by hand: PostgreSQL, a one-off migration Job and the API Deployment.
+# The overlay sets namespace, image tag and credentials.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: hephaestus
+    includeSelectors: false
+    includeTemplates: true
+
+resources:
+  - postgres.yaml
+  - migration-job.yaml
+  - catalog.yaml
+
+# Non-secret configuration (12-factor III). The generated name carries a content hash, so a config change
+# changes the pod template and triggers a rollout.
+configMapGenerator:
+  - name: catalog-config
+    # Not *.env: the root .gitignore excludes env files (they usually hold secrets)
+    envs:
+      - catalog-config.properties
+    options:
+      labels:
+        app.kubernetes.io/component: config

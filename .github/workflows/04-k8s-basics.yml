@@ -1,0 +1,66 @@
+# 04-k8s-basics: render and schema-validate the manifests, then deploy to a kind cluster and run the smoke test.
+# No Maven build: the subproject deploys the image published by 03.
+name: 04-k8s-basics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "04-k8s-basics/**"
+      - ".github/workflows/04-k8s-basics.yml"
+  pull_request:
+    paths:
+      - "04-k8s-basics/**"
+      - ".github/workflows/04-k8s-basics.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  KUBECONFORM_VERSION: v0.7.0
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin kubeconform
+
+      - name: Validate manifests
+        run: 04-k8s-basics/scripts/validate.sh
+
+  smoke:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: helm/kind-action@v1
+        with:
+          config: 04-k8s-basics/kind/cluster.yaml
+          cluster_name: hephaestus-04
+
+      - name: Deploy
+        run: 04-k8s-basics/scripts/deploy.sh
+
+      - name: Smoke test
+        run: 04-k8s-basics/scripts/smoke.sh
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl -n hephaestus-04 get all,pvc,events --sort-by=.metadata.creationTimestamp || true
+          kubectl -n hephaestus-04 describe pods || true
+          kubectl -n hephaestus-04 logs -l app.kubernetes.io/part-of=hephaestus --all-containers --prefix --tail=200 || true

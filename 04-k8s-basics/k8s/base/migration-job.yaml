@@ -1,0 +1,66 @@
+# Schema migration as a one-off admin process (12-factor XII): the same image as the API, without a web server.
+# Flyway migrates on context start, then main() returns and the JVM exits with 0. The API runs with Flyway off,
+# so replicas never race for the schema and a failed migration never leaves half-started pods.
+# A Job's pod template is immutable: scripts/deploy.sh deletes the Job before applying a new version.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: catalog-migrate
+  labels:
+    app.kubernetes.io/name: catalog-migrate
+    app.kubernetes.io/component: migration
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: catalog-migrate
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: catalog
+          envFrom:
+            - configMapRef:
+                name: catalog-config
+          env:
+            - name: SPRING_MAIN_WEB_APPLICATION_TYPE
+              value: none
+            - name: SPRING_FLYWAY_ENABLED
+              value: "true"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

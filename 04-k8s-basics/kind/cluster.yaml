@@ -1,0 +1,6 @@
+# Local cluster for 04-k8s-basics: one node is enough; the shared multi-node platform comes in 05.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: hephaestus-04
+nodes:
+  - role: control-plane

@@ -1,0 +1,27 @@
+# Local kind cluster: namespace, the published 03 image and throw-away credentials.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hephaestus-04
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+# The image published by 03 (merge of PR #3). Never "latest": a tag that moves makes rollouts unreproducible.
+# A locally built image instead: kind load docker-image hephaestus/catalog:jib --name hephaestus-04
+# and set newName: hephaestus/catalog, newTag: jib.
+images:
+  - name: catalog
+    newName: ghcr.io/cucumber405d/hephaestus/containers-ci-catalog
+    newTag: sha-d730159
+
+# Local only: credentials in Git are acceptable for a throw-away kind cluster, never beyond (External Secrets: 21).
+secretGenerator:
+  - name: postgres-credentials
+    literals:
+      - username=catalog
+      - password=catalog-local-only
+    options:
+      labels:
+        app.kubernetes.io/component: config

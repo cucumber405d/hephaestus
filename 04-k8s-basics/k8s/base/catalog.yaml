@@ -1,0 +1,119 @@
+# The Catalog API: Deployment + ClusterIP Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  labels:
+    app.kubernetes.io/name: catalog
+    app.kubernetes.io/component: api
+spec:
+  selector:
+    app.kubernetes.io/name: catalog
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  labels:
+    app.kubernetes.io/name: catalog
+    app.kubernetes.io/component: api
+spec:
+  replicas: 2
+  # Zero-downtime rollout: a new pod must be ready before an old one goes away
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: catalog
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: catalog
+        app.kubernetes.io/component: api
+    spec:
+      # preStop (10 s) + Spring graceful shutdown (20 s) + margin; SIGKILL comes only after this
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: catalog
+          image: catalog
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: catalog-config
+          env:
+            # The migration Job owns the schema
+            - name: SPRING_FLYWAY_ENABLED
+              value: "false"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+          # Memory request = limit (no overcommit for the JVM; heap = 75 % of it via MaxRAMPercentage in the image).
+          # CPU limit 1 makes the JVM size itself for one CPU (see 03); request 250m is what the scheduler reserves
+          # (small enough for two replicas plus a surge pod on a 2-vCPU CI runner).
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          # Startup: up to 120 s (two JVMs starting on one CPU each); liveness and readiness begin after it succeeded
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 2
+            failureThreshold: 60
+          # Liveness never includes the database: a DB outage must not restart every pod
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          # Readiness includes the database (readinessState,db): no traffic to a pod that cannot serve it
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            # Endpoint removal propagates asynchronously; keep serving for a while before SIGTERM
+            preStop:
+              sleep:
+                seconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # Tomcat and the JVM (hsperfdata) write to /tmp; the rest of the filesystem is read-only
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
