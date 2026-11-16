@@ -1,0 +1,38 @@
+# Argo CD for the local platform. Installed once by bootstrap.sh with Helm, then managed by Argo CD itself
+# (Application "argocd" in platform/apps) from this very file.
+dex:
+  enabled: false
+notifications:
+  enabled: false
+
+configs:
+  params:
+    # Plain HTTP: the Gateway in front of it has no TLS locally (TLS and cert-manager come in 21)
+    server.insecure: true
+  cm:
+    timeout.reconciliation: 60s
+    # Since Argo CD 1.8 an Application is no longer assessed as a resource, so an App-of-Apps would not wait for
+    # its children. This restores health for Applications: sync waves of the root app then mean "after healthy".
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil and obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then
+          hs.message = obj.status.health.message
+        end
+      end
+      return hs
+  # Helm charts published as OCI artifacts must be declared as OCI repositories
+  repositories:
+    envoyproxy:
+      name: envoyproxy
+      url: docker.io/envoyproxy
+      type: helm
+      enableOCI: "true"
+    strimzi:
+      name: strimzi
+      url: quay.io/strimzi-helm
+      type: helm
+      enableOCI: "true"

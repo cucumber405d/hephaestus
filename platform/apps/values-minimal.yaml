@@ -1,0 +1,11 @@
+# Laptop and CI: entry (Gateway), PostgreSQL operator, observability and the Catalog demo
+components:
+  argocd: true
+  gateway: true
+  cnpg: true
+  observability: true
+  catalog: true
+  strimzi: false
+  kafka: false
+  keycloak: false
+  redis: false

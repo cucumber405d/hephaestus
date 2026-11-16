@@ -1,0 +1,22 @@
+{{- if .Values.components.keycloak }}
+# Keycloak Operator from the upstream kustomization (CRDs + operator); it watches its own namespace
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/keycloak/keycloak-k8s-resources
+    targetRevision: {{ .Values.versions.keycloak }}
+    path: kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keycloak
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}

@@ -1,0 +1,28 @@
+{{- if .Values.components.argocd }}
+# Argo CD manages itself: chart from the Argo Helm repo, values from this repository (multi-source)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      targetRevision: {{ .Values.argocdChartVersion }}
+      helm:
+        # Same release name as bootstrap.sh, so Argo CD adopts the resources Helm created
+        releaseName: argocd
+        valueFiles:
+          - $values/platform/argocd/values.yaml
+    - repoURL: {{ .Values.repoURL }}
+      targetRevision: {{ .Values.targetRevision }}
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}

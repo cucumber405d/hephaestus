@@ -1,0 +1,26 @@
+{{- if .Values.components.gateway }}
+# Envoy Gateway controller; its chart also installs the Gateway API CRDs
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: envoy-gateway
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: docker.io/envoyproxy
+    chart: gateway-helm
+    targetRevision: {{ .Values.versions.envoyGateway }}
+    helm:
+      releaseName: eg
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: envoy-gateway-system
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+---
+{{ include "platform.componentApp" (dict "root" . "name" "gateway" "path" "gateway" "namespace" "envoy-gateway-system" "wave" "-1") }}
+{{- end }}

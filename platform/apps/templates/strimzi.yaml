@@ -1,0 +1,26 @@
+{{- if .Values.components.strimzi }}
+# Strimzi Cluster Operator, watching all namespaces (Kafka clusters live next to their users)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: strimzi
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: quay.io/strimzi-helm
+    chart: strimzi-kafka-operator
+    targetRevision: {{ .Values.versions.strimzi }}
+    helm:
+      releaseName: strimzi
+      valuesObject:
+        watchAnyNamespace: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: strimzi
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}

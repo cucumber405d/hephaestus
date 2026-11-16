@@ -1,0 +1,5 @@
+apiVersion: v2
+name: platform-apps
+description: App-of-Apps for the Hephaestus platform; one Argo CD Application per enabled component
+type: application
+version: 0.1.0
