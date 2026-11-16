@@ -22,7 +22,7 @@
 
 | Probe | Вопрос | Ошибка → | Здесь |
 |---|---|---|---|
-| startup | «Уже стартовал?» — пока не прошла, остальные не работают | рестарт после `failureThreshold` | `/actuator/health/liveness`, до 60 s |
+| startup | «Уже стартовал?» — пока не прошла, остальные не работают | рестарт после `failureThreshold` | `/actuator/health/liveness`, до 120 s |
 | liveness | «Жив ли процесс?» | **рестарт** контейнера | `/actuator/health/liveness` — без БД |
 | readiness | «Можно слать трафик?» | под убирается из Service | `/actuator/health/readiness` + `db` |
 
@@ -36,7 +36,7 @@
 
 - `requests` — сколько резервирует планировщик; `limits` — потолок. Память `request = limit` (768Mi): под не
   выселяется за превышение запроса, а JVM получает предсказуемый heap (75 % через `MaxRAMPercentage` из образа 03).
-- QoS: `Guaranteed` — только если requests = limits для **всех** ресурсов всех контейнеров; здесь CPU 500m/1 →
+- QoS: `Guaranteed` — только если requests = limits для **всех** ресурсов всех контейнеров; здесь CPU 250m/1 →
   `Burstable`. Порядок выселения при нехватке памяти на ноде: BestEffort → Burstable → Guaranteed.
 - **CPU limit** — это CFS-квота: при превышении процесс **троттлится** (не убивается). JVM по лимиту считает
   `availableProcessors` (здесь 1 → SerialGC, один поток GC, маленький common pool). Без CPU limit JVM увидит все CPU
@@ -77,7 +77,7 @@ PostgreSQL (реплики, бэкапы, failover) — оператор CloudNa
 
 `runAsNonRoot` + uid 1000 (образ 03 и так не root — K8s проверяет), `readOnlyRootFilesystem` с `emptyDir` для
 `/tmp` (Tomcat, hsperfdata), `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, seccomp `RuntimeDefault`.
-Это требования Pod Security Standard «restricted» для API и Job.
+Это Pod Security Standard «restricted» плюс read-only root filesystem (его PSS не требует).
 
 ## Kustomize
 
@@ -91,16 +91,17 @@ PostgreSQL (реплики, бэкапы, failover) — оператор CloudNa
 NS="-n hephaestus-04"
 # OOMKilled: 200Mi на JVM с 75 % heap
 kubectl $NS set resources deploy/catalog --limits=memory=200Mi --requests=memory=200Mi
-kubectl $NS get pods -w            # CrashLoopBackOff, describe -> OOMKilled, exit 137
+kubectl $NS get pods -w            # CrashLoopBackOff: OOMKilled (137) or, if the heap runs out first, exit 3 (ExitOnOutOfMemoryError)
 # CPU-троттлинг и availableProcessors
-kubectl $NS set resources deploy/catalog --limits=cpu=2 --requests=cpu=500m,memory=768Mi
+kubectl $NS set resources deploy/catalog --limits=cpu=2,memory=768Mi --requests=cpu=250m,memory=768Mi
+kubectl $NS port-forward svc/catalog 8080:80 &   # a new forward after every rollout
 curl localhost:8080/actuator/runtime   # availableProcessors 2, GC G1? (нужно и >= ~1792 МБ памяти)
 # Сломанная readiness: под жив, но без трафика
 kubectl $NS patch deploy catalog --type=json \
   -p='[{"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/path","value":"/nope"}]'
 kubectl $NS get endpointslices -l kubernetes.io/service-name=catalog
 # Изменение конфигурации -> новый хэш -> rollout
-echo "LOGGING_LEVEL_ROOT=DEBUG" >> k8s/base/catalog-config.env && scripts/deploy.sh   # затем git checkout
+echo "LOGGING_LEVEL_ROOT=DEBUG" >> k8s/base/catalog-config.properties && scripts/deploy.sh   # затем git checkout
 # Вернуть всё
 scripts/deploy.sh
 ```

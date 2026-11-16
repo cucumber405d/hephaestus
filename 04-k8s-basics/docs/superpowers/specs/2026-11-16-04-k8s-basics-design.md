@@ -32,7 +32,7 @@ NetworkPolicy, RBAC (07); External Secrets (21). **Анти-цели:** мани
 | Миграции | Job на **том же образе**: `SPRING_MAIN_WEB_APPLICATION_TYPE=none`, Flyway включён → мигрирует и выходит; в Deployment `SPRING_FLYWAY_ENABLED=false` (фактор XII) | Образ `flyway/flyway` + SQL в ConfigMap (дублирование миграций); Flyway при старте каждого пода (гонка реплик) |
 | Порядок | `deploy.sh` применяет overlay по `app.kubernetes.io/component`: namespace/config/database → migration (ждёт `complete`) → api | Один `apply -k` и CrashLoop до миграции; initContainer-ожидание |
 | Postgres | StatefulSet 1 реплика `postgres:17` + PVC (local-path kind) + headless Service | CloudNativePG (05) |
-| Ресурсы | requests = limits по памяти `768Mi` (как в 03); CPU request `500m`, limit `1` | Без CPU limit (JVM видит все CPU ноды) — в заметки |
+| Ресурсы | requests = limits по памяти `768Mi` (как в 03); CPU request `250m` (влезает в 2-vCPU CI-раннер), limit `1` | Без CPU limit (JVM видит все CPU ноды) — в заметки |
 | Graceful | `preStop: sleep 10` + Spring graceful 20 s, `terminationGracePeriodSeconds: 45` | Без preStop — 502 в окне до удаления endpoint'а |
 | Безопасность пода | `runAsNonRoot`, uid 1000, `readOnlyRootFilesystem` + emptyDir `/tmp`, drop ALL, seccomp RuntimeDefault | Дефолты |
 | Секреты | `secretGenerator` в overlay `local` (литералы, только для kind) | External Secrets (21) |
@@ -46,7 +46,7 @@ NetworkPolicy, RBAC (07); External Secrets (21). **Анти-цели:** мани
 ├── docs/ (start.md, architecture.md, learning-notes.md, superpowers/)
 ├── kind/cluster.yaml
 ├── k8s/
-│   ├── base/        kustomization.yaml, postgres.yaml, catalog-config.env, migration-job.yaml, catalog.yaml
+│   ├── base/        kustomization.yaml, postgres.yaml, catalog-config.properties, migration-job.yaml, catalog.yaml
 │   └── overlays/local/  kustomization.yaml, namespace.yaml
 └── scripts/ (up.sh, deploy.sh, smoke.sh, validate.sh, down.sh)
 ```

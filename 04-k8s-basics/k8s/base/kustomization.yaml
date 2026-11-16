@@ -18,8 +18,9 @@ resources:
 # changes the pod template and triggers a rollout.
 configMapGenerator:
   - name: catalog-config
+    # Not *.env: the root .gitignore excludes env files (they usually hold secrets)
     envs:
-      - catalog-config.env
+      - catalog-config.properties
     options:
       labels:
         app.kubernetes.io/component: config

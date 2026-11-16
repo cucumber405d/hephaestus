@@ -70,21 +70,22 @@ spec:
                   name: postgres-credentials
                   key: password
           # Memory request = limit (no overcommit for the JVM; heap = 75 % of it via MaxRAMPercentage in the image).
-          # CPU limit 1 makes the JVM size itself for one CPU (see 03); request 500m is what the scheduler reserves.
+          # CPU limit 1 makes the JVM size itself for one CPU (see 03); request 250m is what the scheduler reserves
+          # (small enough for two replicas plus a surge pod on a 2-vCPU CI runner).
           resources:
             requests:
-              cpu: 500m
+              cpu: 250m
               memory: 768Mi
             limits:
               cpu: "1"
               memory: 768Mi
-          # Startup: up to 60 s to start; liveness and readiness only begin after it succeeded
+          # Startup: up to 120 s (two JVMs starting on one CPU each); liveness and readiness begin after it succeeded
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
               port: http
             periodSeconds: 2
-            failureThreshold: 30
+            failureThreshold: 60
           # Liveness never includes the database: a DB outage must not restart every pod
           livenessProbe:
             httpGet:

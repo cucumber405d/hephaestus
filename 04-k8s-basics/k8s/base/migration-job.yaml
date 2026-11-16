@@ -34,9 +34,6 @@ spec:
           env:
             - name: SPRING_MAIN_WEB_APPLICATION_TYPE
               value: none
-            # Exit once the context is up (virtual threads are daemon threads and would not keep the JVM alive anyway)
-            - name: SPRING_MAIN_KEEP_ALIVE
-              value: "false"
             - name: SPRING_FLYWAY_ENABLED
               value: "true"
             - name: SPRING_DATASOURCE_USERNAME
@@ -51,7 +48,7 @@ spec:
                   key: password
           resources:
             requests:
-              cpu: 500m
+              cpu: 250m
               memory: 512Mi
             limits:
               cpu: "1"

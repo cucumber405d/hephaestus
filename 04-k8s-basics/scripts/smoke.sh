@@ -27,9 +27,15 @@ migrations=$(k exec postgres-0 -- sh -c \
 ok "$migrations migrations applied"
 
 echo "==> API through a port-forward"
-k port-forward svc/catalog "$PORT:80" >/dev/null 2>&1 &
+# kubectl directly, not the k() function: $! must be the kubectl process, or the forward outlives the script
+kubectl -n "$NS" port-forward svc/catalog "$PORT:80" >/dev/null 2>&1 &
 forward=$!
-trap 'kill $forward 2>/dev/null || true; k delete pod load --ignore-not-found --wait=false >/dev/null 2>&1 || true' EXIT
+cleanup() {
+    kill "$forward" 2>/dev/null || true
+    wait "$forward" 2>/dev/null || true
+    k delete pod load --ignore-not-found --wait=false >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
 base="http://localhost:$PORT"
 for _ in $(seq 1 30); do
     curl -fs "$base/actuator/health/readiness" >/dev/null 2>&1 && break
@@ -58,13 +64,16 @@ echo "==> zero-downtime rollout under load"
 # The load runs inside the cluster against the Service: a port-forward pins one pod and would break with it.
 k delete pod load --ignore-not-found --wait=true >/dev/null
 k run load --image=curlimages/curl:8.11.1 --restart=Never --command -- sh -c \
-    'while true; do curl -s -o /dev/null -m 2 -w "%{http_code}\n" http://catalog/api/categories; sleep 0.05; done' \
+    'while true; do curl -s -o /dev/null -m 5 -w "%{http_code}\n" http://catalog/api/categories; sleep 0.05; done' \
     >/dev/null
 k wait --for=condition=Ready pod/load --timeout=120s >/dev/null
 sleep 5
+old_pods=$(k get pods -l app.kubernetes.io/name=catalog -o name)
 k rollout restart deployment/catalog >/dev/null
 k rollout status deployment/catalog --timeout=300s
-sleep 5
+# rollout status returns while the last old pod is still in preStop: measure until the old pods are gone
+k wait --for=delete $old_pods --timeout=120s >/dev/null 2>&1 || true
+sleep 2
 results=$(k logs load)
 total=$(echo "$results" | grep -c . || true)
 bad=$(echo "$results" | grep -vc '^200$' || true)
