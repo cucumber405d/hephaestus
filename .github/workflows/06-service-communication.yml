@@ -1,4 +1,4 @@
-# Builds 06-service-communication (verify); e2e and image publishing jobs are added in a later step.
+# 06-service-communication: verify -> end-to-end test of the stack in Compose -> publish the three images (main only).
 name: 06-service-communication
 
 on:
@@ -12,6 +12,7 @@ on:
       - "mvnw.cmd"
       - ".gitattributes"
       - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
       - ".github/workflows/06-service-communication.yml"
   pull_request:
     paths:
@@ -22,6 +23,7 @@ on:
       - "mvnw.cmd"
       - ".gitattributes"
       - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
       - ".github/workflows/06-service-communication.yml"
   workflow_dispatch:
 
@@ -34,7 +36,39 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  verify:
     uses: ./.github/workflows/build-subproject.yml
     with:
       subproject: 06-service-communication
+
+  # The three services from their Jib images in Docker Compose, tested only through the gateway
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: End-to-end test
+        run: 06-service-communication/scripts/e2e.sh
+
+  publish:
+    needs: e2e
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        module: [inventory, ordering, gateway]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      subproject: 06-service-communication
+      module: ${{ matrix.module }}
+      image-name: hephaestus/service-communication-${{ matrix.module }}

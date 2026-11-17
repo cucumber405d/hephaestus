@@ -26,6 +26,8 @@ spring:
 server:
   port: ${PORT:8081}
   shutdown: graceful
+  # Behind the Gateway: build Location headers from X-Forwarded-* so clients get the public host, not ours
+  forward-headers-strategy: framework
 
 management:
   endpoint:

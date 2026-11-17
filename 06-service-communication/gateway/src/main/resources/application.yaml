@@ -18,6 +18,9 @@ spring:
     gateway:
       server:
         webmvc:
+          # Only requests from these addresses may carry X-Forwarded-* in; for them the gateway also adds its own
+          # (host, proto, port) so backends can build public URLs. Loopback and private networks (Docker, Kubernetes).
+          trusted-proxies: "127\\..*|10\\..*|172\\.(1[6-9]|2[0-9]|3[01])\\..*|192\\.168\\..*"
           routes:
             - id: orders
               uri: ${ORDERING_URL:http://localhost:8082}
