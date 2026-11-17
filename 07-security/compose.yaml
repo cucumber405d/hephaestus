@@ -89,10 +89,10 @@ services:
       ORDERING_URL: http://ordering:8080
       INVENTORY_URL: http://inventory:8080
       # The browser is sent to the public address; the gateway itself talks to Keycloak inside Compose
+      OAUTH2_ISSUER: http://localhost:8180/realms/hephaestus
       OAUTH2_AUTHORIZATION_URI: http://localhost:8180/realms/hephaestus/protocol/openid-connect/auth
       OAUTH2_TOKEN_URI: http://keycloak:8080/realms/hephaestus/protocol/openid-connect/token
       OAUTH2_JWK_SET_URI: http://keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
-      OAUTH2_USER_INFO_URI: http://keycloak:8080/realms/hephaestus/protocol/openid-connect/userinfo
       SHOP_GATEWAY_CLIENT_SECRET: shop-gateway-secret-local-only
     mem_limit: 512m
     ports:

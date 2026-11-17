@@ -1,6 +1,8 @@
 # Public entry of the shop (Spring Cloud Gateway Server Web MVC: servlet stack, virtual threads, no WebFlux).
 # Only the public API is routed; Inventory's internal /api/reservations is unreachable from outside.
-# Configuration from environment variables: PORT, ORDERING_URL, INVENTORY_URL (Kubernetes Service DNS names).
+# Configuration from environment variables: PORT, ORDERING_URL, INVENTORY_URL (Kubernetes Service DNS names),
+# OAUTH2_ISSUER (public "iss"), OAUTH2_AUTHORIZATION_URI (public: the browser goes there),
+# OAUTH2_TOKEN_URI and OAUTH2_JWK_SET_URI (internal: only the gateway talks to them), SHOP_GATEWAY_CLIENT_SECRET.
 spring:
   application:
     name: gateway
@@ -14,6 +16,25 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: shop-gateway
+            client-secret: ${SHOP_GATEWAY_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            # {baseUrl} is the address the browser used: http://localhost:8080 in Compose, the public host in k8s
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email
+        provider:
+          keycloak:
+            # Explicit endpoints instead of issuer-uri: issuer-uri would trigger discovery at the public address
+            authorization-uri: ${OAUTH2_AUTHORIZATION_URI}
+            token-uri: ${OAUTH2_TOKEN_URI}
+            jwk-set-uri: ${OAUTH2_JWK_SET_URI}
+            # No user-info-uri: the ID token already carries the claims we need
+            user-name-attribute: preferred_username
   cloud:
     gateway:
       server:
@@ -27,17 +48,36 @@ spring:
               predicates:
                 - Path=/api/orders/**
               filters:
+                # The user's access token from the session as "Authorization: Bearer ..." (renewed when expired)
+                - TokenRelay=
+                # The session cookie is the gateway's business, backends never see it
+                - RemoveRequestHeader=Cookie
                 - AddResponseHeader=X-Gateway, hephaestus
             - id: stock
               uri: ${INVENTORY_URL:http://localhost:8081}
               predicates:
                 - Path=/api/stock/**
               filters:
+                # The user's access token from the session as "Authorization: Bearer ..." (renewed when expired)
+                - TokenRelay=
+                # The session cookie is the gateway's business, backends never see it
+                - RemoveRequestHeader=Cookie
                 - AddResponseHeader=X-Gateway, hephaestus
 
 server:
   port: ${PORT:8080}
   shutdown: graceful
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        # Lax: sent on the top-level redirect back from Keycloak, not on cross-site POSTs
+        same-site: lax
+
+shop:
+  oauth2:
+    issuer: ${OAUTH2_ISSUER}
 
 management:
   endpoint:

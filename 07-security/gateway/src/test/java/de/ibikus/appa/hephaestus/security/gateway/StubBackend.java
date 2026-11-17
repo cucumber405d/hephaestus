@@ -10,7 +10,7 @@ import java.util.concurrent.Executors;
 /** A backend service stand-in that answers 200 with its name and remembers the last request it got. */
 final class StubBackend implements AutoCloseable {
 
-    record Received(String method, String path, String apiVersion, String body) {}
+    record Received(String method, String path, String apiVersion, String authorization, String cookie, String body) {}
 
     private final HttpServer server;
     private volatile Received lastRequest;
@@ -28,6 +28,8 @@ final class StubBackend implements AutoCloseable {
                     exchange.getRequestMethod(),
                     exchange.getRequestURI().getPath(),
                     exchange.getRequestHeaders().getFirst("API-Version"),
+                    exchange.getRequestHeaders().getFirst("Authorization"),
+                    exchange.getRequestHeaders().getFirst("Cookie"),
                     body);
             var bytes = name.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "text/plain");
