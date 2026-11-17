@@ -31,7 +31,7 @@ class ReservationsControllerTest {
     }
 
     @Test
-    void repeatedOrderIs200WithTheSameReservation() {
+    void repeatedOrderIs200WithTheSameReservation() throws Exception {
         var orderId = UUID.randomUUID();
         var first = reserve(orderId, "HAMMER-01", 1);
 

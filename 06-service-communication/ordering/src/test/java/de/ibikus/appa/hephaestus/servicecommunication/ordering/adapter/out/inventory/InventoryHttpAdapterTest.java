@@ -38,7 +38,7 @@ class InventoryHttpAdapterTest {
     }
 
     @Test
-    void reservePostsTheOrderWithApiVersionOneAndReturnsTheReservationId() {
+    void reservePostsTheOrderWithTheCurrentApiVersionAndReturnsTheReservationId() {
         var reservationId = UUID.randomUUID();
         var orderId = UUID.randomUUID();
         inventory.answer(
@@ -52,7 +52,7 @@ class InventoryHttpAdapterTest {
         assertThat(result).isEqualTo(reservationId);
         assertThat(inventory.lastRequest().method()).isEqualTo("POST");
         assertThat(inventory.lastRequest().path()).isEqualTo("/api/reservations");
-        assertThat(inventory.lastRequest().apiVersion()).isEqualTo("1");
+        assertThat(inventory.lastRequest().apiVersion()).isEqualTo("2");
         assertThat(inventory.lastRequest().body()).contains(orderId.toString()).contains("\"ANVIL-01\"");
     }
 

@@ -18,7 +18,7 @@ curl -i localhost:8080/api/stock/ANVIL-01                       # v1: available 
 curl -s -H 'API-Version: 2' localhost:8080/api/stock/ANVIL-01   # v2
 curl -i -H 'Content-Type: application/json' -d '{"lines":[{"sku":"ANVIL-01","quantity":2}]}' localhost:8080/api/orders
 curl -i -H 'Content-Type: application/json' -d '{"lines":[{"sku":"TONGS-01","quantity":1}]}' localhost:8080/api/orders  # 409
-docker compose -p hephaestus-06 stop inventory                  # then POST an order: 503 + Retry-After
+docker compose -p hephaestus-06 -f 06-service-communication/compose.yaml stop inventory   # then POST an order: 503 + Retry-After
 ```
 
 Сервисы по отдельности (из IDE): Inventory `:8081`, Ordering `:8082` (`INVENTORY_URL`), Gateway `:8080`

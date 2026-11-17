@@ -31,7 +31,7 @@
 | Модули | Reactor `service-communication`: `inventory`, `ordering`, `gateway` | Три подпроекта; общий модуль DTO (связность) |
 | Клиент | Интерфейс `InventoryHttpApi` (`@HttpExchange`) + `HttpServiceProxyFactory` над `RestClient` из Boot-билдера; явные connect 1 s / read 2 s (`JdkClientHttpRequestFactory`) | OpenFeign (feature-complete); `@ImportHttpServices` (меньше контроля над таймаутами — в заметки) |
 | Ошибки соседа | 409 → `InsufficientStock` (sku из Problem Details), 404/422 → `UnknownItem`, 5xx / нет соединения / таймаут → `InventoryUnavailable` → наш `503` + `Retry-After: 5` | Проброс чужих кодов |
-| Версии API | Inventory `GET /api/stock/{sku}`: v1 `{sku, available}` (по умолчанию, устарел), v2 `{sku, name, onHand, reserved, available}`; Ordering вызывает резерв v1, склад v2 | Версия в пути |
+| Версии API | Inventory `GET /api/stock/{sku}`: v1 `{sku, available}` (по умолчанию, устарел), v2 `{sku, name, onHand, reserved, available}`; Ordering вызывает и резерв, и склад с версией 2 (устаревание — по версии, не по эндпоинту) | Версия в пути |
 | Резерв | `POST /api/reservations` (внутренний): идемпотентен по `orderId` (повтор → 200 и тот же резерв); строки склада блокируются `SELECT … FOR UPDATE` в порядке SKU (без дедлоков) | Оптимистическая блокировка с ретраями |
 | Порядок в Ordering | Резерв (удалённый вызов) **вне** транзакции БД, затем сохранение заказа; осиротевший резерв при падении после — тема 10 | Удалённый вызов внутри транзакции |
 | Gateway | Spring Cloud Gateway Server Web MVC (2025.1.3): `/api/orders/**` → ordering, `/api/stock/**` → inventory, ответный заголовок `X-Gateway`; Problem Details | WebFlux-Gateway (правило «без WebFlux»); только Envoy (нет прикладного уровня) |

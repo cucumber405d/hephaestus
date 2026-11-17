@@ -5,7 +5,7 @@ flowchart LR
     client[клиент] -->|"/api/orders/**, /api/stock/**"| gw[Gateway<br/>Spring Cloud Gateway MVC]
     gw -->|/api/orders/**| ord[Ordering]
     gw -->|/api/stock/**| inv[Inventory]
-    ord -->|"POST /api/reservations (API-Version 1)<br/>GET /api/stock/{sku} (API-Version 2)"| inv
+    ord -->|"POST /api/reservations, GET /api/stock/{sku}<br/>(API-Version 2)"| inv
     ord --> odb[(PostgreSQL ordering)]
     inv --> idb[(PostgreSQL inventory)]
     client -. "/api/reservations → 404" .-x gw
@@ -22,7 +22,7 @@ sequenceDiagram
     C->>G: POST /api/orders {lines}
     G->>O: POST /api/orders (+X-Forwarded-*)
     Note over O: orderId = new UUID, no DB transaction yet
-    O->>I: POST /api/reservations {orderId, lines}<br/>API-Version: 1, connect 1 s / read 2 s
+    O->>I: POST /api/reservations {orderId, lines}<br/>API-Version: 2, connect 1 s / read 2 s
     Note over I: one transaction: SELECT ... FOR UPDATE (sorted by SKU),<br/>check previous reservation of orderId, reserve all or nothing
     alt reserved
         I-->>O: 201 {id}

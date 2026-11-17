@@ -66,10 +66,13 @@ ok "POST /api/orders 201, GET $path CONFIRMED (Location: $location)"
 curl -fs "$BASE/api/orders/availability/ANVIL-01" | grep -q '"available":8' || fail "availability after order"
 ok "availability 10 -> 8"
 
-order '{"lines":[{"sku":"TONGS-01","quantity":1}]}' | head -1 | grep -q ' 409' || fail "out of stock must be 409"
+# Capture first: piping curl -D - straight into head would SIGPIPE curl and, with pipefail, fail a passing check
+headers=$(order '{"lines":[{"sku":"TONGS-01","quantity":1}]}')
+echo "$headers" | head -1 | grep -q ' 409' || fail "out of stock must be 409"
 grep -q '"sku":"TONGS-01"' /tmp/06-e2e-body.json || fail "409 must name the SKU"
 ok "out of stock: 409 insufficient-stock"
-order '{"lines":[{"sku":"NOPE-01","quantity":1}]}' | head -1 | grep -q ' 422' || fail "unknown SKU must be 422"
+headers=$(order '{"lines":[{"sku":"NOPE-01","quantity":1}]}')
+echo "$headers" | head -1 | grep -q ' 422' || fail "unknown SKU must be 422"
 ok "unknown SKU: 422"
 [ "$(code -H 'Content-Type: application/json' -d '{}' "$BASE/api/reservations")" = "404" ] \
     || fail "internal /api/reservations must not be reachable through the gateway"

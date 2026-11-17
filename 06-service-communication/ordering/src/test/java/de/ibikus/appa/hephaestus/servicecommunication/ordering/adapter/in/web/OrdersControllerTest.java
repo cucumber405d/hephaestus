@@ -86,7 +86,7 @@ class OrdersControllerTest {
     }
 
     @Test
-    void unavailableInventoryIs503WithRetryAfter() {
+    void unavailableInventoryIs503WithRetryAfter() throws Exception {
         inventory.failWith(new InventoryUnavailableException("down", new RuntimeException("connection refused")));
 
         var result = place("ANVIL-01", 1);

@@ -17,12 +17,12 @@ class StockControllerTest {
     MockMvcTester mvc;
 
     @Test
-    void versionOneIsTheDefaultAndShowsOnlyAvailable() {
+    void versionOneIsTheDefaultAndShowsOnlyAvailable() throws Exception {
         var result = mvc.get().uri("/api/stock/ANVIL-01").exchange();
 
         assertThat(result).hasStatus(HttpStatus.OK);
         assertThat(result).bodyJson().extractingPath("$.available").isEqualTo(10);
-        assertThat(result).bodyJson().doesNotHaveEmptyJsonPathValue("$.sku");
+        assertThat(result).bodyJson().extractingPath("$.sku").isEqualTo("ANVIL-01");
         assertThat(result.getResponse().getContentAsString()).doesNotContain("onHand");
     }
 
