@@ -1,0 +1,48 @@
+# Public entry of the shop (Spring Cloud Gateway Server Web MVC: servlet stack, virtual threads, no WebFlux).
+# Only the public API is routed; Inventory's internal /api/reservations is unreachable from outside.
+# Configuration from environment variables: PORT, ORDERING_URL, INVENTORY_URL (Kubernetes Service DNS names).
+spring:
+  application:
+    name: gateway
+  main:
+    banner-mode: off
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: orders
+              uri: ${ORDERING_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/orders/**
+              filters:
+                - AddResponseHeader=X-Gateway, hephaestus
+            - id: stock
+              uri: ${INVENTORY_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/stock/**
+              filters:
+                - AddResponseHeader=X-Gateway, hephaestus
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs
