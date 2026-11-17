@@ -10,10 +10,12 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A stand-in for Inventory on a random local port, built on the JDK's HTTP server (no extra test dependency).
- * Tests set the canned answer per path prefix and read what the client actually sent.
+ * Tests set the canned answer per path prefix and read what the client actually sent. It can also play the
+ * Keycloak token endpoint: answer "/token" with {@link Answer#token(String)}.
  */
 public final class StubInventoryServer implements AutoCloseable {
 
@@ -27,15 +29,22 @@ public final class StubInventoryServer implements AutoCloseable {
             return new Answer(status, "application/problem+json", body, Duration.ZERO);
         }
 
+        /** A client-credentials token response as Keycloak sends it. */
+        public static Answer token(String accessToken) {
+            return json(200, """
+                    {"access_token":"%s","token_type":"Bearer","expires_in":300}""".formatted(accessToken));
+        }
+
         public Answer delayedBy(Duration delay) {
             return new Answer(status, contentType, body, delay);
         }
     }
 
-    public record Received(String method, String path, String apiVersion, String body) {}
+    public record Received(String method, String path, String apiVersion, String authorization, String body) {}
 
     private final HttpServer server;
     private final Map<String, Answer> answers = new ConcurrentHashMap<>();
+    private final Map<String, AtomicInteger> calls = new ConcurrentHashMap<>();
     private volatile Received lastRequest;
 
     public StubInventoryServer() throws IOException {
@@ -58,11 +67,27 @@ public final class StubInventoryServer implements AutoCloseable {
         return lastRequest;
     }
 
+    /** How many requests hit exactly this path, e.g. "/token". */
+    public int calls(String path) {
+        var count = calls.get(path);
+        return count == null ? 0 : count.get();
+    }
+
     private void handle(HttpExchange exchange) throws IOException {
         var body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         var path = exchange.getRequestURI().getPath();
-        lastRequest = new Received(
-                exchange.getRequestMethod(), path, exchange.getRequestHeaders().getFirst("API-Version"), body);
+        calls.computeIfAbsent(path, any -> new AtomicInteger()).incrementAndGet();
+        var headers = exchange.getRequestHeaders();
+        var received = new Received(
+                exchange.getRequestMethod(),
+                path,
+                headers.getFirst("API-Version"),
+                headers.getFirst("Authorization"),
+                body);
+        // The token request is plumbing; lastRequest stays the call to Inventory itself
+        if (!path.equals("/token")) {
+            lastRequest = received;
+        }
         var answer = answers.entrySet().stream()
                 .filter(entry -> path.startsWith(entry.getKey()))
                 .map(Map.Entry::getValue)

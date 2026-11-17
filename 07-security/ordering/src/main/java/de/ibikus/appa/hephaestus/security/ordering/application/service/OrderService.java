@@ -9,6 +9,7 @@ import de.ibikus.appa.hephaestus.security.ordering.domain.Order;
 import de.ibikus.appa.hephaestus.security.ordering.domain.OrderLine;
 import de.ibikus.appa.hephaestus.security.ordering.domain.OrderNotFoundException;
 import de.ibikus.appa.hephaestus.security.ordering.domain.OrderStatus;
+import de.ibikus.appa.hephaestus.security.ordering.domain.Requester;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,9 @@ public class OrderService implements PlaceOrderUseCase, OrderQuery, Availability
      * reservation is orphaned; releasing it reliably is what the outbox and sagas of subproject 10 are for.
      */
     @Override
-    public Order place(List<OrderLine> lines) {
+    public Order place(String customerId, List<OrderLine> lines) {
+        // Validate before reserving anything: a rejected order must not leave a reservation behind
+        Order.requireValidCustomerId(customerId);
         Order.requireValidLines(lines);
         // The same SKU twice counts once, quantities added up (Inventory does the same; one line per SKU here)
         Map<String, Integer> merged = new TreeMap<>();
@@ -46,15 +49,17 @@ public class OrderService implements PlaceOrderUseCase, OrderQuery, Availability
                 .toList();
         var orderId = UUID.randomUUID();
         var reservationId = inventory.reserve(orderId, lines);
-        var order = new Order(orderId, OrderStatus.CONFIRMED, lines, reservationId, clock.instant());
+        var order = new Order(orderId, customerId, OrderStatus.CONFIRMED, lines, reservationId, clock.instant());
         orders.insert(order);
         return order;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Order get(UUID id) {
-        return orders.findById(id).orElseThrow(() -> new OrderNotFoundException("Order " + id + " not found"));
+    public Order get(UUID id, Requester requester) {
+        return orders.findById(id)
+                .filter(requester::mayRead)
+                .orElseThrow(() -> new OrderNotFoundException("Order " + id + " not found"));
     }
 
     @Override

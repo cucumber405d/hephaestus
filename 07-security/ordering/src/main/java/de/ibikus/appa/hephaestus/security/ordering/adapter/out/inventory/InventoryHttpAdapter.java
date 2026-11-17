@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -58,8 +59,9 @@ class InventoryHttpAdapter implements InventoryPort {
                 // Any other 4xx means we sent something Inventory does not accept: our bug, a 500 is right
                 default -> throw new IllegalStateException("Inventory rejected " + what + ": " + e.getStatusCode(), e);
             }
-        } catch (HttpServerErrorException | ResourceAccessException e) {
-            // 5xx, connection refused, connect or read timeout: Inventory cannot answer now
+        } catch (HttpServerErrorException | ResourceAccessException | OAuth2AuthorizationException e) {
+            // 5xx, connection refused, connect or read timeout: Inventory cannot answer now.
+            // No service token (Keycloak down or refusing): Inventory cannot be asked now, the same for our caller.
             throw new InventoryUnavailableException("Inventory unavailable while trying to " + what, e);
         }
     }

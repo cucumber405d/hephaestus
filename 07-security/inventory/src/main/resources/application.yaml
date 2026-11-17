@@ -1,4 +1,5 @@
-# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD.
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD,
+# OAUTH2_ISSUER (public "iss" of the tokens), OAUTH2_JWK_SET_URI (internal address of the signing keys).
 spring:
   application:
     name: inventory
@@ -13,6 +14,15 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # With jwk-set-uri set, issuer-uri is only compared with "iss": no discovery call to the public address
+          issuer-uri: ${OAUTH2_ISSUER}
+          jwk-set-uri: ${OAUTH2_JWK_SET_URI}
+          # Tokens must be meant for us (Keycloak audience mapper adds "inventory")
+          audiences: inventory
   mvc:
     problemdetails:
       enabled: true

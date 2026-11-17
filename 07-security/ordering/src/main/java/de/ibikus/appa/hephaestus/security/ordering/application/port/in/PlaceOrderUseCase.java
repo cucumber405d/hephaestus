@@ -6,5 +6,6 @@ import java.util.List;
 
 public interface PlaceOrderUseCase {
 
-    Order place(List<OrderLine> lines);
+    /** Places an order for the customer identified by the token's subject. */
+    Order place(String customerId, List<OrderLine> lines);
 }

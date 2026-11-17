@@ -5,6 +5,7 @@ import de.ibikus.appa.hephaestus.security.ordering.application.port.in.OrderQuer
 import de.ibikus.appa.hephaestus.security.ordering.application.port.in.PlaceOrderUseCase;
 import de.ibikus.appa.hephaestus.security.ordering.domain.Order;
 import de.ibikus.appa.hephaestus.security.ordering.domain.OrderLine;
+import de.ibikus.appa.hephaestus.security.ordering.domain.Requester;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -16,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,8 +41,8 @@ class OrdersController {
     }
 
     @PostMapping
-    ResponseEntity<OrderResponse> place(@Valid @RequestBody PlaceOrderRequest request) {
-        var order = placeOrder.place(request.lines().stream()
+    ResponseEntity<OrderResponse> place(@Valid @RequestBody PlaceOrderRequest request, Authentication caller) {
+        var order = placeOrder.place(caller.getName(), request.lines().stream()
                 .map(line -> new OrderLine(line.sku(), line.quantity()))
                 .toList());
         var location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -51,13 +53,20 @@ class OrdersController {
     }
 
     @GetMapping("/{id}")
-    OrderResponse get(@PathVariable UUID id) {
-        return OrderResponse.of(orders.get(id));
+    OrderResponse get(@PathVariable UUID id, Authentication caller) {
+        return OrderResponse.of(orders.get(id, requester(caller)));
     }
 
     @GetMapping("/availability/{sku}")
     AvailabilityResponse availability(@PathVariable @Pattern(regexp = OrderLine.SKU_PATTERN) String sku) {
         return new AvailabilityResponse(sku, availability.available(sku));
+    }
+
+    /** The name is the token's "sub" (JwtAuthenticationConverter's default principal claim). */
+    private static Requester requester(Authentication caller) {
+        var admin = caller.getAuthorities().stream()
+                .anyMatch(authority -> SecurityConfiguration.ADMIN.equals(authority.getAuthority()));
+        return new Requester(caller.getName(), admin);
     }
 
     record PlaceOrderRequest(

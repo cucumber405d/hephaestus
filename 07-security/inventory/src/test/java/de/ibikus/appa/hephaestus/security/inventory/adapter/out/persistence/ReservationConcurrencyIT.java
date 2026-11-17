@@ -20,7 +20,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Real PostgreSQL row locks: concurrent reservations never oversell, repeats never double-reserve. */
-@SpringBootTest
+// The resource server needs its settings to start; nothing here goes over HTTP, so the addresses are never called
+@SpringBootTest(
+        properties = {
+            "OAUTH2_ISSUER=http://issuer.test/realms/hephaestus",
+            "OAUTH2_JWK_SET_URI=http://issuer.test/realms/hephaestus/protocol/openid-connect/certs"
+        })
 @Import(PostgresTestcontainers.class)
 class ReservationConcurrencyIT {
 

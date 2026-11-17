@@ -1,4 +1,6 @@
-# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, INVENTORY_URL.
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, INVENTORY_URL,
+# OAUTH2_ISSUER (public "iss"), OAUTH2_JWK_SET_URI and OAUTH2_TOKEN_URI (internal Keycloak addresses),
+# ORDERING_CLIENT_SECRET.
 spring:
   application:
     name: ordering
@@ -13,6 +15,25 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # With jwk-set-uri set, issuer-uri is only compared with "iss": no discovery call to the public address
+          issuer-uri: ${OAUTH2_ISSUER}
+          jwk-set-uri: ${OAUTH2_JWK_SET_URI}
+          audiences: ordering
+      client:
+        # Ordering's own identity towards Inventory (client credentials); no user involved
+        registration:
+          inventory:
+            provider: keycloak
+            client-id: ordering
+            client-secret: ${ORDERING_CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+        provider:
+          keycloak:
+            token-uri: ${OAUTH2_TOKEN_URI}
   mvc:
     problemdetails:
       enabled: true

@@ -7,19 +7,55 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(ReservationsController.class)
-@Import({ProblemDetailsAdvice.class, ApiVersioningConfiguration.class, WebSliceFakes.class})
+@Import({
+    ProblemDetailsAdvice.class,
+    ApiVersioningConfiguration.class,
+    SecurityConfiguration.class,
+    WebSliceFakes.class
+})
 class ReservationsControllerTest {
 
     private static final String PROBLEMS = "https://hephaestus.ibikus.de/problems/";
 
+    /** Never called: jwt() puts the authentication in place; the resource server just needs a decoder bean. */
+    @MockitoBean
+    JwtDecoder jwtDecoder;
+
     @Autowired
     MockMvcTester mvc;
+
+    @Test
+    void reservationWithoutTokenIs401() {
+        var result = mvc.post()
+                .uri("/api/reservations")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body(UUID.randomUUID(), "HAMMER-01", 1))
+                .exchange();
+
+        assertThat(result).hasStatus(HttpStatus.UNAUTHORIZED);
+        assertThat(result.getResponse().getHeader("WWW-Authenticate")).startsWith("Bearer");
+    }
+
+    @Test
+    void customerTokenCannotReserveDirectly() {
+        assertThat(reserve(TestTokens.customer(), UUID.randomUUID(), "HAMMER-01", 1))
+                .hasStatus(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void adminTokenCannotReserveEither() {
+        assertThat(reserve(TestTokens.withRoles("admin", "admin"), UUID.randomUUID(), "HAMMER-01", 1))
+                .hasStatus(HttpStatus.FORBIDDEN);
+    }
 
     @Test
     void newReservationIs201WithLocation() {
@@ -70,11 +106,20 @@ class ReservationsControllerTest {
     }
 
     private MvcTestResult reserve(UUID orderId, String sku, int quantity) {
+        return reserve(TestTokens.orderingService(), orderId, sku, quantity);
+    }
+
+    private MvcTestResult reserve(RequestPostProcessor caller, UUID orderId, String sku, int quantity) {
         return mvc.post()
                 .uri("/api/reservations")
+                .with(caller)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                        {"orderId":"%s","lines":[{"sku":"%s","quantity":%d}]}""".formatted(orderId, sku, quantity))
+                .content(body(orderId, sku, quantity))
                 .exchange();
+    }
+
+    private static String body(UUID orderId, String sku, int quantity) {
+        return """
+                {"orderId":"%s","lines":[{"sku":"%s","quantity":%d}]}""".formatted(orderId, sku, quantity);
     }
 }
