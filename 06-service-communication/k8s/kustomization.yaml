@@ -7,15 +7,15 @@ resources:
   - ordering.yaml
   - gateway.yaml
 
-# Images published by CI on main (sha-<7> of the merge commit). Until the first publish there is nothing to pull:
-# the platform flag components.serviceCommunication stays false until these tags are set.
+# Images published by CI on main: sha-<7> of the merge commit that built them (PR #6 -> 7a5b35e).
+# A new version is rolled out by changing these tags (in 20: by Argo CD Image Updater / Rollouts).
 images:
   - name: inventory
     newName: ghcr.io/cucumber405d/hephaestus/service-communication-inventory
-    newTag: pending-first-publish
+    newTag: sha-7a5b35e
   - name: ordering
     newName: ghcr.io/cucumber405d/hephaestus/service-communication-ordering
-    newTag: pending-first-publish
+    newTag: sha-7a5b35e
   - name: gateway
     newName: ghcr.io/cucumber405d/hephaestus/service-communication-gateway
-    newTag: pending-first-publish
+    newTag: sha-7a5b35e

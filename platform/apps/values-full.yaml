@@ -9,5 +9,5 @@ components:
   kafka: true
   keycloak: true
   redis: true
-  # Subproject services (they need their images in GHCR first: enable after the first publish on main)
-  serviceCommunication: false
+  # Subproject services (their images must be in GHCR: enabled after the first publish on main)
+  serviceCommunication: true
