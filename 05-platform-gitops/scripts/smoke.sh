@@ -48,8 +48,9 @@ while true; do
 done
 apps=$(echo "$states" | grep -c .)
 ok "$apps Applications Synced and Healthy"
-expected=7
-[ "$PROFILE" = "full" ] && expected=12
+# Platform components plus enabled subproject Applications (06: service-communication)
+expected=8
+[ "$PROFILE" = "full" ] && expected=13
 [ "$apps" -ge "$expected" ] || fail "expected at least $expected Applications for profile $PROFILE, got $apps"
 
 echo "==> through the Gateway (*.localtest.me -> localhost:$PORT)"
@@ -80,6 +81,12 @@ if [ "$PROFILE" = "full" ]; then
     ok "Kafka platform Ready"
     [ "$(kubectl -n redis exec redis-0 -- redis-cli ping)" = "PONG" ] || fail "Redis PING"
     ok "Redis PONG"
+fi
+
+echo "==> subprojects on the platform"
+if kubectl -n argocd get application service-communication >/dev/null 2>&1; then
+    expect_code shop.localtest.me /api/stock/ANVIL-01 200
+    ok "shop.localtest.me (06): stock through Envoy -> Spring Cloud Gateway -> Inventory"
 fi
 
 echo "SMOKE OK ($PROFILE)"
