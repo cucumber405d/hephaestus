@@ -1,0 +1,39 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, INVENTORY_URL.
+spring:
+  application:
+    name: ordering
+  main:
+    banner-mode: off
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+
+# Inventory over HTTP; in Kubernetes the Service DNS name, e.g. http://inventory
+inventory:
+  url: ${INVENTORY_URL:http://localhost:8081}
+  connect-timeout: 1s
+  read-timeout: 2s
+
+server:
+  port: ${PORT:8082}
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs
