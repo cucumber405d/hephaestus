@@ -1,0 +1,62 @@
+# The whole 06 stack from the Jib images (build: ../mvnw -f pom.xml package jib:dockerBuild -DskipTests).
+#   docker compose up -d        -> http://localhost:8080/api/stock/ANVIL-01, POST http://localhost:8080/api/orders
+# Only the Gateway is published on the host; the services talk to each other by Compose DNS names.
+services:
+  inventory-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: inventory
+      POSTGRES_PASSWORD: inventory
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventory -d inventory"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  ordering-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ordering
+      POSTGRES_USER: ordering
+      POSTGRES_PASSWORD: ordering
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ordering -d ordering"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  inventory:
+    image: hephaestus/service-communication-inventory:${IMAGE_TAG:-jib}
+    environment:
+      PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://inventory-db:5432/inventory
+      SPRING_DATASOURCE_USERNAME: inventory
+      SPRING_DATASOURCE_PASSWORD: inventory
+    mem_limit: 768m
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+
+  ordering:
+    image: hephaestus/service-communication-ordering:${IMAGE_TAG:-jib}
+    environment:
+      PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ordering-db:5432/ordering
+      SPRING_DATASOURCE_USERNAME: ordering
+      SPRING_DATASOURCE_PASSWORD: ordering
+      INVENTORY_URL: http://inventory:8080
+    mem_limit: 768m
+    depends_on:
+      ordering-db:
+        condition: service_healthy
+
+  gateway:
+    image: hephaestus/service-communication-gateway:${IMAGE_TAG:-jib}
+    environment:
+      PORT: "8080"
+      ORDERING_URL: http://ordering:8080
+      INVENTORY_URL: http://inventory:8080
+    mem_limit: 512m
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"

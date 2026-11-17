@@ -1,0 +1,21 @@
+# 06 on the shared platform (Argo CD Application "service-communication" in platform/apps).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - inventory.yaml
+  - ordering.yaml
+  - gateway.yaml
+
+# Images published by CI on main (sha-<7> of the merge commit). Until the first publish there is nothing to pull:
+# the platform flag components.serviceCommunication stays false until these tags are set.
+images:
+  - name: inventory
+    newName: ghcr.io/cucumber405d/hephaestus/service-communication-inventory
+    newTag: pending-first-publish
+  - name: ordering
+    newName: ghcr.io/cucumber405d/hephaestus/service-communication-ordering
+    newTag: pending-first-publish
+  - name: gateway
+    newName: ghcr.io/cucumber405d/hephaestus/service-communication-gateway
+    newTag: pending-first-publish
