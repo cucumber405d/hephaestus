@@ -1,0 +1,23 @@
+{{- if .Values.components.serviceCommunication }}
+# 06-service-communication: Inventory, Ordering and their Spring Cloud Gateway (http://shop.localtest.me).
+# Needs the cnpg and gateway components; the images must have been published to GHCR once (see 06 docs).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: service-communication
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision | quote }}
+    path: 06-service-communication/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hephaestus-06
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}
