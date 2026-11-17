@@ -24,3 +24,5 @@ components:
   redis: false
   # Subproject services (they need their images in GHCR first: enable after the first publish on main)
   serviceCommunication: false
+  # 07: needs keycloak (full profile only); off until its images are published
+  security: false

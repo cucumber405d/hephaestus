@@ -1,4 +1,6 @@
-# The shop's application gateway (Spring Cloud Gateway): no database; reaches the services by Service DNS names.
+# The shop's application gateway and BFF (Spring Cloud Gateway): no database; reaches the services by Service DNS names.
+# One replica: the login session (and the tokens in it) lives in the pod's memory. A second pod would not know it;
+# shared sessions (Spring Session on Redis) or sticky sessions come with a later subproject.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -8,7 +10,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -42,6 +44,20 @@ spec:
               value: http://ordering
             - name: INVENTORY_URL
               value: http://inventory
+            # The browser is sent to the public Keycloak address, the gateway redeems codes inside the cluster
+            - name: OAUTH2_ISSUER
+              value: http://keycloak.localtest.me/realms/hephaestus
+            - name: OAUTH2_AUTHORIZATION_URI
+              value: http://keycloak.localtest.me/realms/hephaestus/protocol/openid-connect/auth
+            - name: OAUTH2_TOKEN_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/token
+            - name: OAUTH2_JWK_SET_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
+            - name: SHOP_GATEWAY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-clients
+                  key: shop-gateway-client-secret
           resources:
             requests:
               cpu: 250m
@@ -99,11 +115,11 @@ spec:
       targetPort: http
 ---
 # Infrastructure entry (Envoy, platform Gateway API) -> application entry (Spring Cloud Gateway) -> services.
-# http://shop.localtest.me/api/stock/ANVIL-01
+# http://secure-shop.localtest.me (log in at /oauth2/authorization/keycloak, e.g. alice/alice)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: shop
+  name: secure-shop
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
@@ -111,7 +127,7 @@ spec:
     - name: platform
       namespace: envoy-gateway-system
   hostnames:
-    - shop.localtest.me
+    - secure-shop.localtest.me
   rules:
     - backendRefs:
         - name: gateway

@@ -48,6 +48,18 @@ spec:
               value: none
             - name: SPRING_FLYWAY_ENABLED
               value: "true"
+            # Same settings as the API: OAuth2 properties may be bound even without a web server
+            - name: OAUTH2_ISSUER
+              value: http://keycloak.localtest.me/realms/hephaestus
+            - name: OAUTH2_JWK_SET_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
+            - name: OAUTH2_TOKEN_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/token
+            - name: ORDERING_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-clients
+                  key: ordering-client-secret
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://ordering-db-rw:5432/ordering
             - name: SPRING_DATASOURCE_USERNAME
@@ -134,6 +146,18 @@ spec:
                   key: password
             - name: MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE
               value: readinessState,db
+            # Tokens carry the public issuer; keys and tokens are fetched inside the cluster
+            - name: OAUTH2_ISSUER
+              value: http://keycloak.localtest.me/realms/hephaestus
+            - name: OAUTH2_JWK_SET_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
+            - name: OAUTH2_TOKEN_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/token
+            - name: ORDERING_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-clients
+                  key: ordering-client-secret
             # Kubernetes Service DNS: "inventory" in the same namespace (inventory.<namespace>.svc.cluster.local)
             - name: INVENTORY_URL
               value: http://inventory

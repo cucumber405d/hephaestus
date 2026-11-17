@@ -1,6 +1,7 @@
 package de.ibikus.appa.hephaestus.security.inventory.adapter.in.web;
 
 import jakarta.servlet.DispatcherType;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,6 +19,8 @@ import org.springframework.security.web.SecurityFilterChain;
  *       a user token relayed by the Gateway cannot reserve stock directly.</li>
  * </ul>
  */
+// Not in the schema migration Job (no web server, no HttpSecurity)
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @Configuration(proxyBeanMethods = false)
 class SecurityConfiguration {
 

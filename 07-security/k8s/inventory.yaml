@@ -48,6 +48,11 @@ spec:
               value: none
             - name: SPRING_FLYWAY_ENABLED
               value: "true"
+            # Same settings as the API: OAuth2 properties may be bound even without a web server
+            - name: OAUTH2_ISSUER
+              value: http://keycloak.localtest.me/realms/hephaestus
+            - name: OAUTH2_JWK_SET_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://inventory-db-rw:5432/inventory
             - name: SPRING_DATASOURCE_USERNAME
@@ -134,6 +139,11 @@ spec:
                   key: password
             - name: MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE
               value: readinessState,db
+            # Tokens carry the public issuer; keys and tokens are fetched inside the cluster
+            - name: OAUTH2_ISSUER
+              value: http://keycloak.localtest.me/realms/hephaestus
+            - name: OAUTH2_JWK_SET_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
           resources:
             requests:
               cpu: 250m

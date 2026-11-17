@@ -1,4 +1,4 @@
-# 06 on the shared platform (Argo CD Application "security" in platform/apps).
+# 07 on the shared platform (Argo CD Application "security" in platform/apps): http://secure-shop.localtest.me
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -6,16 +6,19 @@ resources:
   - inventory.yaml
   - ordering.yaml
   - gateway.yaml
+  - oauth2-secrets.yaml
+  - keycloak-realm.yaml
+  - network-policies.yaml
 
-# Images published by CI on main: sha-<7> of the merge commit that built them (PR #6 -> 7a5b35e).
+# Images published by CI on main: sha-<7> of the merge commit that built them; pinned after the first publish.
 # A new version is rolled out by changing these tags (in 20: by Argo CD Image Updater / Rollouts).
 images:
   - name: inventory
     newName: ghcr.io/cucumber405d/hephaestus/security-inventory
-    newTag: sha-7a5b35e
+    newTag: pending-first-publish
   - name: ordering
     newName: ghcr.io/cucumber405d/hephaestus/security-ordering
-    newTag: sha-7a5b35e
+    newTag: pending-first-publish
   - name: gateway
     newName: ghcr.io/cucumber405d/hephaestus/security-gateway
-    newTag: sha-7a5b35e
+    newTag: pending-first-publish

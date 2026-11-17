@@ -2,6 +2,8 @@ package de.ibikus.appa.hephaestus.security.ordering.adapter.out.inventory;
 
 import java.net.http.HttpClient;
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,10 +43,14 @@ class InventoryClientConfiguration {
     static final Authentication SERVICE = new AnonymousAuthenticationToken(
             "ordering", "ordering-service", AuthorityUtils.createAuthorityList("ROLE_SERVICE"));
 
+    /** Without a manager (the schema migration Job runs without a web server) the client simply has no token. */
     @Bean
     InventoryHttpApi inventoryHttpApi(
-            RestClient.Builder builder, InventoryClientProperties properties, OAuth2AuthorizedClientManager clients) {
-        return create(builder, properties, serviceToken(clients));
+            RestClient.Builder builder,
+            InventoryClientProperties properties,
+            ObjectProvider<OAuth2AuthorizedClientManager> clients) {
+        var manager = clients.getIfAvailable();
+        return manager == null ? create(builder, properties) : create(builder, properties, serviceToken(manager));
     }
 
     /**
@@ -52,6 +58,7 @@ class InventoryClientConfiguration {
      * service, not to a browser session.
      */
     @Bean
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     OAuth2AuthorizedClientManager serviceClientManager(
             ClientRegistrationRepository registrations, OAuth2AuthorizedClientService authorizedClients) {
         return clientCredentialsManager(registrations, authorizedClients);

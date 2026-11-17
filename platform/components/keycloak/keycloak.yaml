@@ -42,7 +42,10 @@ spec:
   http:
     httpEnabled: true
   hostname:
+    # Public address: the browser goes there and it is the "iss" of every token
     hostname: http://keycloak.localtest.me
+    # Services inside the cluster may call http://keycloak-service.keycloak:8080 for keys and tokens (backchannel)
+    backchannelDynamic: true
   proxy:
     headers: xforwarded
   ingress:
