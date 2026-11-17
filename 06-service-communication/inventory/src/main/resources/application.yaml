@@ -1,0 +1,39 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD.
+spring:
+  application:
+    name: inventory
+  main:
+    banner-mode: off
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+    apiversion:
+      # API-Version request header; 1 (deprecated) is the default when the header is absent, 2 is current
+      use:
+        header: API-Version
+      supported: 1,2
+      default: 1
+
+server:
+  port: ${PORT:8081}
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs
