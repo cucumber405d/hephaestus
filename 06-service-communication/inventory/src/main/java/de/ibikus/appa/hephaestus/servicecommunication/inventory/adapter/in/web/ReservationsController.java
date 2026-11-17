@@ -54,7 +54,8 @@ class ReservationsController {
     }
 
     record ReservationRequest(
-            @NotNull UUID orderId, @NotEmpty @Size(max = Reservation.MAX_LINES) List<@Valid Line> lines) {}
+            @NotNull UUID orderId,
+            @NotEmpty @Size(max = Reservation.MAX_LINES) List<@Valid Line> lines) {}
 
     record Line(
             @NotNull @Pattern(regexp = Skus.PATTERN) String sku,

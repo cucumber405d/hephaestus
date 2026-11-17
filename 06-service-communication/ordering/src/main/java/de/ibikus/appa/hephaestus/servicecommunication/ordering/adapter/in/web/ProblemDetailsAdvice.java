@@ -47,7 +47,10 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(InventoryUnavailableException.class)
     ResponseEntity<ProblemDetail> inventoryUnavailable(InventoryUnavailableException ex) {
-        LOG.warn("{}: {}", ex.getMessage(), ex.getCause() == null ? "" : ex.getCause().toString());
+        LOG.warn(
+                "{}: {}",
+                ex.getMessage(),
+                ex.getCause() == null ? "" : ex.getCause().toString());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .header(HttpHeaders.RETRY_AFTER, RETRY_AFTER_SECONDS)
                 .body(problem(

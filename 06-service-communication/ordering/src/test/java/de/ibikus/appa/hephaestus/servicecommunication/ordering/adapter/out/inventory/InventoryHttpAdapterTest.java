@@ -41,11 +41,8 @@ class InventoryHttpAdapterTest {
     void reservePostsTheOrderWithTheCurrentApiVersionAndReturnsTheReservationId() {
         var reservationId = UUID.randomUUID();
         var orderId = UUID.randomUUID();
-        inventory.answer(
-                "/api/reservations",
-                Answer.json(201, """
-                        {"id":"%s","orderId":"%s","lines":[{"sku":"ANVIL-01","quantity":1}],"createdAt":"2026-11-17T10:00:00Z"}"""
-                        .formatted(reservationId, orderId)));
+        inventory.answer("/api/reservations", Answer.json(201, """
+                        {"id":"%s","orderId":"%s","lines":[{"sku":"ANVIL-01","quantity":1}],"createdAt":"2026-11-17T10:00:00Z"}""".formatted(reservationId, orderId)));
 
         var result = adapter.reserve(orderId, ONE_ANVIL);
 
@@ -58,9 +55,7 @@ class InventoryHttpAdapterTest {
 
     @Test
     void stockUsesApiVersionTwo() {
-        inventory.answer(
-                "/api/stock/",
-                Answer.json(200, """
+        inventory.answer("/api/stock/", Answer.json(200, """
                         {"sku":"ANVIL-01","name":"Anvil","onHand":10,"reserved":3,"available":7}"""));
 
         assertThat(adapter.available("ANVIL-01")).isEqualTo(7);
@@ -70,26 +65,24 @@ class InventoryHttpAdapterTest {
 
     @Test
     void conflictBecomesInsufficientStockForTheSkuInventoryNamed() {
-        inventory.answer(
-                "/api/reservations",
-                Answer.problem(409, """
+        inventory.answer("/api/reservations", Answer.problem(409, """
                         {"type":"https://hephaestus.ibikus.de/problems/insufficient-stock","status":409,"sku":"SWORD-01","available":0}"""));
         var lines = List.of(new OrderLine("ANVIL-01", 1), new OrderLine("SWORD-01", 5));
 
         assertThatThrownBy(() -> adapter.reserve(UUID.randomUUID(), lines))
                 .isInstanceOfSatisfying(
-                        InsufficientStockException.class, ex -> assertThat(ex.sku()).isEqualTo("SWORD-01"));
+                        InsufficientStockException.class,
+                        ex -> assertThat(ex.sku()).isEqualTo("SWORD-01"));
     }
 
     @Test
     void unprocessableBecomesUnknownItem() {
-        inventory.answer(
-                "/api/reservations",
-                Answer.problem(422, """
+        inventory.answer("/api/reservations", Answer.problem(422, """
                         {"type":"https://hephaestus.ibikus.de/problems/unknown-sku","status":422,"sku":"NOPE-01"}"""));
 
         assertThatThrownBy(() -> adapter.reserve(UUID.randomUUID(), List.of(new OrderLine("NOPE-01", 1))))
-                .isInstanceOfSatisfying(UnknownItemException.class, ex -> assertThat(ex.sku()).isEqualTo("NOPE-01"));
+                .isInstanceOfSatisfying(
+                        UnknownItemException.class, ex -> assertThat(ex.sku()).isEqualTo("NOPE-01"));
     }
 
     @Test
@@ -117,8 +110,7 @@ class InventoryHttpAdapterTest {
 
     @Test
     void slowAnswerHitsTheReadTimeout() {
-        inventory.answer(
-                "/api/reservations", Answer.json(201, "{}").delayedBy(Duration.ofSeconds(3)));
+        inventory.answer("/api/reservations", Answer.json(201, "{}").delayedBy(Duration.ofSeconds(3)));
         var started = System.nanoTime();
 
         assertThatThrownBy(() -> adapter.reserve(UUID.randomUUID(), ONE_ANVIL))

@@ -28,7 +28,8 @@ class StockControllerTest {
 
     @Test
     void versionOneIsMarkedDeprecated() {
-        var result = mvc.get().uri("/api/stock/ANVIL-01").header("API-Version", "1").exchange();
+        var result =
+                mvc.get().uri("/api/stock/ANVIL-01").header("API-Version", "1").exchange();
 
         assertThat(result).hasStatus(HttpStatus.OK);
         assertThat(result.getResponse().getHeader("Deprecation")).isNotBlank();
@@ -38,7 +39,8 @@ class StockControllerTest {
 
     @Test
     void versionTwoShowsTheFullPictureWithoutDeprecation() {
-        var result = mvc.get().uri("/api/stock/ANVIL-01").header("API-Version", "2").exchange();
+        var result =
+                mvc.get().uri("/api/stock/ANVIL-01").header("API-Version", "2").exchange();
 
         assertThat(result).hasStatus(HttpStatus.OK);
         assertThat(result).bodyJson().extractingPath("$.onHand").isEqualTo(10);
@@ -49,14 +51,16 @@ class StockControllerTest {
 
     @Test
     void unsupportedVersionIs400() {
-        var result = mvc.get().uri("/api/stock/ANVIL-01").header("API-Version", "3").exchange();
+        var result =
+                mvc.get().uri("/api/stock/ANVIL-01").header("API-Version", "3").exchange();
 
         assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
     }
 
     @Test
     void unknownSkuIs404() {
-        var result = mvc.get().uri("/api/stock/NOPE-01").header("API-Version", "2").exchange();
+        var result =
+                mvc.get().uri("/api/stock/NOPE-01").header("API-Version", "2").exchange();
 
         assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(result)

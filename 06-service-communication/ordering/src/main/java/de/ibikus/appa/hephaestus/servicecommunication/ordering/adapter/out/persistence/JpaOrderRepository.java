@@ -32,13 +32,15 @@ class JpaOrderRepository implements OrderRepository {
 
     @Override
     public Optional<Order> findById(UUID id) {
-        return repository.findById(id).map(entity -> new Order(
-                entity.getId(),
-                OrderStatus.valueOf(entity.getStatus()),
-                entity.getLines().stream()
-                        .map(line -> new OrderLine(line.getSku(), line.getQuantity()))
-                        .toList(),
-                entity.getReservationId(),
-                entity.getCreatedAt()));
+        return repository
+                .findById(id)
+                .map(entity -> new Order(
+                        entity.getId(),
+                        OrderStatus.valueOf(entity.getStatus()),
+                        entity.getLines().stream()
+                                .map(line -> new OrderLine(line.getSku(), line.getQuantity()))
+                                .toList(),
+                        entity.getReservationId(),
+                        entity.getCreatedAt()));
     }
 }

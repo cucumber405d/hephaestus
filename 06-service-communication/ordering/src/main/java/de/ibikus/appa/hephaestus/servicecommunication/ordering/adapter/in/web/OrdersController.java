@@ -60,10 +60,13 @@ class OrdersController {
         return new AvailabilityResponse(sku, availability.available(sku));
     }
 
-    record PlaceOrderRequest(@NotEmpty @Size(max = Order.MAX_LINES) List<@Valid Line> lines) {}
+    record PlaceOrderRequest(
+            @NotEmpty @Size(max = Order.MAX_LINES) List<@Valid Line> lines) {}
 
     record Line(
-            @NotNull @Pattern(regexp = OrderLine.SKU_PATTERN) String sku,
+            @NotNull @Pattern(regexp = OrderLine.SKU_PATTERN)
+            String sku,
+
             @Min(1) @Max(OrderLine.MAX_QUANTITY) int quantity) {}
 
     record OrderResponse(UUID id, String status, UUID reservationId, List<Line> lines, Instant createdAt) {

@@ -11,4 +11,6 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  */
 @ConfigurationProperties("inventory")
 record InventoryClientProperties(
-        URI url, @DefaultValue("1s") Duration connectTimeout, @DefaultValue("2s") Duration readTimeout) {}
+        URI url,
+        @DefaultValue("1s") Duration connectTimeout,
+        @DefaultValue("2s") Duration readTimeout) {}

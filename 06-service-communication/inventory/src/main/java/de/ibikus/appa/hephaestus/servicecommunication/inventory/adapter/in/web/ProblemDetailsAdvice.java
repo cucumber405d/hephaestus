@@ -35,8 +35,7 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(UnknownSkuException.class)
     ProblemDetail unknownSku(UnknownSkuException ex) {
-        var problem =
-                problem(HttpStatusCode.valueOf(422), "unknown-sku", "Unknown SKU", ex.getMessage());
+        var problem = problem(HttpStatusCode.valueOf(422), "unknown-sku", "Unknown SKU", ex.getMessage());
         problem.setProperty("sku", ex.sku());
         return problem;
     }

@@ -33,8 +33,13 @@ class InventoryHttpAdapter implements InventoryPort {
     public UUID reserve(UUID orderId, List<OrderLine> lines) {
         var request = new ReservationRequest(
                 orderId,
-                lines.stream().map(line -> new Line(line.sku(), line.quantity())).toList());
-        return call("reserve stock", () -> api.reserve(request).id(), lines.getFirst().sku());
+                lines.stream()
+                        .map(line -> new Line(line.sku(), line.quantity()))
+                        .toList());
+        return call(
+                "reserve stock",
+                () -> api.reserve(request).id(),
+                lines.getFirst().sku());
     }
 
     @Override

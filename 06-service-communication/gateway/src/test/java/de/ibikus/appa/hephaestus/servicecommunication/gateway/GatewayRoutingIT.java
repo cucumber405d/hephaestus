@@ -60,8 +60,9 @@ class GatewayRoutingIT {
 
     @Test
     void stockGoesToInventoryWithTheApiVersionHeader() throws Exception {
-        var response = send(
-                HttpRequest.newBuilder(uri("/api/stock/ANVIL-01")).header("API-Version", "2").GET());
+        var response = send(HttpRequest.newBuilder(uri("/api/stock/ANVIL-01"))
+                .header("API-Version", "2")
+                .GET());
 
         assertThat(response.body()).isEqualTo("inventory");
         assertThat(INVENTORY.lastRequest().path()).isEqualTo("/api/stock/ANVIL-01");

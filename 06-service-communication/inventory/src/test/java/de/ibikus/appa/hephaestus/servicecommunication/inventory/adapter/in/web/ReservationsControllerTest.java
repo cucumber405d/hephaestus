@@ -74,8 +74,7 @@ class ReservationsControllerTest {
                 .uri("/api/reservations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"orderId":"%s","lines":[{"sku":"%s","quantity":%d}]}"""
-                        .formatted(orderId, sku, quantity))
+                        {"orderId":"%s","lines":[{"sku":"%s","quantity":%d}]}""".formatted(orderId, sku, quantity))
                 .exchange();
     }
 }
