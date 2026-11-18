@@ -27,14 +27,11 @@ class OrderingIT {
 
     static final StubInventoryServer INVENTORY = startStub();
 
-    /** The stub also plays Keycloak's token endpoint; issuer and key set are never fetched (jwt() in MockMvc). */
+    /** The stub also plays Keycloak's token endpoint (issuer and key set: test defaults in config/application.properties). */
     @DynamicPropertySource
     static void inventoryAndKeycloak(DynamicPropertyRegistry registry) {
         registry.add("inventory.url", () -> INVENTORY.url().toString());
         registry.add("OAUTH2_TOKEN_URI", () -> INVENTORY.url() + "/token");
-        registry.add("ORDERING_CLIENT_SECRET", () -> "test-secret");
-        registry.add("OAUTH2_ISSUER", () -> "http://issuer.test/realms/hephaestus");
-        registry.add("OAUTH2_JWK_SET_URI", () -> "http://issuer.test/realms/hephaestus/protocol/openid-connect/certs");
     }
 
     @BeforeAll

@@ -24,8 +24,10 @@ class RealmRolesConverterTest {
     @Test
     void missingOrMalformedClaimMeansNoRoles() {
         assertThat(converter.convert(token(Map.of("other", "x")))).isEmpty();
-        assertThat(converter.convert(token(Map.of("realm_access", "not-an-object")))).isEmpty();
-        assertThat(converter.convert(token(Map.of("realm_access", Map.of("roles", "admin"))))).isEmpty();
+        assertThat(converter.convert(token(Map.of("realm_access", "not-an-object"))))
+                .isEmpty();
+        assertThat(converter.convert(token(Map.of("realm_access", Map.of("roles", "admin")))))
+                .isEmpty();
     }
 
     private static Jwt token(Map<String, Object> claims) {

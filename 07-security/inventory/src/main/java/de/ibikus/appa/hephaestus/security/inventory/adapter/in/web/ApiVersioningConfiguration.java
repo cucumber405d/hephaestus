@@ -17,8 +17,8 @@ class ApiVersioningConfiguration implements WebMvcConfigurer {
 
     static final ZonedDateTime V1_DEPRECATED = ZonedDateTime.parse("2026-11-17T00:00:00Z");
     static final ZonedDateTime V1_SUNSET = ZonedDateTime.parse("2027-06-30T00:00:00Z");
-    static final URI MIGRATION_NOTES = URI.create(
-            "https://github.com/cucumber405d/hephaestus/blob/main/07-security/docs/learning-notes.md");
+    static final URI MIGRATION_NOTES =
+            URI.create("https://github.com/cucumber405d/hephaestus/blob/main/07-security/docs/learning-notes.md");
 
     @Override
     public void configureApiVersioning(ApiVersionConfigurer configurer) {
