@@ -36,9 +36,10 @@ class OutboxRelayIT {
     @Autowired
     OutboxRelay relay;
 
-    /** Spied to count the send attempts. */
+    /** Spied to count the send attempts; raw, because Boot declares the bean as KafkaTemplate<?, ?>. */
     @MockitoSpyBean
-    KafkaTemplate<String, String> kafka;
+    @SuppressWarnings("rawtypes")
+    KafkaTemplate kafka;
 
     @Autowired
     OrderService orders;
@@ -59,7 +60,8 @@ class OutboxRelayIT {
     void relayedMessageCarriesTheStoredTrace() {
         var command = message(RESERVE_PAYMENT, ORCHESTRATION, "alice", "35.00", "HAMMER-01", 1);
 
-        relay.relay(new OutgoingMessage(Topics.PAYMENT_COMMANDS, command, PARENT)).join();
+        relay.relay(new OutgoingMessage(Topics.PAYMENT_COMMANDS, command, PARENT))
+                .join();
 
         assertThat(await(
                         Duration.ofSeconds(20),
@@ -77,6 +79,7 @@ class OutboxRelayIT {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void resubmittedPublicationKeepsTheTrace() throws InterruptedException {
         var docker = container.getDockerClient();
         docker.pauseContainerCmd(container.getContainerId()).exec();
@@ -99,9 +102,11 @@ class OutboxRelayIT {
             docker.unpauseContainerCmd(container.getContainerId()).exec();
         }
 
-        assertThat(await(Duration.ofSeconds(60), () -> !readWithTrace(
-                                container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, orderId)
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(60),
+                        () -> !readWithTrace(
+                                        container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, orderId)
+                                .isEmpty()))
                 .isTrue();
         // More than one send of this message: it went out through a resubmission, not the first attempt
         verify(kafka, atLeast(2)).send(eq(Topics.PAYMENT_COMMANDS), eq(orderId.toString()), anyString());
