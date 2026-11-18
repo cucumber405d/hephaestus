@@ -36,7 +36,9 @@ public class DltReplayer {
     private final OrderPlacedReader reader;
 
     DltReplayer(
-            ConsumerFactory<String, String> consumers, KafkaTemplate<String, String> template, OrderPlacedReader reader) {
+            ConsumerFactory<String, String> consumers,
+            KafkaTemplate<String, String> template,
+            OrderPlacedReader reader) {
         this.consumers = consumers;
         this.template = template;
         this.reader = reader;
