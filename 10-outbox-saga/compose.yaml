@@ -1,0 +1,128 @@
+# The 10 saga playground from the Jib images (build: ../mvnw -f pom.xml package jib:dockerBuild -DskipTests):
+#   ordering (orchestrator) <-> Kafka <-> payment, inventory, delivery; one PostgreSQL with a database per service.
+#   docker compose up -d        Kafka UI: http://localhost:8085
+# Service ports are bound to localhost: their /admin endpoints are open.
+services:
+  kafka:
+    image: apache/kafka:4.2.2
+    environment:
+      # A KRaft cluster id (base64 UUID); any fixed value works for a local single node
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      # INTERNAL for the containers, EXTERNAL (localhost:9094) for tools on the host
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Single broker: every internal topic with one replica
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
+      # Rebalance at once when members join (the default waits 3 s to collect them)
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "9094:9094"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  kafka-ui:
+    # Topics, partitions, consumer groups with their lag, messages with headers
+    image: ghcr.io/kafbat/kafka-ui:latest
+    environment:
+      KAFKA_CLUSTERS_0_NAME: hephaestus-10
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8085:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -tAc \"select 1 from pg_database where datname='delivery'\" | grep -q 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  ordering:
+    image: hephaestus/outbox-saga-ordering:${IMAGE_TAG:-jib}
+    environment:
+      PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ordering
+      SPRING_DATASOURCE_USERNAME: ordering
+      SPRING_DATASOURCE_PASSWORD: ordering
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SAGA_STEP_TIMEOUT: ${SAGA_STEP_TIMEOUT:-30s}
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  payment:
+    image: hephaestus/outbox-saga-payment:${IMAGE_TAG:-jib}
+    environment:
+      PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment
+      SPRING_DATASOURCE_USERNAME: payment
+      SPRING_DATASOURCE_PASSWORD: payment
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  inventory:
+    image: hephaestus/outbox-saga-inventory:${IMAGE_TAG:-jib}
+    environment:
+      PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/inventory
+      SPRING_DATASOURCE_USERNAME: inventory
+      SPRING_DATASOURCE_PASSWORD: inventory
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  delivery:
+    image: hephaestus/outbox-saga-delivery:${IMAGE_TAG:-jib}
+    environment:
+      PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/delivery
+      SPRING_DATASOURCE_USERNAME: delivery
+      SPRING_DATASOURCE_PASSWORD: delivery
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:8083:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
