@@ -40,9 +40,11 @@ class OrdersController {
 
     @PostMapping
     ResponseEntity<OrderResponse> place(@Valid @RequestBody PlaceOrderRequest request) {
-        var order = placeOrder.place(request.customerId(), request.lines().stream()
-                .map(line -> new OrderLine(line.sku(), line.quantity()))
-                .toList());
+        var order = placeOrder.place(
+                request.customerId(),
+                request.lines().stream()
+                        .map(line -> new OrderLine(line.sku(), line.quantity()))
+                        .toList());
         var location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(order.id())
@@ -61,7 +63,9 @@ class OrdersController {
     }
 
     record PlaceOrderRequest(
-            @NotNull @Pattern(regexp = Order.CUSTOMER_ID_PATTERN) String customerId,
+            @NotNull @Pattern(regexp = Order.CUSTOMER_ID_PATTERN)
+            String customerId,
+
             @NotEmpty @Size(max = Order.MAX_LINES) List<@Valid Line> lines) {}
 
     record Line(

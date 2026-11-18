@@ -33,7 +33,8 @@ class KafkaOrderEvents implements OrderEvents {
 
     @Override
     public void orderPlaced(Order order) {
-        var record = new ProducerRecord<String, OrderPlacedEvent>(TOPIC, order.customerId(), OrderPlacedEvent.of(order));
+        var record =
+                new ProducerRecord<String, OrderPlacedEvent>(TOPIC, order.customerId(), OrderPlacedEvent.of(order));
         record.headers().add(EVENT_TYPE_HEADER, "OrderPlaced".getBytes(StandardCharsets.UTF_8));
         try {
             kafka.send(record).get(SEND_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);

@@ -12,10 +12,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.testcontainers.kafka.KafkaContainer;
 
 /** The classic consumer group on a real Kafka and PostgreSQL: happy path, duplicates, retries, DLT and replay. */
 @SpringBootTest
@@ -31,8 +31,9 @@ class NotificationIT {
     @Autowired
     KafkaTemplate<String, String> kafka;
 
-    @Value("${spring.kafka.bootstrap-servers}")
-    String bootstrap;
+    /** The container itself: with @ServiceConnection the spring.kafka.bootstrap-servers property is not updated. */
+    @Autowired
+    KafkaContainer kafkaContainer;
 
     @AfterEach
     void healthy() {
@@ -72,7 +73,7 @@ class NotificationIT {
         assertThat(await(Duration.ofSeconds(20), () -> service.forCustomer(customer).size() == 1)).isTrue();
         // two retries with 1 s and 2 s pauses before the success
         assertThat(Duration.ofNanos(System.nanoTime() - started)).isGreaterThan(Duration.ofSeconds(3));
-        assertThat(KafkaProbe.read(bootstrap, "orders.events-dlt", customer)).isEmpty();
+        assertThat(KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", customer)).isEmpty();
     }
 
     @Test
@@ -84,7 +85,7 @@ class NotificationIT {
         KafkaProbe.sendOrderPlaced(kafka, bob);
         KafkaProbe.sendOrderPlaced(kafka, alice);
 
-        assertThat(await(Duration.ofSeconds(30), () -> !KafkaProbe.read(bootstrap, "orders.events-dlt", bob)
+        assertThat(await(Duration.ofSeconds(30), () -> !KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", bob)
                         .isEmpty()))
                 .isTrue();
         assertThat(await(Duration.ofSeconds(15), () -> service.forCustomer(alice).size() == 1)).isTrue();
@@ -104,7 +105,7 @@ class NotificationIT {
 
         KafkaProbe.sendRaw(kafka, key, "this is not json");
 
-        assertThat(await(Duration.ofSeconds(15), () -> !KafkaProbe.read(bootstrap, "orders.events-dlt", key)
+        assertThat(await(Duration.ofSeconds(15), () -> !KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", key)
                         .isEmpty()))
                 .isTrue();
         // retries would take at least 1 + 2 + 4 s

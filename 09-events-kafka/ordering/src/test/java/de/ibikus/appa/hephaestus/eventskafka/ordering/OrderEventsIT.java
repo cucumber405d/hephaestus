@@ -14,13 +14,13 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
+import org.testcontainers.kafka.KafkaContainer;
 
 /** The whole Ordering on PostgreSQL and a real Kafka: what lands in orders.events, read back by a plain consumer. */
 @SpringBootTest
@@ -31,8 +31,9 @@ class OrderEventsIT {
     @Autowired
     MockMvcTester mvc;
 
-    @Value("${spring.kafka.bootstrap-servers}")
-    String bootstrapServers;
+    /** The container itself: with @ServiceConnection the spring.kafka.bootstrap-servers property is not updated. */
+    @Autowired
+    KafkaContainer kafka;
 
     @Test
     void orderPlacedIsPublishedKeyedByCustomerWithItsType() {
@@ -62,7 +63,9 @@ class OrderEventsIT {
 
         var records = readFor(customer, 4);
 
-        assertThat(records).extracting(ConsumerRecord::partition).containsOnly(records.getFirst().partition());
+        assertThat(records)
+                .extracting(ConsumerRecord::partition)
+                .containsOnly(records.getFirst().partition());
     }
 
     @Test
@@ -73,7 +76,8 @@ class OrderEventsIT {
         assertThat(mvc.post().uri("/admin/republish/{id}", orderId).exchange()).hasStatus(HttpStatus.ACCEPTED);
 
         var records = readFor(customer, 2);
-        assertThat(eventId(records.get(0).value())).isEqualTo(eventId(records.get(1).value()));
+        assertThat(eventId(records.get(0).value()))
+                .isEqualTo(eventId(records.get(1).value()));
     }
 
     private String place(String customer) {
@@ -90,11 +94,16 @@ class OrderEventsIT {
     /** Reads orders.events from the beginning until it has {@code count} records of the customer (10 s at most). */
     private List<ConsumerRecord<String, String>> readFor(String customer, int count) {
         var props = Map.<String, Object>of(
-                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
-                ConsumerConfig.GROUP_ID_CONFIG, "it-" + UUID.randomUUID(),
-                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest",
-                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                kafka.getBootstrapServers(),
+                ConsumerConfig.GROUP_ID_CONFIG,
+                "it-" + UUID.randomUUID(),
+                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                "earliest",
+                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class,
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class);
         var found = new ArrayList<ConsumerRecord<String, String>>();
         try (var consumer = new KafkaConsumer<String, String>(props)) {
             consumer.subscribe(List.of("orders.events"));

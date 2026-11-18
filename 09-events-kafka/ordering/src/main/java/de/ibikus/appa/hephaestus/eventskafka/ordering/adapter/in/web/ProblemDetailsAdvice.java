@@ -1,8 +1,8 @@
 package de.ibikus.appa.hephaestus.eventskafka.ordering.adapter.in.web;
 
+import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.EventPublishException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InsufficientStockException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InvalidValueException;
-import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.EventPublishException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InventoryUnavailableException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.OrderNotFoundException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.UnknownItemException;
@@ -49,7 +49,10 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
     /** The order is stored, but its event is not in Kafka (dual write, see EventPublishException). */
     @ExceptionHandler(EventPublishException.class)
     ResponseEntity<ProblemDetail> eventPublishFailed(EventPublishException ex) {
-        LOG.error("{}: {}", ex.getMessage(), ex.getCause() == null ? "" : ex.getCause().toString());
+        LOG.error(
+                "{}: {}",
+                ex.getMessage(),
+                ex.getCause() == null ? "" : ex.getCause().toString());
         var problem = problem(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "event-publish-failed",

@@ -5,11 +5,11 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultShareConsumerFactory;
 import org.springframework.kafka.core.ShareConsumerFactory;
 
@@ -22,8 +22,10 @@ import org.springframework.kafka.core.ShareConsumerFactory;
 class ShareGroupConfiguration {
 
     @Bean
-    ShareConsumerFactory<String, String> shareConsumerFactory(
-            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
+    ShareConsumerFactory<String, String> shareConsumerFactory(ConsumerFactory<?, ?> classicConsumers) {
+        // The broker address as Boot resolved it (property, environment or a test's service connection)
+        var bootstrapServers =
+                classicConsumers.getConfigurationProperties().get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG);
         return new DefaultShareConsumerFactory<>(Map.of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,

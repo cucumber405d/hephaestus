@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import de.ibikus.appa.hephaestus.eventskafka.ordering.application.fakes.FakeInventory;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.application.fakes.FakeOrderEvents;
-import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.EventPublishException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.application.fakes.InMemoryOrderRepository;
+import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.EventPublishException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InsufficientStockException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InvalidValueException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InventoryUnavailableException;
@@ -23,8 +23,8 @@ class OrderServiceTest {
     private final FakeInventory inventory = new FakeInventory();
     private final InMemoryOrderRepository orders = new InMemoryOrderRepository();
     private final FakeOrderEvents events = new FakeOrderEvents();
-    private final OrderService service =
-            new OrderService(inventory, orders, events, Clock.fixed(Instant.parse("2026-11-17T10:00:00Z"), ZoneOffset.UTC));
+    private final OrderService service = new OrderService(
+            inventory, orders, events, Clock.fixed(Instant.parse("2026-11-17T10:00:00Z"), ZoneOffset.UTC));
 
     @Test
     void placedOrderIsConfirmedWithItsReservation() {
