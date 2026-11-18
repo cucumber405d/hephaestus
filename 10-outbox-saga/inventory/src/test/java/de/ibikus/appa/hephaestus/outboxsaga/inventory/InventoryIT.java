@@ -70,8 +70,10 @@ class InventoryIT {
         send(Topics.INVENTORY_COMMANDS, command.next(RELEASE_STOCK, "test again"));
 
         assertThat(await(Duration.ofSeconds(15), () -> stock.reserved("HAMMER-01") == before)).isTrue();
-        assertThat(types(read(container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, command.orderId())))
-                .containsExactly(STOCK_RESERVED, STOCK_RELEASED, STOCK_RELEASED);
+        assertThat(await(Duration.ofSeconds(20), () -> types(read(
+                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, command.orderId()))
+                        .equals(List.of(STOCK_RESERVED, STOCK_RELEASED, STOCK_RELEASED))))
+                .isTrue();
     }
 
     @Test

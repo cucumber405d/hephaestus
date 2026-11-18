@@ -33,7 +33,7 @@ show()  { curl -s localhost:8080/api/orders/$1; echo; }
    — публикация без `completion_date`; `docker compose -p hephaestus-10 start kafka` → через ~10–20 s заказ CONFIRMED.
 6. **Дубль:** `curl -X POST localhost:8080/admin/republish/<id>` → `curl -s localhost:8081/admin/stats` (`duplicates` +1).
 7. **Участник лежит:** `docker compose -p hephaestus-10 stop delivery`, по заказу в каждом стиле.
-   Оркестрация: через 30 s REJECTED «timeout at step delivery», команды компенсации в истории.
+   Оркестрация: через 30 s (в e2e — 60 s) REJECTED «timeout at step delivery», команды компенсации в истории.
    Хореография: PENDING сколько угодно. `start delivery` → хореография доходит до CONFIRMED, а оркестрация получает
    поздний `DeliveryScheduled` (игнорируется) и `DeliveryCancelled`.
 8. **Замедление:** `"delayMs":3000` у Payment и оркестрация с `SAGA_STEP_TIMEOUT=2s` в `compose.yaml` — таймаут

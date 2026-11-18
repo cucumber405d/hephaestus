@@ -73,6 +73,10 @@ public class OrderService {
         if (!CHOREOGRAPHY.equals(saga) && !ORCHESTRATION.equals(saga)) {
             throw new IllegalArgumentException("saga must be choreography or orchestration");
         }
+        // The same SKU twice counts once, quantities added up (one line per SKU everywhere downstream)
+        var merged = new java.util.TreeMap<String, Integer>();
+        lines.forEach(line -> merged.merge(line.sku(), line.quantity(), Integer::sum));
+        lines = merged.entrySet().stream().map(e -> new Line(e.getKey(), e.getValue())).toList();
         var amount = BigDecimal.ZERO;
         for (var line : lines) {
             var price = PRICES.get(line.sku());

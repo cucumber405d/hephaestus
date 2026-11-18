@@ -92,8 +92,10 @@ class PaymentIT {
         send(Topics.PAYMENT_COMMANDS, reserve.next(REFUND_PAYMENT, "test again"));
 
         assertThat(await(Duration.ofSeconds(15), () -> payments.reserved(customer).signum() == 0)).isTrue();
-        assertThat(types(read(container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, reserve.orderId())))
-                .containsExactly(PAYMENT_RESERVED, PAYMENT_REFUNDED, PAYMENT_REFUNDED);
+        assertThat(await(Duration.ofSeconds(20), () -> types(read(
+                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, reserve.orderId()))
+                        .equals(java.util.List.of(PAYMENT_RESERVED, PAYMENT_REFUNDED, PAYMENT_REFUNDED))))
+                .isTrue();
         assertThat(payments.reserved(customer)).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
@@ -105,7 +107,10 @@ class PaymentIT {
         assertThat(await(Duration.ofSeconds(15), () -> payments.status(reserve.orderId()).isPresent())).isTrue();
         send(Topics.PAYMENT_COMMANDS, reserve);
 
-        assertThat(replies(reserve.orderId(), Topics.ORDERING_REPLIES)).containsExactly(PAYMENT_REFUNDED, PAYMENT_DECLINED);
+        assertThat(await(Duration.ofSeconds(20), () -> types(read(
+                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, reserve.orderId()))
+                        .equals(java.util.List.of(PAYMENT_REFUNDED, PAYMENT_DECLINED))))
+                .isTrue();
     }
 
     @Test

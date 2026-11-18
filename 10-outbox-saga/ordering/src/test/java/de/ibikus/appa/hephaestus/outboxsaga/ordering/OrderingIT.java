@@ -27,9 +27,9 @@ import org.testcontainers.kafka.KafkaContainer;
 
 /**
  * Ordering on real Kafka and PostgreSQL, the test playing the participants: outbox, both saga styles, the step
- * timeout (3 s here).
+ * timeout (10 s here: well above the time the test needs to read a topic and answer).
  */
-@SpringBootTest(properties = "saga.step-timeout=3s")
+@SpringBootTest(properties = "saga.step-timeout=10s")
 @AutoConfigureMockMvc
 @Import(Containers.class)
 class OrderingIT {
@@ -95,7 +95,7 @@ class OrderingIT {
         send(Topics.ORDERING_REPLIES, reserve.next(STOCK_RESERVED, null));
         // Delivery never answers
 
-        assertThat(await(Duration.ofSeconds(20), () -> status(id).equals("REJECTED"))).isTrue();
+        assertThat(await(Duration.ofSeconds(40), () -> status(id).equals("REJECTED"))).isTrue();
         assertThat(await(Duration.ofSeconds(15), () -> types(read(
                                 container.getBootstrapServers(), messages, Topics.DELIVERY_COMMANDS, id))
                         .equals(List.of(SCHEDULE_DELIVERY, CANCEL_DELIVERY))))
@@ -132,11 +132,18 @@ class OrderingIT {
         return orders.find(id).orElseThrow().status();
     }
 
+    /** The first message about the order on the topic, from the read that found it (no second read). */
     private SagaMessage awaitOne(String topic, UUID orderId) {
-        assertThat(await(Duration.ofSeconds(20), () -> !read(container.getBootstrapServers(), messages, topic, orderId)
-                        .isEmpty()))
+        var found = new java.util.concurrent.atomic.AtomicReference<SagaMessage>();
+        assertThat(await(Duration.ofSeconds(20), () -> {
+                    var messagesFound = read(container.getBootstrapServers(), messages, topic, orderId);
+                    if (!messagesFound.isEmpty()) {
+                        found.set(messagesFound.getFirst());
+                    }
+                    return found.get() != null;
+                }))
                 .isTrue();
-        return read(container.getBootstrapServers(), messages, topic, orderId).getFirst();
+        return found.get();
     }
 
     private void send(String topic, SagaMessage message) {

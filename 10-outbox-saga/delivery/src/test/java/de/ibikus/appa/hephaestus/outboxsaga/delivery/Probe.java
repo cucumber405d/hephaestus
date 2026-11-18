@@ -37,7 +37,7 @@ public final class Probe {
         kafka.send(topic, m.orderId().toString(), messages.write(m)).join();
     }
 
-    /** Messages about the order on the topic, read from the beginning (stops after one quiet second, max 10 s). */
+    /** Messages about the order on the topic, read from the beginning (stops after half a quiet second, max 10 s). */
     public static List<SagaMessage> read(String bootstrap, Messages messages, String topic, UUID orderId) {
         var props = Map.<String, Object>of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap,
@@ -50,7 +50,7 @@ public final class Probe {
             consumer.subscribe(List.of(topic));
             var quiet = 0;
             var deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
-            while (quiet < 4 && System.nanoTime() < deadline) {
+            while (quiet < 2 && System.nanoTime() < deadline) {
                 var records = consumer.poll(Duration.ofMillis(250));
                 if (records.isEmpty() && !consumer.assignment().isEmpty()) {
                     quiet++;

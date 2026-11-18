@@ -77,6 +77,8 @@ fi
 echo "==> stack"
 compose down -v >/dev/null 2>&1 || true
 trap cleanup EXIT
+# 60 s step timeout: scenario 5 restarts Kafka, which with the outbox resubmission takes longer than 30 s
+export SAGA_STEP_TIMEOUT=60s
 compose up -d
 wait_ready "$ORDERING" "$PAYMENT" "$INVENTORY" "$DELIVERY"
 ok "stack ready (Kafka UI: http://localhost:8085)"
@@ -145,7 +147,7 @@ echo "==> 7. Delivery down"
 compose stop delivery >/dev/null
 choreo=$(order alice choreography HAMMER-01 1)
 orch=$(order alice orchestration HAMMER-01 1)
-wait_status "$orch" REJECTED 60 || fail "orchestration should time out: $(status "$orch")"
+wait_status "$orch" REJECTED 90 || fail "orchestration should time out: $(status "$orch")"
 [ "$(reason "$orch")" = "timeout at step delivery" ] || fail "timeout reason: $(reason "$orch")"
 ok "orchestration: timeout at delivery -> REJECTED, compensations sent"
 [ "$(status "$choreo")" = "PENDING" ] || fail "choreography should still wait: $(status "$choreo")"
