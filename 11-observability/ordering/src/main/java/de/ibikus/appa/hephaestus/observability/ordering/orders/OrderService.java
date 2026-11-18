@@ -96,6 +96,9 @@ public class OrderService {
             amount = amount.add(price.multiply(BigDecimal.valueOf(line.quantity())));
         }
         var order = new Order(UUID.randomUUID(), customerId, saga, "PENDING", amount, null, List.copyOf(lines));
+        // The request's span is found by the order too: a trace the outbox broke shows up as a second trace
+        carrier.tag("order.id", order.id().toString());
+        carrier.tag("saga.style", saga);
         var now = clock.instant();
         SagaMessage first;
         String topic;

@@ -34,7 +34,8 @@ class OutboxRelaySwitchedOffIT {
     void switchedOffStartsANewTrace() {
         var command = message(RESERVE_PAYMENT, ORCHESTRATION, "alice", "35.00", "HAMMER-01", 1);
 
-        relay.relay(new OutgoingMessage(Topics.PAYMENT_COMMANDS, command, OutboxRelayIT.PARENT));
+        relay.relay(new OutgoingMessage(Topics.PAYMENT_COMMANDS, command, OutboxRelayIT.PARENT))
+                .join();
 
         assertThat(await(
                         Duration.ofSeconds(20),

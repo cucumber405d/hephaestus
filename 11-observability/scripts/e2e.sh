@@ -67,7 +67,8 @@ wait_history() {
 trace_ids() {
     curl -fsG "$TEMPO/api/search" --data-urlencode "q={ span.order.id = \"$1\" }" \
         --data-urlencode "start=$(($(date +%s) - 3600))" --data-urlencode "end=$(($(date +%s) + 60))" \
-        --data-urlencode "limit=20" | grep -o '"traceID":"[0-9a-f]*"' | sed 's/.*:"\(.*\)"/\1/' | sort -u
+        --data-urlencode "limit=20" | grep -o '"traceID":"[0-9a-f]*"' | sed 's/.*:"\(.*\)"/\1/' \
+        | while read -r id; do printf '%32s\n' "$id" | tr ' ' 0; done | sort -u   # Tempo drops leading zeros
 }
 # Service names of the spans in trace $1, sorted, space-separated
 services() {

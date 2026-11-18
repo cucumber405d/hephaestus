@@ -6,18 +6,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.modulith.events.IncompleteEventPublications;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
 /**
  * The outbox's safety net: a publication {@link OutboxRelay} could not send (Kafka down) stays incomplete in the
- * event_publication table and is resubmitted here until it goes through. {@code @EnableAsync}: the relay runs after
- * the commit in its own thread (an {@code @ApplicationModuleListener}).
+ * event_publication table and is resubmitted here until it goes through.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableScheduling
-@EnableAsync
 class OutboxConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(OutboxConfiguration.class);
