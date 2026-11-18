@@ -1,0 +1,74 @@
+# 11-observability: verify -> end-to-end test of the stack in Compose -> publish the four images (main only).
+name: 11-observability
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "11-observability/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/11-observability.yml"
+  pull_request:
+    paths:
+      - "11-observability/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/11-observability.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/build-subproject.yml
+    with:
+      subproject: 11-observability
+
+  # the saga of 10 with otel-lgtm in Docker Compose: the scenarios plus the traces, metrics and logs they leave
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: End-to-end test
+        run: 11-observability/scripts/e2e.sh
+
+  publish:
+    needs: e2e
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        module: [ordering, payment, inventory, delivery]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      subproject: 11-observability
+      module: ${{ matrix.module }}
+      image-name: hephaestus/observability-${{ matrix.module }}
