@@ -3,6 +3,9 @@ package de.ibikus.appa.hephaestus.resilience.inventory.adapter.out.supplier;
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.SupplierOffer;
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.SupplierUnavailableException;
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.UnknownOfferException;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import org.springframework.core.retry.RetryException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -41,8 +44,8 @@ public class SupplierCall {
      * refusals by a mechanism: circuit open, bulkhead full, rate or time limit) means "supplier unavailable".
      */
     public static RuntimeException translate(String mechanism, String sku, Throwable t) {
-        // Mechanisms that run the call on another thread (time limiters) may wrap what it threw
-        if ((t instanceof java.util.concurrent.ExecutionException || t instanceof java.util.concurrent.CompletionException)
+        // Time limiters (other thread) and Spring's retry may wrap what the call threw
+        if ((t instanceof ExecutionException || t instanceof CompletionException || t instanceof RetryException)
                 && t.getCause() != null) {
             return translate(mechanism, sku, t.getCause());
         }
