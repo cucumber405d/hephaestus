@@ -11,7 +11,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("supply")
 public record SupplyProperties(Retry retry, int bulkhead, CircuitBreaker circuitBreaker, int rateLimitPerSecond) {
 
-    /** maxRetries retries after the first attempt; exponential backoff from delay, plus up to jitter. */
+    /**
+     * maxRetries retries after the first attempt; exponential backoff from delay. Jitter: Spring 7 adds ± jitter
+     * to each pause; Resilience4j randomises each pause by ± (jitter / delay), i.e. ±50 % here (200 ± 100 ms,
+     * then 400 ± 200 ms).
+     */
     public record Retry(int maxRetries, Duration delay, double multiplier, Duration jitter) {
 
         public int attempts() {

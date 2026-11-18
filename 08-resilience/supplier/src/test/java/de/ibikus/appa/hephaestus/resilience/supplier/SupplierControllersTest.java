@@ -84,7 +84,10 @@ class SupplierControllersTest {
         mvc.get().uri("/api/offers/ANVIL-01").exchange();
         mvc.get().uri("/api/offers/NOPE-01").exchange();
 
-        assertThat(mvc.get().uri("/admin/stats").exchange()).bodyJson().extractingPath("$.offerCalls").isEqualTo(2);
+        assertThat(mvc.get().uri("/admin/stats").exchange())
+                .bodyJson()
+                .extractingPath("$.offerCalls")
+                .isEqualTo(2);
     }
 
     private void setFaults(String json) {

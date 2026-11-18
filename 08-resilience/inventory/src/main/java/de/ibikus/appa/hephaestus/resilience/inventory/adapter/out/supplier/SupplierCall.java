@@ -5,6 +5,7 @@ import de.ibikus.appa.hephaestus.resilience.inventory.domain.SupplierUnavailable
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.UnknownOfferException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import org.springframework.core.retry.RetryException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -35,7 +36,11 @@ public class SupplierCall {
 
     /** What all mechanisms treat as "the supplier failed" (retried, counted by circuit breakers). */
     public static boolean isFailure(Throwable t) {
-        return t instanceof ResourceAccessException || t instanceof HttpServerErrorException;
+        // TimeoutException: a time limiter (Spring Cloud CB) gave up. Must count as a failure: in Resilience4j an
+        // exception that is neither recorded nor ignored counts as a success for the breaker
+        return t instanceof ResourceAccessException
+                || t instanceof HttpServerErrorException
+                || t instanceof TimeoutException;
     }
 
     /**

@@ -65,9 +65,10 @@ public final class StubSupplierServer implements AutoCloseable {
         try {
             var sku = exchange.getRequestURI().getPath().substring("/api/offers/".length());
             if (mode == Mode.SLOW) {
-                // Slow but within the client's 1 s read timeout: the client does not give up and retry while we
-                // still work, so maxInFlight measures what the mechanism lets through
-                Thread.sleep(900);
+                // Slow but well within the client's 1 s read timeout (room for Toxiproxy and a busy CI runner): the
+                // client does not give up and retry while we still work, so maxInFlight measures what the mechanism
+                // lets through
+                Thread.sleep(600);
             }
             if (mode == Mode.FAILING) {
                 respond(exchange, 503, "{\"status\":503}");

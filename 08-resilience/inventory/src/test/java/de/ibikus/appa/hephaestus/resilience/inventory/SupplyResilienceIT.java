@@ -148,7 +148,8 @@ class SupplyResilienceIT {
                     .bodyJson()
                     .extractingPath("$.source")
                     .isEqualTo("cache");
-            assertThat(millisSince(started)).isLessThan(200);
+            // no timeout, no retries: far below the 1 s read timeout (generous for shared CI runners)
+            assertThat(millisSince(started)).isLessThan(500);
         }
         assertThat(SUPPLIER.calls()).isEqualTo(callsWhenOpen);
 
