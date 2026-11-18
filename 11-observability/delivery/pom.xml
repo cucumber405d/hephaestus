@@ -87,9 +87,51 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- The OpenTelemetry Java agent next to the classes (target/otel), early enough for any Jib goal -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>otel-agent</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>io.opentelemetry.javaagent</groupId>
+                                    <artifactId>opentelemetry-javaagent</artifactId>
+                                    <version>${otel.agent.version}</version>
+                                    <destFileName>opentelemetry-javaagent.jar</destFileName>
+                                </artifactItem>
+                            </artifactItems>
+                            <outputDirectory>${project.build.directory}/otel</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Delivery is the agent half of the comparison: no telemetry in the code, the agent instruments it.
+                 Configured by OTEL_* variables (Compose); without OTEL_EXPORTER_OTLP_ENDPOINT it tries localhost. -->
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
+                <configuration>
+                    <extraDirectories>
+                        <paths>
+                            <path>
+                                <from>${project.build.directory}/otel</from>
+                                <into>/otel</into>
+                            </path>
+                        </paths>
+                    </extraDirectories>
+                    <container>
+                        <environment>
+                            <JAVA_TOOL_OPTIONS>-javaagent:/otel/opentelemetry-javaagent.jar -XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError</JAVA_TOOL_OPTIONS>
+                        </environment>
+                    </container>
+                </configuration>
             </plugin>
         </plugins>
     </build>
