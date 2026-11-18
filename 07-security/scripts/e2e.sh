@@ -94,8 +94,11 @@ ok "stack ready (Keycloak healthy, services ready)"
 echo "==> anonymous"
 [ "$(code "$BASE/api/stock/ANVIL-01")" = "401" ] || fail "anonymous API call must be 401"
 ok "anonymous /api/stock: 401"
-[ "$(code "$BASE/me")" = "302" ] || fail "anonymous page must redirect to the login"
-ok "anonymous /me: 302 to the login"
+# A browser navigation (Accept: text/html) is sent to the login; a fetch() without it gets 401 like the API
+[ "$(code -H 'Accept: text/html' "$BASE/me")" = "302" ] || fail "anonymous page must redirect to the login"
+ok "anonymous /me as a page: 302 to the login"
+[ "$(code "$BASE/me")" = "401" ] || fail "anonymous /me as a fetch must be 401"
+ok "anonymous /me as a fetch: 401"
 
 echo "==> login"
 login alice
@@ -172,10 +175,11 @@ reserved=$(incluster -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $s
     -H 'Content-Type: application/json' -d "$reservation" http://inventory:8080/api/reservations)
 [ "$reserved" = "201" ] || fail "the Ordering service token must reserve, got $reserved"
 ok "Ordering's service token (client credentials) at /api/reservations: 201"
+# The service token is meant for Inventory only (aud = inventory): Ordering rejects it before looking at roles
 [ "$(incluster -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $service_token" \
     -H 'Content-Type: application/json' -d '{"lines":[{"sku":"ANVIL-01","quantity":1}]}' \
-    http://ordering:8080/api/orders)" = "403" ] || fail "a service token is no customer at Ordering"
-ok "service token at Ordering POST /api/orders: 403"
+    http://ordering:8080/api/orders)" = "401" ] || fail "a token for another audience must be 401 at Ordering"
+ok "service token (aud inventory) at Ordering POST /api/orders: 401"
 
 echo "==> Inventory outage"
 compose stop inventory >/dev/null

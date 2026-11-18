@@ -56,7 +56,8 @@ class SecurityConfiguration {
                         .authenticated())
                 .oauth2Login(login -> login.authorizationEndpoint(
                         endpoint -> endpoint.authorizationRequestResolver(authorizationRequests)))
-                // Registered before oauth2Login's own entry point, so it wins for the API
+                // Registered before oauth2Login's own entry point (which only takes requests accepting HTML), so the
+                // API gets 401 and so does any other non-page request; a browser navigation is sent to the login
                 .exceptionHandling(exceptions -> exceptions.defaultAuthenticationEntryPointFor(
                         new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
                         PathPatternRequestMatcher.withDefaults().matcher("/api/**")))

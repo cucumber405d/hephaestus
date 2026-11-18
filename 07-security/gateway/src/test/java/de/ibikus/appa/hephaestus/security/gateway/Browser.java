@@ -22,6 +22,11 @@ final class Browser {
         return send(HttpRequest.newBuilder(uri).GET());
     }
 
+    /** A page navigation: browsers send Accept: text/html, which is what selects the login redirect. */
+    HttpResponse<String> navigate(URI uri) {
+        return send(HttpRequest.newBuilder(uri).header("Accept", "text/html").GET());
+    }
+
     HttpResponse<String> get(URI uri, String apiVersion) {
         return send(HttpRequest.newBuilder(uri).header("API-Version", apiVersion).GET());
     }

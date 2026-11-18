@@ -71,8 +71,14 @@ class GatewayBffIT {
     }
 
     @Test
+    void anonymousFetchWithoutHtmlAcceptIs401() {
+        // oauth2Login redirects only requests that accept HTML; everything else gets the first entry point (401)
+        assertThat(new Browser().get(uri("/me")).statusCode()).isEqualTo(401);
+    }
+
+    @Test
     void anonymousPageIsSentToTheLogin() {
-        var response = new Browser().get(uri("/me"));
+        var response = new Browser().navigate(uri("/me"));
 
         assertThat(response.statusCode()).isEqualTo(302);
         assertThat(response.headers().firstValue("Location")).hasValueSatisfying(
