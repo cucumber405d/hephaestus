@@ -24,6 +24,7 @@
         <!-- OpenTelemetry Java agent (Delivery) and the Logback appender (Boot services), same release -->
         <otel.agent.version>2.32.0</otel.agent.version>
         <otel.instrumentation.version>2.32.0-alpha</otel.instrumentation.version>
+        <otel.semconv.version>1.44.0</otel.semconv.version>
         <jre.image>eclipse-temurin:25-jre</jre.image>
         <!-- Git commit of the images; CI passes -Dimage.revision=$GITHUB_SHA -->
         <image.revision>unknown</image.revision>
@@ -38,6 +39,14 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Two paths bring the semantic-conventions constants: Micrometer's OTel bridge (1.41.x) and the Logback
+                 appender (1.44.x). One version for both (dependency convergence): the newer one, a superset of the
+                 stable constants the bridge uses. -->
+            <dependency>
+                <groupId>io.opentelemetry.semconv</groupId>
+                <artifactId>opentelemetry-semconv</artifactId>
+                <version>${otel.semconv.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.modulith</groupId>
                 <artifactId>spring-modulith-bom</artifactId>
