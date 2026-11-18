@@ -1,0 +1,56 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD,
+# KAFKA_BOOTSTRAP_SERVERS.
+spring:
+  application:
+    name: payment
+  main:
+    banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: payment
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 10
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # The outbox hands over the JSON text itself
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Kafka down: fail the send within seconds; the outbox keeps the message and resubmits it
+        max.block.ms: 5000
+        request.timeout.ms: 3000
+        delivery.timeout.ms: 5000
+    listener:
+      ack-mode: record
+  modulith:
+    events:
+      # The outbox table (event_publication) in this service's database
+      jdbc:
+        schema-initialization:
+          enabled: true
+      kafka:
+        # We send JSON text ourselves (StringSerializer above)
+        enable-json: false
+      republish-outstanding-events-on-restart: true
+
+server:
+  port: ${PORT:8081}
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs
