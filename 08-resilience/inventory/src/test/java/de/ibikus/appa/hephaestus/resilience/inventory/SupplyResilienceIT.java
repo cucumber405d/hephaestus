@@ -38,10 +38,11 @@ import org.testcontainers.containers.GenericContainer;
 @Import(PostgresTestcontainers.class)
 class SupplyResilienceIT {
 
+    // Order matters: static fields are initialised top to bottom, and startToxiproxy() already uses HTTP and SUPPLIER
+    static final HttpClient HTTP = HttpClient.newHttpClient();
     static final StubSupplierServer SUPPLIER = new StubSupplierServer();
     static final GenericContainer<?> REDIS = start(new GenericContainer<>("redis:8-alpine").withExposedPorts(6379));
     static final GenericContainer<?> TOXIPROXY = startToxiproxy();
-    static final HttpClient HTTP = HttpClient.newHttpClient();
 
     @DynamicPropertySource
     static void wiring(DynamicPropertyRegistry registry) {

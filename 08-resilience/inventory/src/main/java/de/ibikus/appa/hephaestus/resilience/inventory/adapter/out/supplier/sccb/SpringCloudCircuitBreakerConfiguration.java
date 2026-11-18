@@ -31,7 +31,8 @@ class SpringCloudCircuitBreakerConfiguration {
     @Bean
     CircuitBreakerRegistry springCloudCircuitBreakerRegistry(ObjectProvider<MeterRegistry> meters) {
         var registry = CircuitBreakerRegistry.ofDefaults();
-        meters.ifAvailable(m -> TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(registry).bindTo(m));
+        meters.ifAvailable(m ->
+                TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(registry).bindTo(m));
         return registry;
     }
 
