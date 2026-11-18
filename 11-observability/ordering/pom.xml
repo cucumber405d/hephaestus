@@ -69,11 +69,6 @@
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-starter-jdbc</artifactId>
         </dependency>
-        <!-- ...and its delivery to Kafka after commit -->
-        <dependency>
-            <groupId>org.springframework.modulith</groupId>
-            <artifactId>spring-modulith-events-kafka</artifactId>
-        </dependency>
         <!-- @AutoConfigureTracing: tracing is off in tests unless asked for -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

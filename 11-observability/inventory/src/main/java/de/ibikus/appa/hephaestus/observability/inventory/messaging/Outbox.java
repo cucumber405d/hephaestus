@@ -14,13 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class Outbox {
 
     private final ApplicationEventPublisher events;
+    private final TraceCarrier carrier;
 
-    public Outbox(ApplicationEventPublisher events) {
+    public Outbox(ApplicationEventPublisher events, TraceCarrier carrier) {
         this.events = events;
+        this.carrier = carrier;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void send(String topic, SagaMessage message) {
-        events.publishEvent(new OutgoingMessage(topic, message));
+        events.publishEvent(new OutgoingMessage(topic, message, carrier.capture()));
     }
 }
