@@ -41,6 +41,11 @@ public class SupplierCall {
      * refusals by a mechanism: circuit open, bulkhead full, rate or time limit) means "supplier unavailable".
      */
     public static RuntimeException translate(String mechanism, String sku, Throwable t) {
+        // Mechanisms that run the call on another thread (time limiters) may wrap what it threw
+        if ((t instanceof java.util.concurrent.ExecutionException || t instanceof java.util.concurrent.CompletionException)
+                && t.getCause() != null) {
+            return translate(mechanism, sku, t.getCause());
+        }
         if (t instanceof UnknownOfferException || t instanceof SupplierUnavailableException) {
             return (RuntimeException) t;
         }

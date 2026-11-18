@@ -9,6 +9,13 @@ spring:
   threads:
     virtual:
       enabled: true
+  cloud:
+    circuitbreaker:
+      bulkhead:
+        resilience4j:
+          # Spring Cloud CB would also wrap calls in a Resilience4j bulkhead (25 by default): off, so mechanism 2
+          # is exactly what the abstraction itself offers (circuit breaker + time limiter)
+          enabled: false
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}

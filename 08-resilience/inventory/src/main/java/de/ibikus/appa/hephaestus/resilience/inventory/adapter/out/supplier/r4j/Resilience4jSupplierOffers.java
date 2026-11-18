@@ -1,17 +1,15 @@
 package de.ibikus.appa.hephaestus.resilience.inventory.adapter.out.supplier.r4j;
 
+import de.ibikus.appa.hephaestus.resilience.inventory.adapter.out.supplier.CircuitBreakerSettings;
 import de.ibikus.appa.hephaestus.resilience.inventory.adapter.out.supplier.SupplierCall;
 import de.ibikus.appa.hephaestus.resilience.inventory.adapter.out.supplier.SupplyProperties;
 import de.ibikus.appa.hephaestus.resilience.inventory.application.port.in.Mechanism;
 import de.ibikus.appa.hephaestus.resilience.inventory.application.port.out.SupplierOffers;
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.SupplierOffer;
-import de.ibikus.appa.hephaestus.resilience.inventory.domain.UnknownOfferException;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadConfig;
 import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig.SlidingWindowType;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.micrometer.tagged.TaggedBulkheadMetrics;
@@ -48,20 +46,7 @@ public class Resilience4jSupplierOffers implements SupplierOffers {
 
     public Resilience4jSupplierOffers(SupplierCall call, SupplyProperties properties, MeterRegistry meters) {
         this.call = call;
-        var cb = properties.circuitBreaker();
-        var circuitBreakers = CircuitBreakerRegistry.of(CircuitBreakerConfig.custom()
-                .slidingWindowType(SlidingWindowType.COUNT_BASED)
-                .slidingWindowSize(cb.window())
-                .minimumNumberOfCalls(cb.window())
-                .failureRateThreshold(cb.failureRate())
-                .slowCallDurationThreshold(cb.slowCall())
-                .slowCallRateThreshold(cb.failureRate())
-                .waitDurationInOpenState(cb.open())
-                .permittedNumberOfCallsInHalfOpenState(cb.halfOpenCalls())
-                .recordException(SupplierCall::isFailure)
-                // A 404 is an answer: neither success nor failure for the breaker
-                .ignoreExceptions(UnknownOfferException.class)
-                .build());
+        var circuitBreakers = CircuitBreakerRegistry.of(CircuitBreakerSettings.from(properties.circuitBreaker()));
         var r = properties.retry();
         var retries = RetryRegistry.of(RetryConfig.custom()
                 .maxAttempts(r.attempts())
