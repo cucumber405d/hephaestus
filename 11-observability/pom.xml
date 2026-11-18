@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.ibikus.appa.hephaestus</groupId>
+        <artifactId>hephaestus-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>observability</artifactId>
+    <packaging>pom</packaging>
+    <name>Hephaestus :: 11-observability</name>
+    <description>Order saga Ordering → Payment → Inventory → Delivery, choreography and orchestration side by side, every message through a Spring Modulith outbox</description>
+
+    <properties>
+        <!-- Spring Cloud release train for Spring Boot 4.1 -->
+        <spring-cloud.version>2025.1.3</spring-cloud.version>
+        <!-- Event publication registry (outbox) and Kafka externalization; 2.x is built on Boot 4 -->
+        <spring-modulith.version>2.1.1</spring-modulith.version>
+        <jre.image>eclipse-temurin:25-jre</jre.image>
+        <!-- Git commit of the images; CI passes -Dimage.revision=$GITHUB_SHA -->
+        <image.revision>unknown</image.revision>
+    </properties>
+
+    <modules>
+        <module>ordering</module>
+        <module>payment</module>
+        <module>inventory</module>
+        <module>delivery</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.modulith</groupId>
+                <artifactId>spring-modulith-bom</artifactId>
+                <version>${spring-modulith.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <!-- Same image shape as 03: non-root, JVM sized from the container limit; each module sets
+                         service.name and main.class -->
+                    <groupId>com.google.cloud.tools</groupId>
+                    <artifactId>jib-maven-plugin</artifactId>
+                    <configuration>
+                        <from>
+                            <image>${jre.image}</image>
+                        </from>
+                        <to>
+                            <image>hephaestus/observability-${service.name}:jib</image>
+                        </to>
+                        <container>
+                            <mainClass>${main.class}</mainClass>
+                            <user>1000:1000</user>
+                            <ports>
+                                <port>8080</port>
+                            </ports>
+                            <environment>
+                                <JAVA_TOOL_OPTIONS>-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError</JAVA_TOOL_OPTIONS>
+                            </environment>
+                            <labels>
+                                <org.opencontainers.image.source>https://github.com/cucumber405d/hephaestus</org.opencontainers.image.source>
+                                <org.opencontainers.image.revision>${image.revision}</org.opencontainers.image.revision>
+                                <org.opencontainers.image.title>observability-${service.name}</org.opencontainers.image.title>
+                            </labels>
+                        </container>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
