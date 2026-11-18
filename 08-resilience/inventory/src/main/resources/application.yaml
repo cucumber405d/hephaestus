@@ -1,4 +1,4 @@
-# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD.
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, REDIS_URL, SUPPLIER_URL.
 spring:
   application:
     name: inventory
@@ -9,6 +9,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+      timeout: 500ms
   jpa:
     open-in-view: false
     hibernate:
@@ -22,6 +26,28 @@ spring:
         header: API-Version
       supported: 1,2
       default: 1
+
+# The supplier (in Compose behind Toxiproxy). The timeouts are the innermost protection of every mechanism.
+supplier:
+  url: ${SUPPLIER_URL:http://localhost:8090}
+  connect-timeout: 500ms
+  read-timeout: 1s
+
+# The same protection numbers for all three mechanisms (see SupplyProperties)
+supply:
+  retry:
+    max-retries: 2        # 3 attempts
+    delay: 200ms
+    multiplier: 2
+    jitter: 100ms
+  bulkhead: 10
+  circuit-breaker:
+    window: 10
+    failure-rate: 50
+    slow-call: 800ms
+    open: 10s
+    half-open-calls: 3
+  rate-limit-per-second: 20
 
 server:
   port: ${PORT:8081}

@@ -6,4 +6,8 @@ public abstract class InventoryException extends RuntimeException {
     protected InventoryException(String message) {
         super(message);
     }
+
+    protected InventoryException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }
