@@ -46,7 +46,10 @@ class NotificationIT {
 
         KafkaProbe.sendOrderPlaced(kafka, customer);
 
-        assertThat(await(Duration.ofSeconds(15), () -> service.forCustomer(customer).size() == 1)).isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> service.forCustomer(customer).size() == 1))
+                .isTrue();
     }
 
     @Test
@@ -58,7 +61,8 @@ class NotificationIT {
         KafkaProbe.send(kafka, customer, eventId);
         KafkaProbe.send(kafka, customer, eventId);
 
-        assertThat(await(Duration.ofSeconds(15), () -> service.duplicates() == duplicatesBefore + 1)).isTrue();
+        assertThat(await(Duration.ofSeconds(15), () -> service.duplicates() == duplicatesBefore + 1))
+                .isTrue();
         assertThat(service.forCustomer(customer)).hasSize(1);
     }
 
@@ -70,10 +74,14 @@ class NotificationIT {
 
         KafkaProbe.sendOrderPlaced(kafka, customer);
 
-        assertThat(await(Duration.ofSeconds(20), () -> service.forCustomer(customer).size() == 1)).isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> service.forCustomer(customer).size() == 1))
+                .isTrue();
         // two retries with 1 s and 2 s pauses before the success
         assertThat(Duration.ofNanos(System.nanoTime() - started)).isGreaterThan(Duration.ofSeconds(3));
-        assertThat(KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", customer)).isEmpty();
+        assertThat(KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", customer))
+                .isEmpty();
     }
 
     @Test
@@ -85,16 +93,21 @@ class NotificationIT {
         KafkaProbe.sendOrderPlaced(kafka, bob);
         KafkaProbe.sendOrderPlaced(kafka, alice);
 
-        assertThat(await(Duration.ofSeconds(30), () -> !KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", bob)
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(30),
+                        () -> !KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", bob)
+                                .isEmpty()))
                 .isTrue();
-        assertThat(await(Duration.ofSeconds(15), () -> service.forCustomer(alice).size() == 1)).isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(15), () -> service.forCustomer(alice).size() == 1))
+                .isTrue();
         assertThat(service.forCustomer(bob)).isEmpty();
 
         service.faults(Faults.NONE);
         assertThat(replayer.replay().replayed()).isGreaterThanOrEqualTo(1);
 
-        assertThat(await(Duration.ofSeconds(15), () -> service.forCustomer(bob).size() == 1)).isTrue();
+        assertThat(await(Duration.ofSeconds(15), () -> service.forCustomer(bob).size() == 1))
+                .isTrue();
         assertThat(replayer.replay().replayed()).isZero();
     }
 
@@ -105,8 +118,10 @@ class NotificationIT {
 
         KafkaProbe.sendRaw(kafka, key, "this is not json");
 
-        assertThat(await(Duration.ofSeconds(15), () -> !KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", key)
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> !KafkaProbe.read(kafkaContainer.getBootstrapServers(), "orders.events-dlt", key)
+                                .isEmpty()))
                 .isTrue();
         // retries would take at least 1 + 2 + 4 s
         assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(7));

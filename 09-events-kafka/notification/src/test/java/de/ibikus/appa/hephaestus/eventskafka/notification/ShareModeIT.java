@@ -50,7 +50,9 @@ class ShareModeIT {
 
         KafkaProbe.sendOrderPlaced(kafka, customer);
 
-        assertThat(KafkaProbe.await(Duration.ofSeconds(30), () -> service.forCustomer(customer).size() == 1))
+        assertThat(KafkaProbe.await(
+                        Duration.ofSeconds(30),
+                        () -> service.forCustomer(customer).size() == 1))
                 .isTrue();
         service.faults(Faults.NONE);
     }

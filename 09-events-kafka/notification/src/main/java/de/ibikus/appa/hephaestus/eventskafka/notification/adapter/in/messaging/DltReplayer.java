@@ -1,7 +1,6 @@
 package de.ibikus.appa.hephaestus.eventskafka.notification.adapter.in.messaging;
 
 import de.ibikus.appa.hephaestus.eventskafka.notification.domain.InvalidEventException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,17 +27,19 @@ public class DltReplayer {
 
     private static final Logger LOG = LoggerFactory.getLogger(DltReplayer.class);
     static final String GROUP = "notification-dlt-replay";
-    static final String EXCEPTION_HEADER = "kafka_dlt-exception-fqcn";
     static final Duration MAX_DURATION = Duration.ofSeconds(30);
 
     public record Result(int replayed, int skipped) {}
 
     private final ConsumerFactory<String, String> consumers;
     private final KafkaTemplate<String, String> template;
+    private final OrderPlacedReader reader;
 
-    DltReplayer(ConsumerFactory<String, String> consumers, KafkaTemplate<String, String> template) {
+    DltReplayer(
+            ConsumerFactory<String, String> consumers, KafkaTemplate<String, String> template, OrderPlacedReader reader) {
         this.consumers = consumers;
         this.template = template;
+        this.reader = reader;
     }
 
     public synchronized Result replay() {
@@ -84,10 +85,17 @@ public class DltReplayer {
         return end.entrySet().stream().allMatch(e -> consumer.position(e.getKey()) >= e.getValue());
     }
 
-    private static boolean isPoison(ConsumerRecord<String, String> record) {
-        var header = record.headers().lastHeader(EXCEPTION_HEADER);
-        return header != null
-                && new String(header.value(), StandardCharsets.UTF_8).equals(InvalidEventException.class.getName());
+    /**
+     * A record that still cannot be read as an event (broken JSON, wrong type, missing fields). Decided by reading
+     * it, not by the DLT exception headers: those may name a wrapper exception.
+     */
+    private boolean isPoison(ConsumerRecord<String, String> record) {
+        try {
+            reader.read(record);
+            return false;
+        } catch (InvalidEventException e) {
+            return true;
+        }
     }
 
     private void sendBack(ConsumerRecord<String, String> record) {

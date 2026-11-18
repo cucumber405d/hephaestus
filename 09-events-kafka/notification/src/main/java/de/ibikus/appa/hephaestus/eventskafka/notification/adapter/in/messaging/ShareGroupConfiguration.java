@@ -27,13 +27,18 @@ class ShareGroupConfiguration {
         var bootstrapServers =
                 classicConsumers.getConfigurationProperties().get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG);
         return new DefaultShareConsumerFactory<>(Map.of(
-                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
-                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                bootstrapServers,
+                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class,
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class,
                 // One record per fetch, strictly (Kafka 4.2 record_limit): otherwise one member may acquire a whole
                 // batch and the others idle, which hides how a share group spreads the work
-                ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1,
-                "share.acquire.mode", "record_limit"));
+                ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
+                1,
+                "share.acquire.mode",
+                "record_limit"));
     }
 
     @Bean
@@ -42,9 +47,10 @@ class ShareGroupConfiguration {
         var factory = new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
         // On a listener exception the default is REJECT (archived at once). A failed notification is worth another
         // try: RELEASE it for redelivery to any member, until the broker's delivery limit archives it
-        factory.setShareConsumerRecordRecoverer((record, exception) -> hasCause(exception, NotificationFailedException.class)
-                ? AcknowledgeType.RELEASE
-                : AcknowledgeType.REJECT);
+        factory.setShareConsumerRecordRecoverer(
+                (record, exception) -> hasCause(exception, NotificationFailedException.class)
+                        ? AcknowledgeType.RELEASE
+                        : AcknowledgeType.REJECT);
         return factory;
     }
 

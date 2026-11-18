@@ -28,8 +28,7 @@ public final class KafkaProbe {
     public static void send(KafkaTemplate<String, String> kafka, String customer, UUID eventId) {
         var json = """
                 {"eventId":"%s","orderId":"%s","customerId":"%s","lines":[{"sku":"ANVIL-01","quantity":2}],\
-                "occurredAt":"2026-11-18T10:00:00Z"}"""
-                .formatted(eventId, UUID.randomUUID(), customer);
+                "occurredAt":"2026-11-18T10:00:00Z"}""".formatted(eventId, UUID.randomUUID(), customer);
         sendRaw(kafka, customer, json);
     }
 
@@ -42,11 +41,16 @@ public final class KafkaProbe {
     /** All records of the topic with this key, read from the beginning (stops after one empty second). */
     public static List<ConsumerRecord<String, String>> read(String bootstrap, String topic, String key) {
         var props = Map.<String, Object>of(
-                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap,
-                ConsumerConfig.GROUP_ID_CONFIG, "probe-" + UUID.randomUUID(),
-                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest",
-                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                bootstrap,
+                ConsumerConfig.GROUP_ID_CONFIG,
+                "probe-" + UUID.randomUUID(),
+                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                "earliest",
+                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class,
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class);
         var found = new ArrayList<ConsumerRecord<String, String>>();
         try (var consumer = new KafkaConsumer<String, String>(props)) {
             consumer.subscribe(List.of(topic));

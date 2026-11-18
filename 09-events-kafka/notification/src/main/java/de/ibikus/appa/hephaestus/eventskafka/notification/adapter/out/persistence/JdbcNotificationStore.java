@@ -26,12 +26,14 @@ class JdbcNotificationStore implements NotificationStore {
     @Override
     @Transactional
     public boolean saveOnce(UUID eventId, Notification n) {
-        var firstTime = jdbc.sql("insert into processed_event (event_id, processed_at) values (?, ?) on conflict do nothing")
-                        .params(eventId, Timestamp.from(n.createdAt()))
-                        .update()
-                == 1;
+        var firstTime =
+                jdbc.sql("insert into processed_event (event_id, processed_at) values (?, ?) on conflict do nothing")
+                                .params(eventId, Timestamp.from(n.createdAt()))
+                                .update()
+                        == 1;
         if (firstTime) {
-            jdbc.sql("insert into notification (id, customer_id, order_id, channel, text, created_at) values (?, ?, ?, ?, ?, ?)")
+            jdbc.sql(
+                            "insert into notification (id, customer_id, order_id, channel, text, created_at) values (?, ?, ?, ?, ?, ?)")
                     .params(n.id(), n.customerId(), n.orderId(), n.channel(), n.text(), Timestamp.from(n.createdAt()))
                     .update();
         }
