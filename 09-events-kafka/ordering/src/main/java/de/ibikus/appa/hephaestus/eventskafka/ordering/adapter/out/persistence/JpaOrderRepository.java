@@ -22,6 +22,8 @@ class JpaOrderRepository implements OrderRepository {
     public void insert(Order order) {
         repository.saveAndFlush(new OrderJpaEntity(
                 order.id(),
+                order.customerId(),
+                order.eventId(),
                 order.status().name(),
                 order.reservationId(),
                 order.createdAt(),
@@ -36,6 +38,8 @@ class JpaOrderRepository implements OrderRepository {
                 .findById(id)
                 .map(entity -> new Order(
                         entity.getId(),
+                        entity.getCustomerId(),
+                        entity.getEventId(),
                         OrderStatus.valueOf(entity.getStatus()),
                         entity.getLines().stream()
                                 .map(line -> new OrderLine(line.getSku(), line.getQuantity()))

@@ -21,6 +21,12 @@ class OrderJpaEntity {
     @Id
     private UUID id;
 
+    @Column(name = "customer_id", nullable = false, length = 64)
+    private String customerId;
+
+    @Column(name = "event_id", nullable = false, unique = true)
+    private UUID eventId;
+
     @Column(nullable = false, length = 20)
     private String status;
 
@@ -36,8 +42,17 @@ class OrderJpaEntity {
 
     protected OrderJpaEntity() {}
 
-    OrderJpaEntity(UUID id, String status, UUID reservationId, Instant createdAt, List<OrderLineEmbeddable> lines) {
+    OrderJpaEntity(
+            UUID id,
+            String customerId,
+            UUID eventId,
+            String status,
+            UUID reservationId,
+            Instant createdAt,
+            List<OrderLineEmbeddable> lines) {
         this.id = id;
+        this.customerId = customerId;
+        this.eventId = eventId;
         this.status = status;
         this.reservationId = reservationId;
         this.createdAt = createdAt;
@@ -46,6 +61,14 @@ class OrderJpaEntity {
 
     UUID getId() {
         return id;
+    }
+
+    String getCustomerId() {
+        return customerId;
+    }
+
+    UUID getEventId() {
+        return eventId;
     }
 
     String getStatus() {

@@ -40,7 +40,7 @@ class OrdersController {
 
     @PostMapping
     ResponseEntity<OrderResponse> place(@Valid @RequestBody PlaceOrderRequest request) {
-        var order = placeOrder.place(request.lines().stream()
+        var order = placeOrder.place(request.customerId(), request.lines().stream()
                 .map(line -> new OrderLine(line.sku(), line.quantity()))
                 .toList());
         var location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -61,6 +61,7 @@ class OrdersController {
     }
 
     record PlaceOrderRequest(
+            @NotNull @Pattern(regexp = Order.CUSTOMER_ID_PATTERN) String customerId,
             @NotEmpty @Size(max = Order.MAX_LINES) List<@Valid Line> lines) {}
 
     record Line(
@@ -69,11 +70,20 @@ class OrdersController {
 
             @Min(1) @Max(OrderLine.MAX_QUANTITY) int quantity) {}
 
-    record OrderResponse(UUID id, String status, UUID reservationId, List<Line> lines, Instant createdAt) {
+    record OrderResponse(
+            UUID id,
+            String customerId,
+            UUID eventId,
+            String status,
+            UUID reservationId,
+            List<Line> lines,
+            Instant createdAt) {
 
         static OrderResponse of(Order order) {
             return new OrderResponse(
                     order.id(),
+                    order.customerId(),
+                    order.eventId(),
                     order.status().name(),
                     order.reservationId(),
                     order.lines().stream()

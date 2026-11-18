@@ -3,6 +3,10 @@
 create table purchase_order
 (
     id             uuid        primary key,
+    -- key of the order's events: one customer's events stay in one partition, in order
+    customer_id    varchar(64) not null,
+    -- id of the OrderPlaced event: a re-sent event carries the same id (consumers deduplicate by it)
+    event_id       uuid        not null unique,
     status         varchar(20) not null,
     reservation_id uuid        not null,
     created_at     timestamptz not null

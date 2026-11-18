@@ -3,6 +3,7 @@ package de.ibikus.appa.hephaestus.eventskafka.ordering.adapter.in.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.ibikus.appa.hephaestus.eventskafka.ordering.application.fakes.FakeInventory;
+import de.ibikus.appa.hephaestus.eventskafka.ordering.application.fakes.FakeOrderEvents;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.application.fakes.InMemoryOrderRepository;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.application.service.OrderService;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InsufficientStockException;
@@ -22,7 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
-@WebMvcTest(OrdersController.class)
+@WebMvcTest({OrdersController.class, AdminController.class})
 @Import({ProblemDetailsAdvice.class, OrdersControllerTest.Fakes.class})
 class OrdersControllerTest {
 
@@ -37,8 +38,13 @@ class OrdersControllerTest {
         }
 
         @Bean
-        OrderService orderService(FakeInventory inventory) {
-            return new OrderService(inventory, new InMemoryOrderRepository(), Clock.systemUTC());
+        FakeOrderEvents fakeOrderEvents() {
+            return new FakeOrderEvents();
+        }
+
+        @Bean
+        OrderService orderService(FakeInventory inventory, FakeOrderEvents events) {
+            return new OrderService(inventory, new InMemoryOrderRepository(), events, Clock.systemUTC());
         }
     }
 
@@ -48,9 +54,13 @@ class OrdersControllerTest {
     @Autowired
     FakeInventory inventory;
 
+    @Autowired
+    FakeOrderEvents events;
+
     @BeforeEach
     void inventoryWorks() {
         inventory.succeed();
+        events.brokerUp();
     }
 
     @Test
@@ -116,12 +126,46 @@ class OrdersControllerTest {
         assertThat(result).bodyJson().extractingPath("$.available").isEqualTo(7);
     }
 
+    @Test
+    void brokerDownIs503EventPublishFailed() {
+        events.brokerDown();
+
+        var result = place("ANVIL-01", 1);
+
+        assertThat(result).hasStatus(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(result).bodyJson().extractingPath("$.type").isEqualTo(PROBLEMS + "event-publish-failed");
+    }
+
+    @Test
+    void missingCustomerIs400() {
+        var result = mvc.post()
+                .uri("/api/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"lines\":[{\"sku\":\"ANVIL-01\",\"quantity\":1}]}")
+                .exchange();
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void republishAnswers202WithTheSameEventId() {
+        var placed = place("ANVIL-01", 1);
+        var orderId = placed.getResponse().getHeader("Location").replaceAll(".*/", "");
+
+        var result = mvc.post().uri("/admin/republish/{id}", orderId).exchange();
+
+        assertThat(result).hasStatus(HttpStatus.ACCEPTED);
+        assertThat(events.published()).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(events.published().getLast().eventId())
+                .isEqualTo(events.published().get(events.published().size() - 2).eventId());
+    }
+
     private MvcTestResult place(String sku, int quantity) {
         return mvc.post()
                 .uri("/api/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"lines":[{"sku":"%s","quantity":%d}]}""".formatted(sku, quantity))
+                        {"customerId":"alice","lines":[{"sku":"%s","quantity":%d}]}""".formatted(sku, quantity))
                 .exchange();
     }
 }

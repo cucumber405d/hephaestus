@@ -2,6 +2,7 @@ package de.ibikus.appa.hephaestus.eventskafka.ordering.adapter.in.web;
 
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InsufficientStockException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InvalidValueException;
+import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.EventPublishException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.InventoryUnavailableException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.OrderNotFoundException;
 import de.ibikus.appa.hephaestus.eventskafka.ordering.domain.UnknownItemException;
@@ -45,6 +46,20 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
      * 503, not 502/504: we are the ones who cannot serve the request right now, and Retry-After tells a client
      * when trying again makes sense. The cause (timeout, refused connection) stays in our log.
      */
+    /** The order is stored, but its event is not in Kafka (dual write, see EventPublishException). */
+    @ExceptionHandler(EventPublishException.class)
+    ResponseEntity<ProblemDetail> eventPublishFailed(EventPublishException ex) {
+        LOG.error("{}: {}", ex.getMessage(), ex.getCause() == null ? "" : ex.getCause().toString());
+        var problem = problem(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "event-publish-failed",
+                "Event not published",
+                "The order was stored but could not be announced; try again later");
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, "5")
+                .body(problem);
+    }
+
     @ExceptionHandler(InventoryUnavailableException.class)
     ResponseEntity<ProblemDetail> inventoryUnavailable(InventoryUnavailableException ex) {
         LOG.warn(

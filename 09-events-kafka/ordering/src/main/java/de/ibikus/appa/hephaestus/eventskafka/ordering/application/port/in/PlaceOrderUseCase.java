@@ -6,5 +6,6 @@ import java.util.List;
 
 public interface PlaceOrderUseCase {
 
-    Order place(List<OrderLine> lines);
+    /** Stores the order, then publishes OrderPlaced (keyed by the customer). */
+    Order place(String customerId, List<OrderLine> lines);
 }
