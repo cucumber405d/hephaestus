@@ -1,0 +1,192 @@
+package de.ibikus.appa.hephaestus.outboxsaga.ordering.orders;
+
+import static de.ibikus.appa.hephaestus.outboxsaga.ordering.messaging.SagaMessage.*;
+
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.admin.Levers;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.messaging.Messages;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.messaging.Outbox;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.messaging.ProcessedMessages;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.messaging.SagaMessage;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.messaging.SagaMessage.Line;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.messaging.Topics;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.orders.Orders.Order;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.saga.Orchestrator;
+import de.ibikus.appa.hephaestus.outboxsaga.ordering.saga.Sagas;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Places orders and follows their saga. Choreography: Ordering only starts it (OrderPlaced) and watches the other
+ * services' events. Orchestration: Ordering decides every step ({@link Orchestrator}), sends the commands, waits
+ * for replies with a deadline. Every state change and the messages it causes share one transaction (outbox).
+ */
+@Service
+public class OrderService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(OrderService.class);
+
+    /** Prices of the shop (EUR); Inventory knows the stock, Ordering the prices. */
+    public static final Map<String, BigDecimal> PRICES = Map.of(
+            "ANVIL-01", new BigDecimal("120.00"),
+            "HAMMER-01", new BigDecimal("35.00"),
+            "TONGS-01", new BigDecimal("18.50"));
+
+    private final Orders orders;
+    private final Sagas sagas;
+    private final Outbox outbox;
+    private final Messages messages;
+    private final ProcessedMessages processed;
+    private final Levers levers;
+    private final Clock clock;
+    private final Duration stepTimeout;
+
+    public OrderService(
+            Orders orders,
+            Sagas sagas,
+            Outbox outbox,
+            Messages messages,
+            ProcessedMessages processed,
+            Levers levers,
+            Clock clock,
+            @Value("${saga.step-timeout}") Duration stepTimeout) {
+        this.orders = orders;
+        this.sagas = sagas;
+        this.outbox = outbox;
+        this.messages = messages;
+        this.processed = processed;
+        this.levers = levers;
+        this.clock = clock;
+        this.stepTimeout = stepTimeout;
+    }
+
+    @Transactional
+    public Order place(String customerId, String saga, List<Line> lines) {
+        if (!CHOREOGRAPHY.equals(saga) && !ORCHESTRATION.equals(saga)) {
+            throw new IllegalArgumentException("saga must be choreography or orchestration");
+        }
+        var amount = BigDecimal.ZERO;
+        for (var line : lines) {
+            var price = PRICES.get(line.sku());
+            if (price == null || line.quantity() < 1) {
+                throw new IllegalArgumentException("Unknown SKU or bad quantity: " + line.sku());
+            }
+            amount = amount.add(price.multiply(BigDecimal.valueOf(line.quantity())));
+        }
+        var order = new Order(UUID.randomUUID(), customerId, saga, "PENDING", amount, null, List.copyOf(lines));
+        var now = clock.instant();
+        SagaMessage first;
+        String topic;
+        if (CHOREOGRAPHY.equals(saga)) {
+            first = Orders.message(order, ORDER_PLACED, null);
+            topic = Topics.ORDERING_EVENTS;
+        } else {
+            first = Orders.message(order, Orchestrator.firstCommand(), null);
+            topic = Orchestrator.topicOf(first.type());
+        }
+        orders.insert(order, topic, messages.write(first), now);
+        orders.history(order.id(), "placed (" + saga + "), " + amount + " EUR");
+        if (ORCHESTRATION.equals(saga)) {
+            sagas.insert(order.id(), Orchestrator.start(), now.plus(stepTimeout));
+        }
+        outbox.send(topic, first);
+        orders.history(order.id(), "→ " + first.type());
+        return order;
+    }
+
+    /** Choreography: another service's event about one of our orders. */
+    @Transactional
+    public void onEvent(SagaMessage event) {
+        if (!event.choreography() || !firstTime(event)) {
+            return;
+        }
+        orders.history(event.orderId(), "← " + event.type() + reasonSuffix(event.reason()));
+        switch (event.type()) {
+            case DELIVERY_SCHEDULED -> settle(event, "CONFIRMED", null);
+            case PAYMENT_DECLINED, STOCK_UNAVAILABLE, DELIVERY_FAILED -> settle(event, "REJECTED", event.reason());
+            default -> {
+                // progress or compensation: history only
+            }
+        }
+    }
+
+    /** Orchestration: a participant's reply. */
+    @Transactional
+    public void onReply(SagaMessage reply) {
+        if (!reply.orchestration() || !firstTime(reply)) {
+            return;
+        }
+        orders.history(reply.orderId(), "← " + reply.type() + reasonSuffix(reply.reason()));
+        var current = sagas.lock(reply.orderId());
+        if (current.isEmpty()) {
+            return;
+        }
+        var decision = Orchestrator.onReply(current.get(), reply.type(), reply.reason());
+        if (decision.ignored(current.get())) {
+            orders.history(reply.orderId(), "  (ignored: saga is " + current.get().state().name().toLowerCase() + ")");
+            return;
+        }
+        apply(reply.orderId(), decision);
+    }
+
+    /** Orchestration: steps that did not answer in time are compensated (called by {@link SagaTimeouts}). */
+    @Transactional
+    public void timeouts() {
+        for (var orderId : sagas.overdue(clock.instant())) {
+            var current = sagas.lock(orderId).orElseThrow();
+            var decision = Orchestrator.onTimeout(current);
+            orders.history(orderId, "⏱ " + decision.reason());
+            LOG.warn("Saga of order {}: {}", orderId, decision.reason());
+            apply(orderId, decision);
+        }
+    }
+
+    /** For the duplicate experiment: send the saga's first message again, same message id. */
+    @Transactional
+    public void republish(UUID orderId) {
+        var first = orders.firstMessage(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+        var message = messages.read(first[1]);
+        outbox.send(first[0], message);
+        orders.history(orderId, "→ " + message.type() + " (re-sent, same message id)");
+    }
+
+    private void apply(UUID orderId, Orchestrator.Decision decision) {
+        var order = orders.find(orderId).orElseThrow();
+        sagas.update(orderId, decision.next(), clock.instant().plus(stepTimeout));
+        if (decision.outcome() != null && orders.settle(orderId, decision.outcome().name(), decision.reason())) {
+            orders.history(orderId, "order " + decision.outcome().name());
+        }
+        for (var command : decision.commands()) {
+            var message = Orders.message(order, command, decision.reason());
+            outbox.send(Orchestrator.topicOf(command), message);
+            orders.history(orderId, "→ " + command);
+        }
+    }
+
+    private void settle(SagaMessage event, String status, String reason) {
+        if (orders.settle(event.orderId(), status, reason)) {
+            orders.history(event.orderId(), "order " + status);
+        }
+    }
+
+    private boolean firstTime(SagaMessage message) {
+        if (processed.firstTime(message.messageId())) {
+            levers.handled();
+            return true;
+        }
+        levers.duplicate();
+        return false;
+    }
+
+    private static String reasonSuffix(String reason) {
+        return reason == null ? "" : " (" + reason + ")";
+    }
+}
