@@ -1,0 +1,218 @@
+# ordering: own CloudNativePG database (wave 0) -> schema migration as a Sync hook on the same image (wave 1) -> API (wave 2).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ordering-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  bootstrap:
+    initdb:
+      database: ordering
+      owner: ordering
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 256Mi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ordering-migrate
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  backoffLimit: 6
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: ordering
+          env:
+            - name: SPRING_MAIN_WEB_APPLICATION_TYPE
+              value: none
+            - name: SPRING_FLYWAY_ENABLED
+              value: "true"
+            # Same settings as the API: OAuth2 properties may be bound even without a web server
+            - name: OAUTH2_ISSUER
+              value: http://keycloak.localtest.me/realms/hephaestus
+            - name: OAUTH2_JWK_SET_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
+            - name: OAUTH2_TOKEN_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/token
+            - name: ORDERING_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-clients
+                  key: ordering-client-secret
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://ordering-db-rw:5432/ordering
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ordering-db-app
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ordering-db-app
+                  key: password
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ordering
+  labels:
+    app.kubernetes.io/name: ordering
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ordering
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ordering
+    spec:
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ordering
+          image: ordering
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: SPRING_FLYWAY_ENABLED
+              value: "false"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://ordering-db-rw:5432/ordering
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ordering-db-app
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ordering-db-app
+                  key: password
+            - name: MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE
+              value: readinessState,db
+            # Tokens carry the public issuer; keys and tokens are fetched inside the cluster
+            - name: OAUTH2_ISSUER
+              value: http://keycloak.localtest.me/realms/hephaestus
+            - name: OAUTH2_JWK_SET_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
+            - name: OAUTH2_TOKEN_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/token
+            - name: ORDERING_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-clients
+                  key: ordering-client-secret
+            # Kubernetes Service DNS: "inventory" in the same namespace (inventory.<namespace>.svc.cluster.local)
+            - name: INVENTORY_URL
+              value: http://inventory
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 2
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ordering
+  labels:
+    app.kubernetes.io/name: ordering
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app.kubernetes.io/name: ordering
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,0 +1,134 @@
+# The shop's application gateway and BFF (Spring Cloud Gateway): no database; reaches the services by Service DNS names.
+# One replica: the login session (and the tokens in it) lives in the pod's memory. A second pod would not know it;
+# shared sessions (Spring Session on Redis) or sticky sessions come with a later subproject.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  labels:
+    app.kubernetes.io/name: gateway
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gateway
+    spec:
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gateway
+          image: gateway
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: ORDERING_URL
+              value: http://ordering
+            - name: INVENTORY_URL
+              value: http://inventory
+            # The browser is sent to the public Keycloak address, the gateway redeems codes inside the cluster
+            - name: OAUTH2_ISSUER
+              value: http://keycloak.localtest.me/realms/hephaestus
+            - name: OAUTH2_AUTHORIZATION_URI
+              value: http://keycloak.localtest.me/realms/hephaestus/protocol/openid-connect/auth
+            - name: OAUTH2_TOKEN_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/token
+            - name: OAUTH2_JWK_SET_URI
+              value: http://keycloak-service.keycloak:8080/realms/hephaestus/protocol/openid-connect/certs
+            - name: SHOP_GATEWAY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-clients
+                  key: shop-gateway-client-secret
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 2
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  labels:
+    app.kubernetes.io/name: gateway
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app.kubernetes.io/name: gateway
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# Infrastructure entry (Envoy, platform Gateway API) -> application entry (Spring Cloud Gateway) -> services.
+# http://secure-shop.localtest.me (log in at /oauth2/authorization/keycloak, e.g. alice/alice)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: secure-shop
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  parentRefs:
+    - name: platform
+      namespace: envoy-gateway-system
+  hostnames:
+    - secure-shop.localtest.me
+  rules:
+    - backendRefs:
+        - name: gateway
+          port: 80

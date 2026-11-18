@@ -1,0 +1,149 @@
+# Zero trust inside the namespace: nothing may connect to a pod unless a policy below allows it (ingress only;
+# egress stays open: DNS, Keycloak, the API server). Who talks to whom:
+#   Envoy (envoy-gateway-system) -> gateway -> ordering -> inventory, gateway -> inventory
+#   inventory/ordering (and their migration Jobs) -> own database; CloudNativePG operator -> databases
+# Probes come from the kubelet on the node: kind nodes live in Docker's 172.16.0.0/12.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gateway-from-envoy
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+        - ipBlock:
+            cidr: 172.16.0.0/12
+      ports:
+        - port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ordering-from-gateway
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ordering
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+        - ipBlock:
+            cidr: 172.16.0.0/12
+      ports:
+        - port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inventory-from-gateway-and-ordering
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: inventory
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [gateway, ordering]
+        - ipBlock:
+            cidr: 172.16.0.0/12
+      ports:
+        - port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inventory-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: inventory-db
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inventory
+        - podSelector:
+            matchLabels:
+              job-name: inventory-migrate
+      ports:
+        - port: 5432
+    # The operator manages the instance (status endpoint 8000, PostgreSQL 5432), instances of one cluster replicate,
+    # the kubelet probes
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: inventory-db
+        - ipBlock:
+            cidr: 172.16.0.0/12
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ordering-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: ordering-db
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ordering
+        - podSelector:
+            matchLabels:
+              job-name: ordering-migrate
+      ports:
+        - port: 5432
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: ordering-db
+        - ipBlock:
+            cidr: 172.16.0.0/12

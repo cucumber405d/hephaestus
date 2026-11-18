@@ -1,0 +1,74 @@
+# 07-security: verify -> end-to-end test of the stack in Compose -> publish the three images (main only).
+name: 07-security
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "07-security/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/07-security.yml"
+  pull_request:
+    paths:
+      - "07-security/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/07-security.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/build-subproject.yml
+    with:
+      subproject: 07-security
+
+  # The three services from their Jib images in Docker Compose, tested only through the gateway
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: End-to-end test
+        run: 07-security/scripts/e2e.sh
+
+  publish:
+    needs: e2e
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        module: [inventory, ordering, gateway]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      subproject: 07-security
+      module: ${{ matrix.module }}
+      image-name: hephaestus/security-${{ matrix.module }}

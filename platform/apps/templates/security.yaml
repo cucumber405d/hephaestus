@@ -1,0 +1,23 @@
+{{- if .Values.components.security }}
+# 07-security: the shop behind Keycloak login (http://secure-shop.localtest.me), realm "hephaestus" imported into the
+# platform Keycloak. Needs the cnpg, gateway and keycloak components (full profile); images published to GHCR once.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: security
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision | quote }}
+    path: 07-security/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hephaestus-07
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}
