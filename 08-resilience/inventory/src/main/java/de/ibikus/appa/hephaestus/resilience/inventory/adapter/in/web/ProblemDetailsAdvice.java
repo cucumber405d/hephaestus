@@ -3,6 +3,8 @@ package de.ibikus.appa.hephaestus.resilience.inventory.adapter.in.web;
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.InsufficientStockException;
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.InvalidValueException;
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.StockItemNotFoundException;
+import de.ibikus.appa.hephaestus.resilience.inventory.domain.SupplierUnavailableException;
+import de.ibikus.appa.hephaestus.resilience.inventory.domain.UnknownOfferException;
 import de.ibikus.appa.hephaestus.resilience.inventory.domain.UnknownSkuException;
 import java.net.URI;
 import org.slf4j.Logger;
@@ -43,6 +45,27 @@ class ProblemDetailsAdvice extends ResponseEntityExceptionHandler {
     @ExceptionHandler(StockItemNotFoundException.class)
     ProblemDetail notFound(StockItemNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "not-found", "Not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(UnknownOfferException.class)
+    ProblemDetail unknownOffer(UnknownOfferException ex) {
+        var problem = problem(HttpStatus.NOT_FOUND, "unknown-offer", "No supplier offer", ex.getMessage());
+        problem.setProperty("sku", ex.sku());
+        return problem;
+    }
+
+    /** No live answer and nothing cached: try again once a circuit breaker could have closed. */
+    @ExceptionHandler(SupplierUnavailableException.class)
+    ResponseEntity<ProblemDetail> supplierUnavailable(SupplierUnavailableException ex) {
+        LOG.warn("Supplier unavailable: {}", ex.getMessage());
+        var problem = problem(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "supplier-unavailable",
+                "Supplier unavailable",
+                "The supplier cannot answer right now and no earlier offer is known");
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, "10")
+                .body(problem);
     }
 
     @ExceptionHandler(InvalidValueException.class)
