@@ -1,0 +1,50 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, KAFKA_BOOTSTRAP_SERVERS.
+spring:
+  application:
+    name: ordering
+  main:
+    banner-mode: off
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    producer:
+      # Wait for all in-sync replicas; with idempotence a retried send never duplicates or reorders
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        enable.idempotence: true
+        # Plain JSON without Java class names: consumers bind to their own types
+        spring.json.add.type.headers: false
+        # Fail within the 5 s the service waits instead of blocking a request for a minute
+        max.block.ms: 5000
+        request.timeout.ms: 3000
+        delivery.timeout.ms: 5000
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${PORT:8082}
+  shutdown: graceful
+  # Behind the Gateway: build Location headers from X-Forwarded-* so clients get the public host, not ours
+  forward-headers-strategy: framework
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs

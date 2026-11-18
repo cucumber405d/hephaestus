@@ -1,0 +1,54 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD,
+# KAFKA_BOOTSTRAP_SERVERS, NOTIFICATION_MODE (classic: consumer group "notification" with retries and DLT;
+# share: share group "notification-share").
+spring:
+  application:
+    name: notification
+  main:
+    banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      # A new classic group starts at the beginning of the topic (nothing is missed before the first start)
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Read as text and parse in the application: broken JSON becomes an InvalidEventException with the raw text
+      # kept for the DLT, instead of a deserialization error before our code runs
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Small batches: a slowed-down experiment (delayMs) never gets near max.poll.interval.ms
+      max-poll-records: 10
+    producer:
+      # Dead letter records and replays: the raw text as it came
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+    listener:
+      # Commit after each record: on a crash at most the record in hand is delivered again
+      ack-mode: record
+  mvc:
+    problemdetails:
+      enabled: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+
+notification:
+  mode: ${NOTIFICATION_MODE:classic}
+
+server:
+  port: ${PORT:8091}
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs
