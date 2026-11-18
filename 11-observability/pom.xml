@@ -21,6 +21,9 @@
         <spring-cloud.version>2025.1.3</spring-cloud.version>
         <!-- Event publication registry (outbox) and Kafka externalization; 2.x is built on Boot 4 -->
         <spring-modulith.version>2.1.1</spring-modulith.version>
+        <!-- OpenTelemetry Java agent (Delivery) and the Logback appender (Boot services), same release -->
+        <otel.agent.version>2.32.0</otel.agent.version>
+        <otel.instrumentation.version>2.32.0-alpha</otel.instrumentation.version>
         <jre.image>eclipse-temurin:25-jre</jre.image>
         <!-- Git commit of the images; CI passes -Dimage.revision=$GITHUB_SHA -->
         <image.revision>unknown</image.revision>

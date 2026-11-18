@@ -1,5 +1,5 @@
 # Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD,
-# KAFKA_BOOTSTRAP_SERVERS.
+# KAFKA_BOOTSTRAP_SERVERS, OTLP_ENDPOINT.
 spring:
   application:
     name: payment
@@ -29,6 +29,11 @@ spring:
         delivery.timeout.ms: 5000
     listener:
       ack-mode: record
+      # Consumer spans continue the trace from the record's traceparent header
+      observation-enabled: true
+    template:
+      # Producer spans, traceparent header on every record
+      observation-enabled: true
   modulith:
     events:
       # The outbox table (event_publication) in this service's database
@@ -45,6 +50,24 @@ server:
   shutdown: graceful
 
 management:
+  tracing:
+    sampling:
+      # A learning stack: every trace
+      probability: 1.0
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTLP_ENDPOINT:http://localhost:4318}/v1/logs
+  otlp:
+    metrics:
+      export:
+        url: ${OTLP_ENDPOINT:http://localhost:4318}/v1/metrics
+        step: 10s
   endpoint:
     health:
       probes:

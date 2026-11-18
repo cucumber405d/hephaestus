@@ -37,8 +37,18 @@ public final class Probe {
         kafka.send(topic, m.orderId().toString(), messages.write(m)).join();
     }
 
+    /** A message read back, with the trace id of its {@code traceparent} header ({@code null} without one). */
+    public record Received(SagaMessage message, String traceId) {}
+
     /** Messages about the order on the topic, read from the beginning (stops after half a quiet second, max 10 s). */
     public static List<SagaMessage> read(String bootstrap, Messages messages, String topic, UUID orderId) {
+        return readWithTrace(bootstrap, messages, topic, orderId).stream()
+                .map(Received::message)
+                .toList();
+    }
+
+    /** Like {@link #read}, with the trace id each message carries in its Kafka headers. */
+    public static List<Received> readWithTrace(String bootstrap, Messages messages, String topic, UUID orderId) {
         var props = Map.<String, Object>of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                 bootstrap,
@@ -50,7 +60,7 @@ public final class Probe {
                 StringDeserializer.class,
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                 StringDeserializer.class);
-        var found = new ArrayList<SagaMessage>();
+        var found = new ArrayList<Received>();
         try (var consumer = new KafkaConsumer<String, String>(props)) {
             consumer.subscribe(List.of(topic));
             var quiet = 0;
@@ -62,12 +72,21 @@ public final class Probe {
                 }
                 records.forEach(r -> {
                     if (orderId.toString().equals(r.key())) {
-                        found.add(messages.read(r.value()));
+                        found.add(new Received(messages.read(r.value()), traceId(r.headers().lastHeader("traceparent"))));
                     }
                 });
             }
         }
         return found;
+    }
+
+    /** The trace id of a W3C traceparent header: {@code 00-<trace id>-<span id>-<flags>}. */
+    static String traceId(org.apache.kafka.common.header.Header traceparent) {
+        if (traceparent == null) {
+            return null;
+        }
+        var parts = new String(traceparent.value(), java.nio.charset.StandardCharsets.UTF_8).split("-");
+        return parts.length == 4 ? parts[1] : null;
     }
 
     public static List<String> types(List<SagaMessage> messages) {

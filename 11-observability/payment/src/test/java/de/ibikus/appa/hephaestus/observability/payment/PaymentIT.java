@@ -3,6 +3,7 @@ package de.ibikus.appa.hephaestus.observability.payment;
 import static de.ibikus.appa.hephaestus.observability.payment.Probe.await;
 import static de.ibikus.appa.hephaestus.observability.payment.Probe.message;
 import static de.ibikus.appa.hephaestus.observability.payment.Probe.read;
+import static de.ibikus.appa.hephaestus.observability.payment.Probe.readWithTrace;
 import static de.ibikus.appa.hephaestus.observability.payment.Probe.types;
 import static de.ibikus.appa.hephaestus.observability.payment.messaging.SagaMessage.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,6 +17,7 @@ import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.micrometer.tracing.test.autoconfigure.AutoConfigureTracing;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -24,6 +26,7 @@ import org.testcontainers.kafka.KafkaContainer;
 
 /** Payment on real Kafka and PostgreSQL: both styles, idempotency, compensation, outbox. */
 @SpringBootTest
+@AutoConfigureTracing
 @Import(Containers.class)
 class PaymentIT {
 
@@ -49,6 +52,22 @@ class PaymentIT {
         send(Topics.PAYMENT_COMMANDS, command);
 
         assertThat(replies(command.orderId(), Topics.ORDERING_REPLIES)).containsExactly(PAYMENT_RESERVED);
+    }
+
+    @Test
+    void repliesCarryATraceparent() {
+        var command = message(RESERVE_PAYMENT, ORCHESTRATION, customer(), "120.00", "ANVIL-01", 1);
+
+        send(Topics.PAYMENT_COMMANDS, command);
+
+        assertThat(await(Duration.ofSeconds(20), () -> !readWithTrace(
+                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, command.orderId())
+                        .isEmpty()))
+                .isTrue();
+        assertThat(readWithTrace(container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, command.orderId())
+                        .getFirst()
+                        .traceId())
+                .matches("[0-9a-f]{32}");
     }
 
     @Test

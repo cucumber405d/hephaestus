@@ -49,6 +49,17 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Traces, metrics and logs over OTLP (Micrometer Observation + Tracing bridged to OpenTelemetry) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-opentelemetry</artifactId>
+        </dependency>
+        <!-- Logback records to the OpenTelemetry SDK (and on to Loki) -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+            <version>${otel.instrumentation.version}</version>
+        </dependency>
         <!-- Outbox: the event publication registry in this service's database -->
         <dependency>
             <groupId>org.springframework.modulith</groupId>
@@ -58,6 +69,12 @@
         <dependency>
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-events-kafka</artifactId>
+        </dependency>
+        <!-- @AutoConfigureTracing: tracing is off in tests unless asked for -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-opentelemetry-test</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
