@@ -84,7 +84,8 @@ final class StubKeycloak implements AutoCloseable {
     }
 
     private void token(HttpExchange exchange) throws IOException {
-        var form = Arrays.stream(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8).split("&"))
+        var form = Arrays.stream(
+                        new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8).split("&"))
                 .map(pair -> pair.split("=", 2))
                 .collect(Collectors.toMap(
                         pair -> decode(pair[0]), pair -> pair.length > 1 ? decode(pair[1]) : "", (a, b) -> b));
@@ -97,8 +98,7 @@ final class StubKeycloak implements AutoCloseable {
         var n = issued.incrementAndGet();
         respond(exchange, 200, """
                 {"access_token":"%s","token_type":"Bearer","expires_in":300,"refresh_token":"refresh-%d",
-                 "scope":"openid profile email","id_token":"%s"}"""
-                .formatted(accessTokenOf(login.subject()), n, idToken(login)));
+                 "scope":"openid profile email","id_token":"%s"}""".formatted(accessTokenOf(login.subject()), n, idToken(login)));
     }
 
     private String idToken(Login login) {
@@ -113,7 +113,8 @@ final class StubKeycloak implements AutoCloseable {
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(now.plusSeconds(300)))
                 .build();
-        var jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.getKeyID()).build(), claims);
+        var jwt = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.getKeyID()).build(), claims);
         try {
             jwt.sign(new RSASSASigner(key));
         } catch (JOSEException e) {

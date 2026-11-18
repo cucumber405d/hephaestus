@@ -28,7 +28,8 @@ final class Browser {
     }
 
     HttpResponse<String> get(URI uri, String apiVersion) {
-        return send(HttpRequest.newBuilder(uri).header("API-Version", apiVersion).GET());
+        return send(
+                HttpRequest.newBuilder(uri).header("API-Version", apiVersion).GET());
     }
 
     /** A JSON POST; with csrf, the X-XSRF-TOKEN header carries the value of the XSRF-TOKEN cookie, as a SPA does. */

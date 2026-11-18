@@ -81,13 +81,14 @@ class GatewayBffIT {
         var response = new Browser().navigate(uri("/me"));
 
         assertThat(response.statusCode()).isEqualTo(302);
-        assertThat(response.headers().firstValue("Location")).hasValueSatisfying(
-                location -> assertThat(location).endsWith("/oauth2/authorization/keycloak"));
+        assertThat(response.headers().firstValue("Location"))
+                .hasValueSatisfying(location -> assertThat(location).endsWith("/oauth2/authorization/keycloak"));
     }
 
     @Test
     void healthIsOpenForProbes() {
-        assertThat(new Browser().get(uri("/actuator/health/liveness")).statusCode()).isEqualTo(200);
+        assertThat(new Browser().get(uri("/actuator/health/liveness")).statusCode())
+                .isEqualTo(200);
     }
 
     // --- login
@@ -107,12 +108,16 @@ class GatewayBffIT {
         finishLogin(browser, authorization, "alice-sub", "alice");
 
         var token = KEYCLOAK.lastTokenRequest();
-        assertThat(token.form()).containsEntry("grant_type", "authorization_code").containsEntry("code", "test-code");
+        assertThat(token.form())
+                .containsEntry("grant_type", "authorization_code")
+                .containsEntry("code", "test-code");
         // The verifier only the gateway knew matches the challenge sent through the browser
         assertThat(s256(token.form().get("code_verifier"))).isEqualTo(authorization.get("code_challenge"));
         // Confidential client: authenticated with its secret (client_secret_basic)
-        assertThat(token.authorization()).isEqualTo("Basic "
-                + Base64.getEncoder().encodeToString("shop-gateway:test-secret".getBytes(StandardCharsets.UTF_8)));
+        assertThat(token.authorization())
+                .isEqualTo("Basic "
+                        + Base64.getEncoder()
+                                .encodeToString("shop-gateway:test-secret".getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -125,7 +130,8 @@ class GatewayBffIT {
         assertThat(me.body()).contains("\"name\":\"alice\"").contains("\"subject\":\"alice-sub\"");
         assertThat(browser.cookie("XSRF-TOKEN")).isPresent();
         // The session cookie must be out of reach for JavaScript
-        assertThat(browser.cookieDetails("JSESSIONID")).hasValueSatisfying(c -> assertThat(c.isHttpOnly()).isTrue());
+        assertThat(browser.cookieDetails("JSESSIONID"))
+                .hasValueSatisfying(c -> assertThat(c.isHttpOnly()).isTrue());
     }
 
     @Test
@@ -134,8 +140,8 @@ class GatewayBffIT {
         var browser = new Browser();
         var callback = finishLogin(browser, startLogin(browser), "mallory-sub", "mallory");
 
-        assertThat(callback.headers().firstValue("Location")).hasValueSatisfying(
-                location -> assertThat(location).contains("error"));
+        assertThat(callback.headers().firstValue("Location"))
+                .hasValueSatisfying(location -> assertThat(location).contains("error"));
         assertThat(browser.get(uri("/api/orders/42")).statusCode()).isEqualTo(401);
     }
 
@@ -190,7 +196,8 @@ class GatewayBffIT {
         assertThat(response.body()).isEqualTo("inventory");
         assertThat(INVENTORY.lastRequest().path()).isEqualTo("/api/stock/ANVIL-01");
         assertThat(INVENTORY.lastRequest().apiVersion()).isEqualTo("2");
-        assertThat(INVENTORY.lastRequest().authorization()).isEqualTo("Bearer " + StubKeycloak.accessTokenOf("bob-sub"));
+        assertThat(INVENTORY.lastRequest().authorization())
+                .isEqualTo("Bearer " + StubKeycloak.accessTokenOf("bob-sub"));
     }
 
     @Test
@@ -221,8 +228,8 @@ class GatewayBffIT {
         var browser = new Browser();
         var callback = finishLogin(browser, startLogin(browser), subject, username);
         assertThat(callback.statusCode()).isEqualTo(302);
-        assertThat(callback.headers().firstValue("Location")).hasValueSatisfying(
-                location -> assertThat(location).doesNotContain("error"));
+        assertThat(callback.headers().firstValue("Location"))
+                .hasValueSatisfying(location -> assertThat(location).doesNotContain("error"));
         return browser;
     }
 

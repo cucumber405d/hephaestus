@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.oauth2.client.DefaultOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
 import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenDecoderFactory;
@@ -14,6 +13,7 @@ import org.springframework.security.oauth2.client.oidc.authentication.OidcIdToke
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.web.HttpSessionOAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
@@ -47,8 +47,7 @@ class SecurityConfiguration {
                 registrations, OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
         // PKCE also for a confidential client: a stolen authorization code is useless without the verifier
         authorizationRequests.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
-        http.authorizeHttpRequests(requests -> requests
-                        .dispatcherTypeMatchers(DispatcherType.ERROR)
+        http.authorizeHttpRequests(requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR)
                         .permitAll()
                         .requestMatchers("/actuator/health/**")
                         .permitAll()
@@ -98,8 +97,8 @@ class SecurityConfiguration {
     @Bean
     JwtDecoderFactory<ClientRegistration> idTokenDecoderFactory(@Value("${shop.oauth2.issuer}") String issuer) {
         var factory = new OidcIdTokenDecoderFactory();
-        factory.setJwtValidatorFactory(registration ->
-                new DelegatingOAuth2TokenValidator<>(new OidcIdTokenValidator(registration), new JwtIssuerValidator(issuer)));
+        factory.setJwtValidatorFactory(registration -> new DelegatingOAuth2TokenValidator<>(
+                new OidcIdTokenValidator(registration), new JwtIssuerValidator(issuer)));
         return factory;
     }
 }
