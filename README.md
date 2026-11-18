@@ -11,6 +11,7 @@
 [![08-resilience](https://github.com/cucumber405d/hephaestus/actions/workflows/08-resilience.yml/badge.svg)](https://github.com/cucumber405d/hephaestus/actions/workflows/08-resilience.yml)
 [![09-events-kafka](https://github.com/cucumber405d/hephaestus/actions/workflows/09-events-kafka.yml/badge.svg)](https://github.com/cucumber405d/hephaestus/actions/workflows/09-events-kafka.yml)
 [![10-outbox-saga](https://github.com/cucumber405d/hephaestus/actions/workflows/10-outbox-saga.yml/badge.svg)](https://github.com/cucumber405d/hephaestus/actions/workflows/10-outbox-saga.yml)
+[![11-observability](https://github.com/cucumber405d/hephaestus/actions/workflows/11-observability.yml/badge.svg)](https://github.com/cucumber405d/hephaestus/actions/workflows/11-observability.yml)
 
 Учебный монорепозиторий: микросервисы на современной Java (25 LTS, Spring Boot 4) в Kubernetes по принципам Twelve-Factor App.
 Набор независимых подпроектов, пронумерованных как учебный маршрут; общий домен — «Мастерская Гефеста».

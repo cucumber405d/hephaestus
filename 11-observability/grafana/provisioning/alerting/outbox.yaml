@@ -1,0 +1,38 @@
+# The outbox backlog stays above zero for a minute: Kafka is unreachable for some service.
+# Shown in Grafana (Alerting > Alert rules); no notification channel.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: outbox
+    folder: Hephaestus
+    # A multiple of Grafana's scheduler interval (10 s), or provisioning fails and Grafana does not start
+    interval: 20s
+    rules:
+      - uid: outbox-backlog
+        title: Outbox backlog
+        condition: C
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: Outbox messages are not reaching Kafka
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: max by (job) (outbox_publications_incomplete)
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]

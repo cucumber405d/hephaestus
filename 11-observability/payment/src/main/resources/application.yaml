@@ -1,0 +1,83 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD,
+# KAFKA_BOOTSTRAP_SERVERS, OTLP_ENDPOINT, OUTBOX_CARRY_TRACE.
+spring:
+  application:
+    name: payment
+  main:
+    banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: payment
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 10
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # The outbox hands over the JSON text itself
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Kafka down: fail the send within seconds; the outbox keeps the message and resubmits it
+        max.block.ms: 5000
+        request.timeout.ms: 3000
+        delivery.timeout.ms: 5000
+    listener:
+      ack-mode: record
+      # Consumer spans continue the trace from the record's traceparent header
+      observation-enabled: true
+    template:
+      # Producer spans, traceparent header on every record
+      observation-enabled: true
+  modulith:
+    events:
+      # The outbox table (event_publication) in this service's database
+      jdbc:
+        schema-initialization:
+          enabled: true
+      republish-outstanding-events-on-restart: true
+
+observability:
+  outbox:
+    # The outbox send continues the trace stored with the message (false: see the trace break)
+    carry-trace: ${OUTBOX_CARRY_TRACE:true}
+
+server:
+  port: ${PORT:8081}
+  shutdown: graceful
+
+management:
+  tracing:
+    sampling:
+      # A learning stack: every trace
+      probability: 1.0
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTLP_ENDPOINT:http://localhost:4318}/v1/logs
+  otlp:
+    metrics:
+      export:
+        url: ${OTLP_ENDPOINT:http://localhost:4318}/v1/metrics
+        step: 10s
+        # Timers in seconds: saga_duration_seconds_bucket in Prometheus
+        base-time-unit: seconds
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs
