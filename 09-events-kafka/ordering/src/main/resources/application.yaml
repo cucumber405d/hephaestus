@@ -1,0 +1,35 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, KAFKA_BOOTSTRAP_SERVERS.
+spring:
+  application:
+    name: ordering
+  main:
+    banner-mode: off
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${PORT:8082}
+  shutdown: graceful
+  # Behind the Gateway: build Location headers from X-Forwarded-* so clients get the public host, not ours
+  forward-headers-strategy: framework
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs
