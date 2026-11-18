@@ -21,15 +21,25 @@ public class Sagas {
         this.jdbc = jdbc;
     }
 
-    public void insert(UUID orderId, Saga saga, Instant deadline) {
-        jdbc.sql("insert into saga (order_id, step, state, deadline, pending_compensations) values (?, ?, ?, ?, ?)")
+    public void insert(UUID orderId, Saga saga, Instant deadline, String traceparent) {
+        jdbc.sql("insert into saga (order_id, step, state, deadline, pending_compensations, traceparent)"
+                        + " values (?, ?, ?, ?, ?, ?)")
                 .params(
                         orderId,
                         saga.step().name(),
                         saga.state().name(),
                         Timestamp.from(deadline),
-                        saga.pendingCompensations())
+                        saga.pendingCompensations(),
+                        traceparent)
                 .update();
+    }
+
+    /** The trace of the saga's last step (null if carrying the trace is off). */
+    public Optional<String> traceparent(UUID orderId) {
+        return jdbc.sql("select traceparent from saga where order_id = ?")
+                .param(orderId)
+                .query(String.class)
+                .optional();
     }
 
     public Optional<Saga> lock(UUID orderId) {
@@ -43,13 +53,15 @@ public class Sagas {
     }
 
     /** Deadline only for a running step; a settled or compensating saga has none. */
-    public void update(UUID orderId, Saga saga, Instant deadline) {
-        jdbc.sql("update saga set step = ?, state = ?, deadline = ?, pending_compensations = ? where order_id = ?")
+    public void update(UUID orderId, Saga saga, Instant deadline, String traceparent) {
+        jdbc.sql("update saga set step = ?, state = ?, deadline = ?, pending_compensations = ?, traceparent = ?"
+                        + " where order_id = ?")
                 .params(
                         saga.step().name(),
                         saga.state().name(),
                         saga.state() == State.RUNNING ? Timestamp.from(deadline) : null,
                         saga.pendingCompensations(),
+                        traceparent,
                         orderId)
                 .update();
     }

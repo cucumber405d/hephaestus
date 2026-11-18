@@ -42,7 +42,9 @@ create table saga
     step                  varchar(20) not null,
     state                 varchar(20) not null,
     deadline              timestamptz,
-    pending_compensations int         not null default 0
+    pending_compensations int         not null default 0,
+    -- W3C traceparent of the saga's last step: a timeout continues this trace
+    traceparent           varchar(55)
 );
 
 create index saga_running_deadline_idx on saga (deadline) where state = 'RUNNING';

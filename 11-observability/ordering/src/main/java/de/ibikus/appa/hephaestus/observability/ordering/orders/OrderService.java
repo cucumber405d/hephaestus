@@ -9,6 +9,7 @@ import de.ibikus.appa.hephaestus.observability.ordering.messaging.ProcessedMessa
 import de.ibikus.appa.hephaestus.observability.ordering.messaging.SagaMessage;
 import de.ibikus.appa.hephaestus.observability.ordering.messaging.SagaMessage.Line;
 import de.ibikus.appa.hephaestus.observability.ordering.messaging.Topics;
+import de.ibikus.appa.hephaestus.observability.ordering.messaging.TraceCarrier;
 import de.ibikus.appa.hephaestus.observability.ordering.orders.Orders.Order;
 import de.ibikus.appa.hephaestus.observability.ordering.saga.Orchestrator;
 import de.ibikus.appa.hephaestus.observability.ordering.saga.Sagas;
@@ -48,6 +49,7 @@ public class OrderService {
     private final Levers levers;
     private final Clock clock;
     private final Duration stepTimeout;
+    private final TraceCarrier carrier;
 
     public OrderService(
             Orders orders,
@@ -57,7 +59,8 @@ public class OrderService {
             ProcessedMessages processed,
             Levers levers,
             Clock clock,
-            @Value("${saga.step-timeout}") Duration stepTimeout) {
+            @Value("${saga.step-timeout}") Duration stepTimeout,
+            TraceCarrier carrier) {
         this.orders = orders;
         this.sagas = sagas;
         this.outbox = outbox;
@@ -66,6 +69,7 @@ public class OrderService {
         this.levers = levers;
         this.clock = clock;
         this.stepTimeout = stepTimeout;
+        this.carrier = carrier;
     }
 
     @Transactional
@@ -101,7 +105,7 @@ public class OrderService {
         orders.insert(order, topic, messages.write(first), now);
         orders.history(order.id(), "placed (" + saga + "), " + amount + " EUR");
         if (ORCHESTRATION.equals(saga)) {
-            sagas.insert(order.id(), Orchestrator.start(), now.plus(stepTimeout));
+            sagas.insert(order.id(), Orchestrator.start(), now.plus(stepTimeout), carrier.capture());
         }
         outbox.send(topic, first);
         orders.history(order.id(), "→ " + first.type());
@@ -149,11 +153,16 @@ public class OrderService {
     @Transactional
     public void timeouts() {
         for (var orderId : sagas.overdue(clock.instant())) {
-            var current = sagas.lock(orderId).orElseThrow();
-            var decision = Orchestrator.onTimeout(current);
-            orders.history(orderId, "⏱ " + decision.reason());
-            LOG.warn("Saga of order {}: {}", orderId, decision.reason());
-            apply(orderId, decision);
+            // The scheduler has its own trace: continue the saga's instead, so the compensation is part of it
+            carrier.continueTrace(sagas.traceparent(orderId).orElse(null), "saga timeout", () -> {
+                carrier.tag("order.id", orderId.toString());
+                var current = sagas.lock(orderId).orElseThrow();
+                var decision = Orchestrator.onTimeout(current);
+                orders.history(orderId, "⏱ " + decision.reason());
+                LOG.warn("Saga of order {}: {}", orderId, decision.reason());
+                apply(orderId, decision);
+                return null;
+            });
         }
     }
 
@@ -168,7 +177,8 @@ public class OrderService {
 
     private void apply(UUID orderId, Orchestrator.Decision decision) {
         var order = orders.find(orderId).orElseThrow();
-        sagas.update(orderId, decision.next(), clock.instant().plus(stepTimeout));
+        carrier.tag("saga.step", decision.next().step().name().toLowerCase());
+        sagas.update(orderId, decision.next(), clock.instant().plus(stepTimeout), carrier.capture());
         if (decision.outcome() != null
                 && orders.settle(orderId, decision.outcome().name(), decision.reason())) {
             orders.history(orderId, "order " + decision.outcome().name());
