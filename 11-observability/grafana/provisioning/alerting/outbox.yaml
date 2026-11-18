@@ -5,7 +5,8 @@ groups:
   - orgId: 1
     name: outbox
     folder: Hephaestus
-    interval: 15s
+    # A multiple of Grafana's scheduler interval (10 s), or provisioning fails and Grafana does not start
+    interval: 20s
     rules:
       - uid: outbox-backlog
         title: Outbox backlog
