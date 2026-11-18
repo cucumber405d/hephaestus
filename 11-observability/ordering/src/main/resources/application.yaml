@@ -72,6 +72,8 @@ management:
       export:
         url: ${OTLP_ENDPOINT:http://localhost:4318}/v1/metrics
         step: 10s
+        # Timers in seconds: saga_duration_seconds_bucket in Prometheus
+        base-time-unit: seconds
   endpoint:
     health:
       probes:

@@ -1,0 +1,10 @@
+# Dashboards of this subproject, from grafana/dashboards (mounted read-only)
+apiVersion: 1
+providers:
+  - name: hephaestus
+    folder: Hephaestus
+    type: file
+    disableDeletion: true
+    options:
+      path: /otel-lgtm/grafana/conf/provisioning/dashboards/hephaestus
+      foldersFromFilesStructure: false

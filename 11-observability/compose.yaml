@@ -1,6 +1,7 @@
 # The 11 observability playground (the 10 saga) from the Jib images (build: ../mvnw -f pom.xml package jib:dockerBuild -DskipTests):
 #   ordering (orchestrator) <-> Kafka <-> payment, inventory, delivery; one PostgreSQL with a database per service.
-#   docker compose up -d        Kafka UI: http://localhost:8085
+#   docker compose up -d        Kafka UI: http://localhost:8085   Grafana: http://localhost:3000 (admin/admin)
+# Telemetry: ordering, payment, inventory export OTLP themselves (Boot); delivery through the Java agent. All to lgtm.
 # Service ports are bound to localhost: their /admin endpoints are open.
 services:
   kafka:
@@ -45,6 +46,21 @@ services:
       kafka:
         condition: service_healthy
 
+  lgtm:
+    # One container: OpenTelemetry Collector (OTLP 4317/4318), Prometheus, Loki, Tempo, Grafana
+    image: grafana/otel-lgtm:0.29.2
+    ports:
+      - "127.0.0.1:3000:3000"   # Grafana
+      - "127.0.0.1:3100:3100"   # Loki API
+      - "127.0.0.1:3200:3200"   # Tempo API
+      - "127.0.0.1:9090:9090"   # Prometheus
+      - "127.0.0.1:4317:4317"   # OTLP gRPC (a service started from the IDE)
+      - "127.0.0.1:4318:4318"   # OTLP HTTP
+    volumes:
+      - ./grafana/provisioning/dashboards/hephaestus.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/hephaestus.yaml:ro
+      - ./grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/hephaestus:ro
+      - ./grafana/provisioning/alerting:/otel-lgtm/grafana/conf/provisioning/alerting:ro
+
   postgres:
     image: postgres:17
     environment:
@@ -67,6 +83,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ordering
       SPRING_DATASOURCE_PASSWORD: ordering
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Not a dependency: without lgtm the service runs, the telemetry is dropped
+      OTLP_ENDPOINT: http://lgtm:4318
+      OUTBOX_CARRY_TRACE: ${OUTBOX_CARRY_TRACE:-true}
       SAGA_STEP_TIMEOUT: ${SAGA_STEP_TIMEOUT:-30s}
     mem_limit: 512m
     ports:
@@ -85,6 +104,9 @@ services:
       SPRING_DATASOURCE_USERNAME: payment
       SPRING_DATASOURCE_PASSWORD: payment
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Not a dependency: without lgtm the service runs, the telemetry is dropped
+      OTLP_ENDPOINT: http://lgtm:4318
+      OUTBOX_CARRY_TRACE: ${OUTBOX_CARRY_TRACE:-true}
     mem_limit: 512m
     ports:
       - "127.0.0.1:8081:8080"
@@ -102,6 +124,9 @@ services:
       SPRING_DATASOURCE_USERNAME: inventory
       SPRING_DATASOURCE_PASSWORD: inventory
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Not a dependency: without lgtm the service runs, the telemetry is dropped
+      OTLP_ENDPOINT: http://lgtm:4318
+      OUTBOX_CARRY_TRACE: ${OUTBOX_CARRY_TRACE:-true}
     mem_limit: 512m
     ports:
       - "127.0.0.1:8082:8080"
@@ -119,7 +144,12 @@ services:
       SPRING_DATASOURCE_USERNAME: delivery
       SPRING_DATASOURCE_PASSWORD: delivery
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    mem_limit: 512m
+      # The Java agent's configuration (the code knows nothing of telemetry)
+      OTEL_SERVICE_NAME: delivery
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+    # The agent needs some room of its own
+    mem_limit: 640m
     ports:
       - "127.0.0.1:8083:8080"
     depends_on:

@@ -2,7 +2,9 @@
 # End-to-end run of the order saga in both styles (choreography, orchestration) in Docker Compose:
 # 1 happy path, 2 credit limit, 3 out of stock (refund), 4 delivery fails (release + refund), 5 Kafka down at order
 # time (outbox delivers later), 6 duplicate first message, 7 participant down (orchestrator times out, choreography
-# waits). Prints each order's saga history.
+# waits). Prints each order's saga history. On top of 10: every order is one trace in Tempo with spans of the services
+# it went through (Delivery via the Java agent), the outbox and the timeout keep the trace, metrics reach Prometheus,
+# logs reach Loki, the Grafana dashboard and alert rule are provisioned.
 #   11-observability/scripts/e2e.sh          (SKIP_BUILD=true to reuse images, KEEP_STACK=true to keep it up)
 # Needs JDK 25, Docker and curl. Takes a few minutes (Kafka restart, timeouts).
 set -euo pipefail
@@ -13,6 +15,10 @@ ORDERING="http://localhost:8080"
 PAYMENT="http://localhost:8081"
 INVENTORY="http://localhost:8082"
 DELIVERY="http://localhost:8083"
+GRAFANA="http://127.0.0.1:3000"
+TEMPO="http://127.0.0.1:3200"
+PROMETHEUS="http://127.0.0.1:9090"
+LOKI="http://127.0.0.1:3100"
 BODY=/tmp/11-e2e-body.json
 STYLES="choreography orchestration"
 
@@ -57,6 +63,53 @@ wait_history() {
     done
     return 1
 }
+# Trace ids of the traces with a span tagged with order $1 (Tempo search, last hour)
+trace_ids() {
+    curl -fsG "$TEMPO/api/search" --data-urlencode "q={ span.order.id = \"$1\" }" \
+        --data-urlencode "start=$(($(date +%s) - 3600))" --data-urlencode "end=$(($(date +%s) + 60))" \
+        --data-urlencode "limit=20" | grep -o '"traceID":"[0-9a-f]*"' | sed 's/.*:"\(.*\)"/\1/' | sort -u
+}
+# Service names of the spans in trace $1, sorted, space-separated
+services() {
+    curl -fs "$TEMPO/api/traces/$1" | grep -o '"key":"service.name","value":{"stringValue":"[^"]*"' \
+        | sed 's/.*"stringValue":"\(.*\)"/\1/' | sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+# Waits (telemetry is exported in batches) until order $1 is exactly one trace that has spans of each service in $2
+# (space-separated; others may be there too: every participant consumes the events it then ignores); prints the id
+wait_trace() {
+    local ids="" have
+    for _ in $(seq 1 60); do
+        ids=$(trace_ids "$1" || true)
+        if [ -n "$ids" ] && [ "$(echo "$ids" | wc -l)" -eq 1 ]; then
+            have=" $(services "$ids") "
+            if all_in "$have" $2; then
+                echo "$ids"
+                return 0
+            fi
+        fi
+        sleep 2
+    done
+    echo "order $1: traces [$(echo $ids)]" >&2
+    [ -n "$ids" ] && echo "  services of the first: [$(services "$(echo "$ids" | head -1)")]" >&2
+    return 1
+}
+# Waits until the PromQL query $1 has a result
+wait_metric() {
+    for _ in $(seq 1 45); do
+        curl -fsG "$PROMETHEUS/api/v1/query" --data-urlencode "query=$1" | grep -q '"result":\[{' && return 0
+        sleep 2
+    done
+    return 1
+}
+# all_in " <list> " <word>...: every word is in the list
+all_in() {
+    local list="$1" word
+    shift
+    for word in "$@"; do
+        case "$list" in *" $word "*) ;; *) return 1 ;; esac
+    done
+}
+ALL="delivery inventory ordering payment"
 faults() { curl -fs -o /dev/null -X PUT -H 'Content-Type: application/json' -d "$2" "$1/admin/faults"; }
 heal() { for s in "$PAYMENT" "$INVENTORY" "$DELIVERY"; do curl -fs -o /dev/null -X DELETE "$s/admin/faults"; done; }
 wait_ready() {
@@ -81,7 +134,12 @@ trap cleanup EXIT
 export SAGA_STEP_TIMEOUT=60s
 compose up -d
 wait_ready "$ORDERING" "$PAYMENT" "$INVENTORY" "$DELIVERY"
-ok "stack ready (Kafka UI: http://localhost:8085)"
+for _ in $(seq 1 60); do
+    [ "$(code "$GRAFANA/api/health")" = "200" ] && break
+    sleep 2
+done
+[ "$(code "$GRAFANA/api/health")" = "200" ] || fail "Grafana not ready"
+ok "stack ready (Kafka UI: http://localhost:8085, Grafana: $GRAFANA)"
 
 for style in $STYLES; do
     echo "==> [$style] 1. happy path"
@@ -89,12 +147,16 @@ for style in $STYLES; do
     wait_status "$id" CONFIRMED 30 || fail "$style happy path: $(status "$id")"
     history "$id"
     ok "$style: CONFIRMED"
+    trace=$(wait_trace "$id" "$ALL") || fail "$style happy path: not one trace through all four services"
+    ok "$style: one trace $trace with spans of $ALL"
 
     echo "==> [$style] 2. credit limit (bob, 50 EUR)"
     id=$(order bob "$style" ANVIL-01 1)
     wait_status "$id" REJECTED 30 || fail "$style credit limit: $(status "$id")"
     [ "$(reason "$id")" = "credit limit exceeded" ] || fail "$style credit limit reason: $(reason "$id")"
     ok "$style: REJECTED at payment, no compensation needed"
+    wait_trace "$id" "ordering payment" >/dev/null || fail "$style credit limit: not one trace (ordering, payment)"
+    ok "$style: the rejection is one trace"
 
     echo "==> [$style] 3. out of stock -> refund"
     id=$(order alice "$style" TONGS-01 1)
@@ -142,6 +204,9 @@ compose start kafka >/dev/null
 wait_status "$choreo" CONFIRMED 120 || fail "choreography after Kafka restart: $(status "$choreo")"
 wait_status "$orch" CONFIRMED 120 || fail "orchestration after Kafka restart: $(status "$orch")"
 ok "both sagas completed after Kafka came back"
+wait_trace "$choreo" "$ALL" >/dev/null || fail "choreography after Kafka restart: the outbox broke the trace"
+wait_trace "$orch" "$ALL" >/dev/null || fail "orchestration after Kafka restart: the outbox broke the trace"
+ok "outbox resubmission kept each saga in one trace"
 
 echo "==> 7. Delivery down"
 compose stop delivery >/dev/null
@@ -150,6 +215,18 @@ orch=$(order alice orchestration HAMMER-01 1)
 wait_status "$orch" REJECTED 90 || fail "orchestration should time out: $(status "$orch")"
 [ "$(reason "$orch")" = "timeout at step delivery" ] || fail "timeout reason: $(reason "$orch")"
 ok "orchestration: timeout at delivery -> REJECTED, compensations sent"
+t=""
+for _ in $(seq 1 30); do
+    t=$(trace_ids "$orch" || true)
+    if [ -n "$t" ] && [ "$(echo "$t" | wc -l)" -eq 1 ] && curl -fs "$TEMPO/api/traces/$t" | grep -q '"name":"saga timeout"'; then
+        break
+    fi
+    t=""
+    sleep 2
+done
+[ -n "$t" ] || fail "the timeout should continue the saga's single trace"
+ok "timeout and compensations are inside the saga's trace $t"
+
 [ "$(status "$choreo")" = "PENDING" ] || fail "choreography should still wait: $(status "$choreo")"
 ok "choreography: still PENDING (nobody keeps a deadline)"
 compose start delivery >/dev/null
@@ -159,4 +236,26 @@ wait_history "$orch" "DeliveryCancelled" || fail "late delivery of the timed-out
 history "$orch"
 ok "choreography completed late; orchestration's late delivery was cancelled"
 
+echo "==> telemetry: metrics, logs, Grafana"
+wait_metric 'sum by (style) (saga_completed_total{outcome="rejected"})' || fail "saga_completed_total not in Prometheus"
+wait_metric 'saga_duration_seconds_bucket' || fail "saga_duration_seconds not in Prometheus"
+wait_metric 'outbox_publications_incomplete' || fail "outbox_publications_incomplete not in Prometheus"
+ok "saga and outbox metrics in Prometheus"
+logs=""
+for _ in $(seq 1 30); do
+    logs=$(curl -fsG "$LOKI/loki/api/v1/query_range" \
+        --data-urlencode "query={service_name=\"ordering\"} | trace_id=\"$t\"" \
+        --data-urlencode "start=$(($(date +%s) - 3600))000000000" --data-urlencode "limit=5" || true)
+    echo "$logs" | grep -q '"values":\[\[' && break
+    logs=""
+    sleep 2
+done
+[ -n "$logs" ] || fail "no ordering logs in Loki for trace $t"
+ok "Loki finds ordering's logs by trace id"
+curl -fs -u admin:admin "$GRAFANA/api/search?query=Saga" | grep -q '"uid":"hephaestus-saga"' || fail "dashboard not provisioned"
+curl -fs -u admin:admin "$GRAFANA/api/v1/provisioning/alert-rules" | grep -q '"title":"Outbox backlog"' \
+    || fail "alert rule not provisioned"
+ok "Grafana: dashboard Saga and alert rule Outbox backlog provisioned"
+
 echo "E2E OK"
+
