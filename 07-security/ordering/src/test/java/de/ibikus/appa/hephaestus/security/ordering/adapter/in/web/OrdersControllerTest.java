@@ -87,8 +87,11 @@ class OrdersControllerTest {
 
     @Test
     void smithMayNotPlaceOrders() {
+        // The fake is shared by all tests of this context: compare with what was there before
+        var before = inventory.reservations().size();
+
         assertThat(place(TestTokens.bob(), "ANVIL-01", 1)).hasStatus(HttpStatus.FORBIDDEN);
-        assertThat(inventory.reservations()).isEmpty();
+        assertThat(inventory.reservations()).hasSize(before);
     }
 
     @Test
@@ -103,10 +106,7 @@ class OrdersControllerTest {
         var result = mvc.get().uri(location).with(TestTokens.carol()).exchange();
 
         assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
-        assertThat(result)
-                .bodyJson()
-                .extractingPath("$.type")
-                .isEqualTo(PROBLEMS + "not-found");
+        assertThat(result).bodyJson().extractingPath("$.type").isEqualTo(PROBLEMS + "not-found");
     }
 
     @Test

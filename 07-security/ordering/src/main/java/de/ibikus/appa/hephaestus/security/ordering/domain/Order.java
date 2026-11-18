@@ -27,7 +27,8 @@ public record Order(
 
     public static void requireValidCustomerId(String customerId) {
         if (customerId == null || customerId.isBlank() || customerId.length() > MAX_CUSTOMER_ID_LENGTH) {
-            throw new InvalidValueException("An order needs a customer id of 1.." + MAX_CUSTOMER_ID_LENGTH + " characters");
+            throw new InvalidValueException(
+                    "An order needs a customer id of 1.." + MAX_CUSTOMER_ID_LENGTH + " characters");
         }
     }
 

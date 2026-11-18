@@ -42,9 +42,11 @@ class OrdersController {
 
     @PostMapping
     ResponseEntity<OrderResponse> place(@Valid @RequestBody PlaceOrderRequest request, Authentication caller) {
-        var order = placeOrder.place(caller.getName(), request.lines().stream()
-                .map(line -> new OrderLine(line.sku(), line.quantity()))
-                .toList());
+        var order = placeOrder.place(
+                caller.getName(),
+                request.lines().stream()
+                        .map(line -> new OrderLine(line.sku(), line.quantity()))
+                        .toList());
         var location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(order.id())
