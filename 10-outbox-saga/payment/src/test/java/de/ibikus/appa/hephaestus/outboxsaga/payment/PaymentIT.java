@@ -86,15 +86,26 @@ class PaymentIT {
         var customer = customer();
         var reserve = message(RESERVE_PAYMENT, ORCHESTRATION, customer, "100.00", "ANVIL-01", 1);
         send(Topics.PAYMENT_COMMANDS, reserve);
-        assertThat(await(Duration.ofSeconds(15), () -> payments.reserved(customer).signum() > 0)).isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> payments.reserved(customer).signum() > 0))
+                .isTrue();
 
         send(Topics.PAYMENT_COMMANDS, reserve.next(REFUND_PAYMENT, "test"));
         send(Topics.PAYMENT_COMMANDS, reserve.next(REFUND_PAYMENT, "test again"));
 
-        assertThat(await(Duration.ofSeconds(15), () -> payments.reserved(customer).signum() == 0)).isTrue();
-        assertThat(await(Duration.ofSeconds(20), () -> types(read(
-                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, reserve.orderId()))
-                        .equals(java.util.List.of(PAYMENT_RESERVED, PAYMENT_REFUNDED, PAYMENT_REFUNDED))))
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> payments.reserved(customer).signum() == 0))
+                .isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> types(read(
+                                        container.getBootstrapServers(),
+                                        messages,
+                                        Topics.ORDERING_REPLIES,
+                                        reserve.orderId()))
+                                .equals(java.util.List.of(PAYMENT_RESERVED, PAYMENT_REFUNDED, PAYMENT_REFUNDED))))
                 .isTrue();
         assertThat(payments.reserved(customer)).isEqualByComparingTo(BigDecimal.ZERO);
     }
@@ -104,12 +115,20 @@ class PaymentIT {
         var reserve = message(RESERVE_PAYMENT, ORCHESTRATION, customer(), "10.00", "ANVIL-01", 1);
 
         send(Topics.PAYMENT_COMMANDS, reserve.next(REFUND_PAYMENT, "timeout"));
-        assertThat(await(Duration.ofSeconds(15), () -> payments.status(reserve.orderId()).isPresent())).isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> payments.status(reserve.orderId()).isPresent()))
+                .isTrue();
         send(Topics.PAYMENT_COMMANDS, reserve);
 
-        assertThat(await(Duration.ofSeconds(20), () -> types(read(
-                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, reserve.orderId()))
-                        .equals(java.util.List.of(PAYMENT_REFUNDED, PAYMENT_DECLINED))))
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> types(read(
+                                        container.getBootstrapServers(),
+                                        messages,
+                                        Topics.ORDERING_REPLIES,
+                                        reserve.orderId()))
+                                .equals(java.util.List.of(PAYMENT_REFUNDED, PAYMENT_DECLINED))))
                 .isTrue();
     }
 
@@ -143,8 +162,10 @@ class PaymentIT {
 
     /** Waits for at least one message about the order on the topic and returns their types. */
     private java.util.List<String> replies(UUID orderId, String topic) {
-        assertThat(await(Duration.ofSeconds(20), () -> !read(container.getBootstrapServers(), messages, topic, orderId)
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> !read(container.getBootstrapServers(), messages, topic, orderId)
+                                .isEmpty()))
                 .isTrue();
         return types(read(container.getBootstrapServers(), messages, topic, orderId));
     }

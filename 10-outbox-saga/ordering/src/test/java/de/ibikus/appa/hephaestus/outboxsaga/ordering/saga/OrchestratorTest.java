@@ -81,9 +81,12 @@ class OrchestratorTest {
         var confirmed = new Saga(Step.DELIVERY, State.CONFIRMED, 0);
         var atStock = new Saga(Step.STOCK, State.RUNNING, 0);
 
-        assertThat(Orchestrator.onReply(compensating, DELIVERY_SCHEDULED, null).ignored(compensating)).isTrue();
-        assertThat(Orchestrator.onReply(confirmed, DELIVERY_SCHEDULED, null).ignored(confirmed)).isTrue();
-        assertThat(Orchestrator.onReply(atStock, PAYMENT_RESERVED, null).ignored(atStock)).isTrue();
+        assertThat(Orchestrator.onReply(compensating, DELIVERY_SCHEDULED, null).ignored(compensating))
+                .isTrue();
+        assertThat(Orchestrator.onReply(confirmed, DELIVERY_SCHEDULED, null).ignored(confirmed))
+                .isTrue();
+        assertThat(Orchestrator.onReply(atStock, PAYMENT_RESERVED, null).ignored(atStock))
+                .isTrue();
         assertThat(Orchestrator.onTimeout(confirmed).ignored(confirmed)).isTrue();
     }
 }

@@ -66,8 +66,8 @@ public class DeliveryHandler {
     }
 
     private SagaMessage schedule(SagaMessage message) {
-        var outcome = deliveries.schedule(
-                message.orderId(), message.customerId(), !levers.failsFor(message.customerId()));
+        var outcome =
+                deliveries.schedule(message.orderId(), message.customerId(), !levers.failsFor(message.customerId()));
         LOG.info("Delivery {} for order {}", outcome, message.orderId());
         return outcome == Deliveries.Outcome.SCHEDULED
                 ? message.next(DELIVERY_SCHEDULED, null)

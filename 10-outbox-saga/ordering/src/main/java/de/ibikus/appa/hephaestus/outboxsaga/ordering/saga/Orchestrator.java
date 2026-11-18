@@ -65,23 +65,28 @@ public final class Orchestrator {
             return Decision.ignore(saga);
         }
         return switch (saga.step()) {
-            case PAYMENT -> switch (reply) {
-                case PAYMENT_RESERVED -> running(Step.STOCK, RESERVE_STOCK);
-                case PAYMENT_DECLINED -> new Decision(
-                        new Saga(Step.PAYMENT, State.REJECTED, 0), List.of(), Outcome.REJECTED, replyReason);
-                default -> Decision.ignore(saga);
-            };
-            case STOCK -> switch (reply) {
-                case STOCK_RESERVED -> running(Step.DELIVERY, SCHEDULE_DELIVERY);
-                case STOCK_UNAVAILABLE -> compensate(Step.STOCK, List.of(REFUND_PAYMENT), replyReason);
-                default -> Decision.ignore(saga);
-            };
-            case DELIVERY -> switch (reply) {
-                case DELIVERY_SCHEDULED -> new Decision(
-                        new Saga(Step.DELIVERY, State.CONFIRMED, 0), List.of(), Outcome.CONFIRMED, null);
-                case DELIVERY_FAILED -> compensate(Step.DELIVERY, List.of(RELEASE_STOCK, REFUND_PAYMENT), replyReason);
-                default -> Decision.ignore(saga);
-            };
+            case PAYMENT ->
+                switch (reply) {
+                    case PAYMENT_RESERVED -> running(Step.STOCK, RESERVE_STOCK);
+                    case PAYMENT_DECLINED ->
+                        new Decision(
+                                new Saga(Step.PAYMENT, State.REJECTED, 0), List.of(), Outcome.REJECTED, replyReason);
+                    default -> Decision.ignore(saga);
+                };
+            case STOCK ->
+                switch (reply) {
+                    case STOCK_RESERVED -> running(Step.DELIVERY, SCHEDULE_DELIVERY);
+                    case STOCK_UNAVAILABLE -> compensate(Step.STOCK, List.of(REFUND_PAYMENT), replyReason);
+                    default -> Decision.ignore(saga);
+                };
+            case DELIVERY ->
+                switch (reply) {
+                    case DELIVERY_SCHEDULED ->
+                        new Decision(new Saga(Step.DELIVERY, State.CONFIRMED, 0), List.of(), Outcome.CONFIRMED, null);
+                    case DELIVERY_FAILED ->
+                        compensate(Step.DELIVERY, List.of(RELEASE_STOCK, REFUND_PAYMENT), replyReason);
+                    default -> Decision.ignore(saga);
+                };
         };
     }
 
@@ -106,8 +111,7 @@ public final class Orchestrator {
     }
 
     private static Decision compensate(Step step, List<String> commands, String reason) {
-        return new Decision(
-                new Saga(step, State.COMPENSATING, commands.size()), commands, Outcome.REJECTED, reason);
+        return new Decision(new Saga(step, State.COMPENSATING, commands.size()), commands, Outcome.REJECTED, reason);
     }
 
     private static Decision compensationDone(Saga saga, String reply) {

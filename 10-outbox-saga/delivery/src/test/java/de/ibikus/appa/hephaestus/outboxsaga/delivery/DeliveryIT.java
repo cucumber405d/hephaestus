@@ -74,12 +74,20 @@ class DeliveryIT {
         var schedule = message(SCHEDULE_DELIVERY, ORCHESTRATION, "alice", "35.00", "HAMMER-01", 1);
 
         send(Topics.DELIVERY_COMMANDS, schedule.next(CANCEL_DELIVERY, "timeout"));
-        assertThat(await(Duration.ofSeconds(15), () -> deliveries.status(schedule.orderId()).isPresent())).isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> deliveries.status(schedule.orderId()).isPresent()))
+                .isTrue();
         send(Topics.DELIVERY_COMMANDS, schedule);
 
-        assertThat(await(Duration.ofSeconds(15), () -> types(read(
-                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, schedule.orderId()))
-                        .equals(List.of(DELIVERY_CANCELLED, DELIVERY_FAILED))))
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> types(read(
+                                        container.getBootstrapServers(),
+                                        messages,
+                                        Topics.ORDERING_REPLIES,
+                                        schedule.orderId()))
+                                .equals(List.of(DELIVERY_CANCELLED, DELIVERY_FAILED))))
                 .isTrue();
         assertThat(deliveries.status(schedule.orderId())).contains("CANCELLED");
     }
@@ -89,8 +97,10 @@ class DeliveryIT {
     }
 
     private List<String> replies(UUID orderId, String topic) {
-        assertThat(await(Duration.ofSeconds(20), () -> !read(container.getBootstrapServers(), messages, topic, orderId)
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> !read(container.getBootstrapServers(), messages, topic, orderId)
+                                .isEmpty()))
                 .isTrue();
         return types(read(container.getBootstrapServers(), messages, topic, orderId));
     }

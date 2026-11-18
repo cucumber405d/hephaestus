@@ -41,12 +41,16 @@ class OrdersController {
         var order = service.place(
                 request.customerId(),
                 request.saga(),
-                request.lines().stream().map(l -> new Line(l.sku(), l.quantity())).toList());
+                request.lines().stream()
+                        .map(l -> new Line(l.sku(), l.quantity()))
+                        .toList());
         var location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(order.id())
                 .toUri();
-        return ResponseEntity.accepted().location(location).body(new Placed(order.id(), order.status(), order.amount()));
+        return ResponseEntity.accepted()
+                .location(location)
+                .body(new Placed(order.id(), order.status(), order.amount()));
     }
 
     @GetMapping("/api/orders/{id}")
@@ -81,7 +85,10 @@ class OrdersController {
 
     record PlaceOrder(
             @NotNull @Pattern(regexp = "[A-Za-z0-9-]{1,64}") String customerId,
-            @NotNull @Pattern(regexp = "choreography|orchestration") String saga,
+
+            @NotNull @Pattern(regexp = "choreography|orchestration")
+            String saga,
+
             @NotEmpty List<@Valid LineRequest> lines) {}
 
     record LineRequest(@NotNull String sku, @Min(1) int quantity) {}

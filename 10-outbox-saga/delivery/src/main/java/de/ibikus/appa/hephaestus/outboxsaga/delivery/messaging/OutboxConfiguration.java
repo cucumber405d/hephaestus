@@ -28,8 +28,10 @@ class OutboxConfiguration {
         return EventExternalizationConfiguration.externalizing()
                 .select(event -> event instanceof OutgoingMessage)
                 .mapping(OutgoingMessage.class, outgoing -> messages.write(outgoing.message()))
-                .route(OutgoingMessage.class, outgoing -> RoutingTarget.forTarget(outgoing.topic())
-                        .andKey(outgoing.message().orderId().toString()))
+                .route(
+                        OutgoingMessage.class,
+                        outgoing -> RoutingTarget.forTarget(outgoing.topic())
+                                .andKey(outgoing.message().orderId().toString()))
                 .build();
     }
 

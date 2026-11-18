@@ -69,10 +69,16 @@ class InventoryIT {
         send(Topics.INVENTORY_COMMANDS, command.next(RELEASE_STOCK, "test"));
         send(Topics.INVENTORY_COMMANDS, command.next(RELEASE_STOCK, "test again"));
 
-        assertThat(await(Duration.ofSeconds(15), () -> stock.reserved("HAMMER-01") == before)).isTrue();
-        assertThat(await(Duration.ofSeconds(20), () -> types(read(
-                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, command.orderId()))
-                        .equals(List.of(STOCK_RESERVED, STOCK_RELEASED, STOCK_RELEASED))))
+        assertThat(await(Duration.ofSeconds(15), () -> stock.reserved("HAMMER-01") == before))
+                .isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> types(read(
+                                        container.getBootstrapServers(),
+                                        messages,
+                                        Topics.ORDERING_REPLIES,
+                                        command.orderId()))
+                                .equals(List.of(STOCK_RESERVED, STOCK_RELEASED, STOCK_RELEASED))))
                 .isTrue();
     }
 
@@ -84,9 +90,14 @@ class InventoryIT {
 
         send(Topics.DELIVERY_EVENTS, paid.next(DELIVERY_FAILED, "no courier"));
 
-        assertThat(await(Duration.ofSeconds(15), () -> types(read(
-                                container.getBootstrapServers(), messages, Topics.INVENTORY_EVENTS, paid.orderId()))
-                        .equals(List.of(STOCK_RESERVED, STOCK_RELEASED))))
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> types(read(
+                                        container.getBootstrapServers(),
+                                        messages,
+                                        Topics.INVENTORY_EVENTS,
+                                        paid.orderId()))
+                                .equals(List.of(STOCK_RESERVED, STOCK_RELEASED))))
                 .isTrue();
     }
 
@@ -95,8 +106,10 @@ class InventoryIT {
     }
 
     private List<String> replies(UUID orderId, String topic) {
-        assertThat(await(Duration.ofSeconds(20), () -> !read(container.getBootstrapServers(), messages, topic, orderId)
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> !read(container.getBootstrapServers(), messages, topic, orderId)
+                                .isEmpty()))
                 .isTrue();
         return types(read(container.getBootstrapServers(), messages, topic, orderId));
     }

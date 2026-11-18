@@ -1,5 +1,6 @@
 package de.ibikus.appa.hephaestus.outboxsaga.payment;
 
+import de.ibikus.appa.hephaestus.outboxsaga.payment.messaging.Messages;
 import de.ibikus.appa.hephaestus.outboxsaga.payment.messaging.SagaMessage;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -13,7 +14,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.kafka.core.KafkaTemplate;
-import de.ibikus.appa.hephaestus.outboxsaga.payment.messaging.Messages;
 
 /** Test helpers: send saga messages like the other services do, read a topic from the start, wait. */
 public final class Probe {
@@ -40,11 +40,16 @@ public final class Probe {
     /** Messages about the order on the topic, read from the beginning (stops after half a quiet second, max 10 s). */
     public static List<SagaMessage> read(String bootstrap, Messages messages, String topic, UUID orderId) {
         var props = Map.<String, Object>of(
-                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap,
-                ConsumerConfig.GROUP_ID_CONFIG, "probe-" + UUID.randomUUID(),
-                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest",
-                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                bootstrap,
+                ConsumerConfig.GROUP_ID_CONFIG,
+                "probe-" + UUID.randomUUID(),
+                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                "earliest",
+                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class,
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class);
         var found = new ArrayList<SagaMessage>();
         try (var consumer = new KafkaConsumer<String, String>(props)) {
             consumer.subscribe(List.of(topic));

@@ -23,7 +23,11 @@ public class Sagas {
 
     public void insert(UUID orderId, Saga saga, Instant deadline) {
         jdbc.sql("insert into saga (order_id, step, state, deadline, pending_compensations) values (?, ?, ?, ?, ?)")
-                .params(orderId, saga.step().name(), saga.state().name(), Timestamp.from(deadline),
+                .params(
+                        orderId,
+                        saga.step().name(),
+                        saga.state().name(),
+                        Timestamp.from(deadline),
                         saga.pendingCompensations())
                 .update();
     }
@@ -41,9 +45,12 @@ public class Sagas {
     /** Deadline only for a running step; a settled or compensating saga has none. */
     public void update(UUID orderId, Saga saga, Instant deadline) {
         jdbc.sql("update saga set step = ?, state = ?, deadline = ?, pending_compensations = ? where order_id = ?")
-                .params(saga.step().name(), saga.state().name(),
+                .params(
+                        saga.step().name(),
+                        saga.state().name(),
                         saga.state() == State.RUNNING ? Timestamp.from(deadline) : null,
-                        saga.pendingCompensations(), orderId)
+                        saga.pendingCompensations(),
+                        orderId)
                 .update();
     }
 

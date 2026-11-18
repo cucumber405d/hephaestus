@@ -16,7 +16,13 @@ import org.springframework.stereotype.Repository;
 public class Orders {
 
     public record Order(
-            UUID id, String customerId, String saga, String status, BigDecimal amount, String reason, List<Line> lines) {}
+            UUID id,
+            String customerId,
+            String saga,
+            String status,
+            BigDecimal amount,
+            String reason,
+            List<Line> lines) {}
 
     public record HistoryEntry(Instant at, String entry) {}
 
@@ -29,8 +35,15 @@ public class Orders {
     public void insert(Order order, String firstTopic, String firstMessage, Instant now) {
         jdbc.sql("insert into purchase_order (id, customer_id, saga, status, amount, first_topic, first_message,"
                         + " created_at) values (?, ?, ?, ?, ?, ?, ?, ?)")
-                .params(order.id(), order.customerId(), order.saga(), order.status(), order.amount(), firstTopic,
-                        firstMessage, Timestamp.from(now))
+                .params(
+                        order.id(),
+                        order.customerId(),
+                        order.saga(),
+                        order.status(),
+                        order.amount(),
+                        firstTopic,
+                        firstMessage,
+                        Timestamp.from(now))
                 .update();
         for (var line : order.lines()) {
             jdbc.sql("insert into order_line (order_id, sku, quantity) values (?, ?, ?)")

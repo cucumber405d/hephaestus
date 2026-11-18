@@ -59,13 +59,17 @@ class OrderingIT {
         var placed = awaitOne(Topics.ORDERING_EVENTS, id);
         assertThat(placed.type()).isEqualTo(ORDER_PLACED);
         assertThat(placed.amount()).isEqualByComparingTo("240.00");
-        assertThat(jdbc.sql("select count(*) from event_publication").query(Long.class).single()).isPositive();
+        assertThat(jdbc.sql("select count(*) from event_publication")
+                        .query(Long.class)
+                        .single())
+                .isPositive();
 
         send(Topics.PAYMENT_EVENTS, placed.next(PAYMENT_RESERVED, null));
         send(Topics.INVENTORY_EVENTS, placed.next(STOCK_RESERVED, null));
         send(Topics.DELIVERY_EVENTS, placed.next(DELIVERY_SCHEDULED, null));
 
-        assertThat(await(Duration.ofSeconds(15), () -> status(id).equals("CONFIRMED"))).isTrue();
+        assertThat(await(Duration.ofSeconds(15), () -> status(id).equals("CONFIRMED")))
+                .isTrue();
     }
 
     @Test
@@ -80,10 +84,12 @@ class OrderingIT {
         assertThat(reserveStock.type()).isEqualTo(RESERVE_STOCK);
         send(Topics.ORDERING_REPLIES, reserve.next(STOCK_UNAVAILABLE, "not enough stock"));
 
-        assertThat(await(Duration.ofSeconds(15), () -> status(id).equals("REJECTED"))).isTrue();
-        assertThat(await(Duration.ofSeconds(15), () -> types(read(
-                                container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, id))
-                        .equals(List.of(RESERVE_PAYMENT, REFUND_PAYMENT))))
+        assertThat(await(Duration.ofSeconds(15), () -> status(id).equals("REJECTED")))
+                .isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> types(read(container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, id))
+                                .equals(List.of(RESERVE_PAYMENT, REFUND_PAYMENT))))
                 .isTrue();
     }
 
@@ -95,10 +101,12 @@ class OrderingIT {
         send(Topics.ORDERING_REPLIES, reserve.next(STOCK_RESERVED, null));
         // Delivery never answers
 
-        assertThat(await(Duration.ofSeconds(40), () -> status(id).equals("REJECTED"))).isTrue();
-        assertThat(await(Duration.ofSeconds(15), () -> types(read(
-                                container.getBootstrapServers(), messages, Topics.DELIVERY_COMMANDS, id))
-                        .equals(List.of(SCHEDULE_DELIVERY, CANCEL_DELIVERY))))
+        assertThat(await(Duration.ofSeconds(40), () -> status(id).equals("REJECTED")))
+                .isTrue();
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> types(read(container.getBootstrapServers(), messages, Topics.DELIVERY_COMMANDS, id))
+                                .equals(List.of(SCHEDULE_DELIVERY, CANCEL_DELIVERY))))
                 .isTrue();
         assertThat(orders.find(id).orElseThrow().reason()).isEqualTo("timeout at step delivery");
     }
@@ -113,7 +121,8 @@ class OrderingIT {
         send(Topics.ORDERING_REPLIES, reply);
 
         awaitOne(Topics.INVENTORY_COMMANDS, id);
-        assertThat(read(container.getBootstrapServers(), messages, Topics.INVENTORY_COMMANDS, id)).hasSize(1);
+        assertThat(read(container.getBootstrapServers(), messages, Topics.INVENTORY_COMMANDS, id))
+                .hasSize(1);
     }
 
     private UUID place(String saga, String sku, int quantity) {
@@ -121,8 +130,7 @@ class OrderingIT {
                 .uri("/api/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"customerId":"alice","saga":"%s","lines":[{"sku":"%s","quantity":%d}]}"""
-                        .formatted(saga, sku, quantity))
+                        {"customerId":"alice","saga":"%s","lines":[{"sku":"%s","quantity":%d}]}""".formatted(saga, sku, quantity))
                 .exchange();
         assertThat(result).hasStatus(HttpStatus.ACCEPTED);
         return UUID.fromString(result.getResponse().getHeader("Location").replaceAll(".*/", ""));

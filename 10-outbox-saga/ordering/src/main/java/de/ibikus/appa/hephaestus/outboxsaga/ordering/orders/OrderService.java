@@ -76,7 +76,9 @@ public class OrderService {
         // The same SKU twice counts once, quantities added up (one line per SKU everywhere downstream)
         var merged = new java.util.TreeMap<String, Integer>();
         lines.forEach(line -> merged.merge(line.sku(), line.quantity(), Integer::sum));
-        lines = merged.entrySet().stream().map(e -> new Line(e.getKey(), e.getValue())).toList();
+        lines = merged.entrySet().stream()
+                .map(e -> new Line(e.getKey(), e.getValue()))
+                .toList();
         var amount = BigDecimal.ZERO;
         for (var line : lines) {
             var price = PRICES.get(line.sku());
@@ -135,7 +137,9 @@ public class OrderService {
         }
         var decision = Orchestrator.onReply(current.get(), reply.type(), reply.reason());
         if (decision.ignored(current.get())) {
-            orders.history(reply.orderId(), "  (ignored: saga is " + current.get().state().name().toLowerCase() + ")");
+            orders.history(
+                    reply.orderId(),
+                    "  (ignored: saga is " + current.get().state().name().toLowerCase() + ")");
             return;
         }
         apply(reply.orderId(), decision);
@@ -165,7 +169,8 @@ public class OrderService {
     private void apply(UUID orderId, Orchestrator.Decision decision) {
         var order = orders.find(orderId).orElseThrow();
         sagas.update(orderId, decision.next(), clock.instant().plus(stepTimeout));
-        if (decision.outcome() != null && orders.settle(orderId, decision.outcome().name(), decision.reason())) {
+        if (decision.outcome() != null
+                && orders.settle(orderId, decision.outcome().name(), decision.reason())) {
             orders.history(orderId, "order " + decision.outcome().name());
         }
         for (var command : decision.commands()) {
