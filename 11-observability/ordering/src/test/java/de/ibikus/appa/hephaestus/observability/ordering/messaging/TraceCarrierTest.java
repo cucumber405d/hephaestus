@@ -60,6 +60,7 @@ class TraceCarrierTest {
     void switchedOffIgnoresTheStoredParent() {
         var off = new TraceCarrier(tracer, propagator, false);
 
-        assertThat(off.continueTrace(PARENT, "outbox relay", () -> tracer.currentSpan())).isNull();
+        assertThat(off.continueTrace(PARENT, "outbox relay", () -> tracer.currentSpan()))
+                .isNull();
     }
 }

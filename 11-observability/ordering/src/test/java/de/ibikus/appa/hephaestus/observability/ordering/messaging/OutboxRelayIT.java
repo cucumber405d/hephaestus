@@ -7,17 +7,17 @@ import static de.ibikus.appa.hephaestus.observability.ordering.messaging.SagaMes
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.ibikus.appa.hephaestus.observability.ordering.Containers;
+import de.ibikus.appa.hephaestus.observability.ordering.orders.OrderService;
+import io.micrometer.tracing.Tracer;
 import java.time.Duration;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.micrometer.tracing.test.autoconfigure.AutoConfigureTracing;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.testcontainers.kafka.KafkaContainer;
-import de.ibikus.appa.hephaestus.observability.ordering.orders.OrderService;
-import io.micrometer.tracing.Tracer;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.testcontainers.kafka.KafkaContainer;
 
 /** The relay sends in the trace stored with the message: right away, and after Kafka was down. */
 @SpringBootTest
@@ -51,9 +51,14 @@ class OutboxRelayIT {
 
         relay.relay(new OutgoingMessage(Topics.PAYMENT_COMMANDS, command, PARENT));
 
-        assertThat(await(Duration.ofSeconds(20), () -> !readWithTrace(
-                                container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, command.orderId())
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> !readWithTrace(
+                                        container.getBootstrapServers(),
+                                        messages,
+                                        Topics.PAYMENT_COMMANDS,
+                                        command.orderId())
+                                .isEmpty()))
                 .isTrue();
         assertThat(readWithTrace(container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, command.orderId())
                         .getFirst()
@@ -82,9 +87,11 @@ class OutboxRelayIT {
             docker.unpauseContainerCmd(container.getContainerId()).exec();
         }
 
-        assertThat(await(Duration.ofSeconds(60), () -> !readWithTrace(
-                                container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, orderId)
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(60),
+                        () -> !readWithTrace(
+                                        container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, orderId)
+                                .isEmpty()))
                 .isTrue();
         assertThat(readWithTrace(container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, orderId)
                         .getFirst()

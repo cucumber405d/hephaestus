@@ -60,9 +60,14 @@ class PaymentIT {
 
         send(Topics.PAYMENT_COMMANDS, command);
 
-        assertThat(await(Duration.ofSeconds(20), () -> !readWithTrace(
-                                container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, command.orderId())
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> !readWithTrace(
+                                        container.getBootstrapServers(),
+                                        messages,
+                                        Topics.ORDERING_REPLIES,
+                                        command.orderId())
+                                .isEmpty()))
                 .isTrue();
         assertThat(readWithTrace(container.getBootstrapServers(), messages, Topics.ORDERING_REPLIES, command.orderId())
                         .getFirst()

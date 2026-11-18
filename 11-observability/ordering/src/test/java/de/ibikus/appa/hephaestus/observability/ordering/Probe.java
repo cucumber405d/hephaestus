@@ -72,7 +72,8 @@ public final class Probe {
                 }
                 records.forEach(r -> {
                     if (orderId.toString().equals(r.key())) {
-                        found.add(new Received(messages.read(r.value()), traceId(r.headers().lastHeader("traceparent"))));
+                        found.add(new Received(
+                                messages.read(r.value()), traceId(r.headers().lastHeader("traceparent"))));
                     }
                 });
             }

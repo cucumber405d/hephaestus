@@ -1,8 +1,8 @@
 package de.ibikus.appa.hephaestus.observability.ordering.orders;
 
 import de.ibikus.appa.hephaestus.observability.ordering.messaging.Messages;
-import de.ibikus.appa.hephaestus.observability.ordering.messaging.TraceCarrier;
 import de.ibikus.appa.hephaestus.observability.ordering.messaging.Topics;
+import de.ibikus.appa.hephaestus.observability.ordering.messaging.TraceCarrier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;

@@ -1,8 +1,8 @@
 package de.ibikus.appa.hephaestus.observability.inventory.stock;
 
 import de.ibikus.appa.hephaestus.observability.inventory.messaging.Messages;
-import de.ibikus.appa.hephaestus.observability.inventory.messaging.TraceCarrier;
 import de.ibikus.appa.hephaestus.observability.inventory.messaging.Topics;
+import de.ibikus.appa.hephaestus.observability.inventory.messaging.TraceCarrier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 

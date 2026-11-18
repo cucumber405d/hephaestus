@@ -8,12 +8,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import de.ibikus.appa.hephaestus.observability.ordering.Containers;
 import java.time.Duration;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.micrometer.tracing.test.autoconfigure.AutoConfigureTracing;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.testcontainers.kafka.KafkaContainer;
-import org.junit.jupiter.api.Test;
 
 /** Carrying the trace switched off: the stored traceparent is ignored and the send starts its own trace. */
 @SpringBootTest(properties = "observability.outbox.carry-trace=false")
@@ -36,9 +36,14 @@ class OutboxRelaySwitchedOffIT {
 
         relay.relay(new OutgoingMessage(Topics.PAYMENT_COMMANDS, command, OutboxRelayIT.PARENT));
 
-        assertThat(await(Duration.ofSeconds(20), () -> !readWithTrace(
-                                container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, command.orderId())
-                        .isEmpty()))
+        assertThat(await(
+                        Duration.ofSeconds(20),
+                        () -> !readWithTrace(
+                                        container.getBootstrapServers(),
+                                        messages,
+                                        Topics.PAYMENT_COMMANDS,
+                                        command.orderId())
+                                .isEmpty()))
                 .isTrue();
         assertThat(readWithTrace(container.getBootstrapServers(), messages, Topics.PAYMENT_COMMANDS, command.orderId())
                         .getFirst()

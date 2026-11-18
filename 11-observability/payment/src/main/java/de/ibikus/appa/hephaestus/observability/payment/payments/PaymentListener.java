@@ -1,8 +1,8 @@
 package de.ibikus.appa.hephaestus.observability.payment.payments;
 
 import de.ibikus.appa.hephaestus.observability.payment.messaging.Messages;
-import de.ibikus.appa.hephaestus.observability.payment.messaging.TraceCarrier;
 import de.ibikus.appa.hephaestus.observability.payment.messaging.Topics;
+import de.ibikus.appa.hephaestus.observability.payment.messaging.TraceCarrier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 

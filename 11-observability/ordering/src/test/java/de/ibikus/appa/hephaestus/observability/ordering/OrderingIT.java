@@ -135,16 +135,19 @@ class OrderingIT {
 
         assertThat(await(Duration.ofSeconds(40), () -> status(id).equals("REJECTED")))
                 .isTrue();
-        assertThat(await(Duration.ofSeconds(15), () -> readWithTrace(
-                                        container.getBootstrapServers(), messages, Topics.DELIVERY_COMMANDS, id)
-                                .size()
-                        == 2))
+        assertThat(await(
+                        Duration.ofSeconds(15),
+                        () -> readWithTrace(container.getBootstrapServers(), messages, Topics.DELIVERY_COMMANDS, id)
+                                        .size()
+                                == 2))
                 .isTrue();
         var delivery = readWithTrace(container.getBootstrapServers(), messages, Topics.DELIVERY_COMMANDS, id);
         assertThat(delivery.get(0).message().type()).isEqualTo(SCHEDULE_DELIVERY);
         assertThat(delivery.get(1).message().type()).isEqualTo(CANCEL_DELIVERY);
         // The cancel was sent by the scheduler, yet it is in the trace of the step it cancels
-        assertThat(delivery.get(1).traceId()).isNotNull().isEqualTo(delivery.get(0).traceId());
+        assertThat(delivery.get(1).traceId())
+                .isNotNull()
+                .isEqualTo(delivery.get(0).traceId());
     }
 
     @Test
@@ -171,8 +174,7 @@ class OrderingIT {
         if (traceparent != null) {
             request = request.header("traceparent", traceparent);
         }
-        var result = request
-                .contentType(MediaType.APPLICATION_JSON)
+        var result = request.contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"customerId":"alice","saga":"%s","lines":[{"sku":"%s","quantity":%d}]}""".formatted(saga, sku, quantity))
                 .exchange();
