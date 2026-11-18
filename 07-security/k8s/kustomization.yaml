@@ -10,15 +10,15 @@ resources:
   - keycloak-realm.yaml
   - network-policies.yaml
 
-# Images published by CI on main: sha-<7> of the merge commit that built them; pinned after the first publish.
+# Images published by CI on main: sha-<7> of the merge commit that built them (PR #9 -> 7c8986c).
 # A new version is rolled out by changing these tags (in 20: by Argo CD Image Updater / Rollouts).
 images:
   - name: inventory
     newName: ghcr.io/cucumber405d/hephaestus/security-inventory
-    newTag: pending-first-publish
+    newTag: sha-7c8986c
   - name: ordering
     newName: ghcr.io/cucumber405d/hephaestus/security-ordering
-    newTag: pending-first-publish
+    newTag: sha-7c8986c
   - name: gateway
     newName: ghcr.io/cucumber405d/hephaestus/security-gateway
-    newTag: pending-first-publish
+    newTag: sha-7c8986c
