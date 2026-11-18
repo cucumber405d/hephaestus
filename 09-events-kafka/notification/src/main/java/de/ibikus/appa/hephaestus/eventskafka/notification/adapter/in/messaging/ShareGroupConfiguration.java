@@ -25,7 +25,11 @@ class ShareGroupConfiguration {
         return new DefaultShareConsumerFactory<>(Map.of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class));
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
+                // One record per fetch, strictly (Kafka 4.2 record_limit): otherwise one member may acquire a whole
+                // batch and the others idle, which hides how a share group spreads the work
+                ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1,
+                "share.acquire.mode", "record_limit"));
     }
 
     @Bean
