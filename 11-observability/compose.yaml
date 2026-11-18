@@ -53,7 +53,7 @@ services:
       - "127.0.0.1:3000:3000"   # Grafana
       - "127.0.0.1:3100:3100"   # Loki API
       - "127.0.0.1:3200:3200"   # Tempo API
-      - "127.0.0.1:9090:9090"   # Prometheus
+      - "127.0.0.1:9190:9090"   # Prometheus (9190 on the host: 9090 is often taken)
       - "127.0.0.1:4317:4317"   # OTLP gRPC (a service started from the IDE)
       - "127.0.0.1:4318:4318"   # OTLP HTTP
     volumes:
