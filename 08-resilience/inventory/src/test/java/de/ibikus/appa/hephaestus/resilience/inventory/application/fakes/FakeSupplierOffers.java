@@ -47,7 +47,8 @@ public class FakeSupplierOffers implements SupplierOffers {
         return switch (mode) {
             case "down" -> throw new SupplierUnavailableException("down", new RuntimeException("connection refused"));
             case "unknown" -> throw new UnknownOfferException(sku);
-            default -> new SupplierOffer(sku, ANVIL.price(), ANVIL.currency(), ANVIL.leadTimeDays(), ANVIL.maxQuantity());
+            default ->
+                new SupplierOffer(sku, ANVIL.price(), ANVIL.currency(), ANVIL.leadTimeDays(), ANVIL.maxQuantity());
         };
     }
 }

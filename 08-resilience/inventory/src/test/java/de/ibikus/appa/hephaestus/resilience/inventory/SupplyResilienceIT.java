@@ -106,7 +106,10 @@ class SupplyResilienceIT {
         get(mechanism, "ERR-01");
         SUPPLIER.mode(Mode.FAILING);
 
-        assertThat(get(mechanism, "ERR-01")).bodyJson().extractingPath("$.source").isEqualTo("cache");
+        assertThat(get(mechanism, "ERR-01"))
+                .bodyJson()
+                .extractingPath("$.source")
+                .isEqualTo("cache");
     }
 
     @ParameterizedTest
@@ -140,14 +143,20 @@ class SupplyResilienceIT {
 
         for (int i = 0; i < 5; i++) {
             var started = System.nanoTime();
-            assertThat(get(mechanism, "OPEN-01")).bodyJson().extractingPath("$.source").isEqualTo("cache");
+            assertThat(get(mechanism, "OPEN-01"))
+                    .bodyJson()
+                    .extractingPath("$.source")
+                    .isEqualTo("cache");
             assertThat(millisSince(started)).isLessThan(200);
         }
         assertThat(SUPPLIER.calls()).isEqualTo(callsWhenOpen);
 
         SUPPLIER.mode(Mode.HEALTHY);
         Thread.sleep(2200);
-        assertThat(get(mechanism, "OPEN-01")).bodyJson().extractingPath("$.source").isEqualTo("live");
+        assertThat(get(mechanism, "OPEN-01"))
+                .bodyJson()
+                .extractingPath("$.source")
+                .isEqualTo("live");
     }
 
     @Test
@@ -157,7 +166,10 @@ class SupplyResilienceIT {
         SUPPLIER.resetCounters();
 
         for (int i = 0; i < 5; i++) {
-            assertThat(get("spring", "STORM-01")).bodyJson().extractingPath("$.source").isEqualTo("cache");
+            assertThat(get("spring", "STORM-01"))
+                    .bodyJson()
+                    .extractingPath("$.source")
+                    .isEqualTo("cache");
         }
         assertThat(SUPPLIER.calls()).isEqualTo(15);
     }
@@ -172,7 +184,8 @@ class SupplyResilienceIT {
         try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<Integer>> answers = new ArrayList<>();
             for (int i = 0; i < 20; i++) {
-                Callable<Integer> call = () -> get(mechanism, "BUSY-01").getResponse().getStatus();
+                Callable<Integer> call =
+                        () -> get(mechanism, "BUSY-01").getResponse().getStatus();
                 answers.add(pool.submit(call));
             }
             for (var answer : answers) {
@@ -211,8 +224,7 @@ class SupplyResilienceIT {
         var toxiproxy = start(new GenericContainer<>("ghcr.io/shopify/toxiproxy:2.12.0").withExposedPorts(8474, 8666));
         try {
             toxiproxy(toxiproxy, "POST", "/proxies", """
-                    {"name":"supplier","listen":"0.0.0.0:8666","upstream":"host.testcontainers.internal:%d"}"""
-                    .formatted(SUPPLIER.port()));
+                    {"name":"supplier","listen":"0.0.0.0:8666","upstream":"host.testcontainers.internal:%d"}""".formatted(SUPPLIER.port()));
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }

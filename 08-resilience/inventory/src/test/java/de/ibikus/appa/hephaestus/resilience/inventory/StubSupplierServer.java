@@ -75,8 +75,7 @@ public final class StubSupplierServer implements AutoCloseable {
                 respond(exchange, 404, "{\"status\":404}");
             } else {
                 respond(exchange, 200, """
-                        {"sku":"%s","price":120.00,"currency":"EUR","leadTimeDays":5,"maxQuantity":20}"""
-                        .formatted(sku));
+                        {"sku":"%s","price":120.00,"currency":"EUR","leadTimeDays":5,"maxQuantity":20}""".formatted(sku));
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

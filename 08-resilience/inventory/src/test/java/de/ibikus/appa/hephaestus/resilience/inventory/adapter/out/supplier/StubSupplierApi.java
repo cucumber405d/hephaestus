@@ -30,13 +30,23 @@ public final class StubSupplierApi implements SupplierHttpApi {
 
     public void failing() {
         behaviour.set(sku -> {
-            throw HttpServerErrorException.create(HttpStatus.SERVICE_UNAVAILABLE, "Unavailable", org.springframework.http.HttpHeaders.EMPTY, new byte[0], java.nio.charset.StandardCharsets.UTF_8);
+            throw HttpServerErrorException.create(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unavailable",
+                    org.springframework.http.HttpHeaders.EMPTY,
+                    new byte[0],
+                    java.nio.charset.StandardCharsets.UTF_8);
         });
     }
 
     public void unknown() {
         behaviour.set(sku -> {
-            throw HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", org.springframework.http.HttpHeaders.EMPTY, new byte[0], java.nio.charset.StandardCharsets.UTF_8);
+            throw HttpClientErrorException.create(
+                    HttpStatus.NOT_FOUND,
+                    "Not Found",
+                    org.springframework.http.HttpHeaders.EMPTY,
+                    new byte[0],
+                    java.nio.charset.StandardCharsets.UTF_8);
         });
     }
 

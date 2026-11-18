@@ -19,7 +19,8 @@ class RedisOfferCacheIT {
     static final LettuceConnectionFactory CONNECTIONS = connect();
     static final StringRedisTemplate TEMPLATE = new StringRedisTemplate(CONNECTIONS);
 
-    private final RedisOfferCache cache = new RedisOfferCache(TEMPLATE, JsonMapper.builder().build());
+    private final RedisOfferCache cache =
+            new RedisOfferCache(TEMPLATE, JsonMapper.builder().build());
 
     @AfterAll
     static void stop() {

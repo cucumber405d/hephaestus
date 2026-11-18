@@ -53,7 +53,8 @@ public class SupplierCall {
             return (RuntimeException) t;
         }
         if (t instanceof HttpClientErrorException e) {
-            return new IllegalStateException("The supplier rejected our request for " + sku + ": " + e.getStatusCode(), e);
+            return new IllegalStateException(
+                    "The supplier rejected our request for " + sku + ": " + e.getStatusCode(), e);
         }
         return new SupplierUnavailableException(mechanism + ": no answer for " + sku + " (" + t + ")", t);
     }

@@ -28,7 +28,9 @@ class SpringResilientSupplierOffersTest {
     @Test
     void healthySupplierAnswersInOneCall() {
         runner.run(context -> {
-            assertThat(context.getBean(SpringResilientSupplierOffers.class).fetch("ANVIL-01").sku())
+            assertThat(context.getBean(SpringResilientSupplierOffers.class)
+                            .fetch("ANVIL-01")
+                            .sku())
                     .isEqualTo("ANVIL-01");
             assertThat(context.getBean(StubSupplierApi.class).calls()).isEqualTo(1);
         });
@@ -54,7 +56,8 @@ class SpringResilientSupplierOffersTest {
             var api = context.getBean(StubSupplierApi.class);
             api.unknown();
 
-            assertThatThrownBy(() -> context.getBean(SpringResilientSupplierOffers.class).fetch("NOPE-01"))
+            assertThatThrownBy(() ->
+                            context.getBean(SpringResilientSupplierOffers.class).fetch("NOPE-01"))
                     .isInstanceOf(UnknownOfferException.class);
             assertThat(api.calls()).isEqualTo(1);
         });

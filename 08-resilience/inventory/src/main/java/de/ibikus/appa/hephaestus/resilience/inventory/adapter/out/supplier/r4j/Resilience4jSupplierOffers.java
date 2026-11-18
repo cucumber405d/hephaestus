@@ -51,7 +51,9 @@ public class Resilience4jSupplierOffers implements SupplierOffers {
         var retries = RetryRegistry.of(RetryConfig.custom()
                 .maxAttempts(r.attempts())
                 .intervalFunction(IntervalFunction.ofExponentialRandomBackoff(
-                        r.delay(), r.multiplier(), (double) r.jitter().toMillis() / r.delay().toMillis()))
+                        r.delay(),
+                        r.multiplier(),
+                        (double) r.jitter().toMillis() / r.delay().toMillis()))
                 .retryOnException(SupplierCall::isFailure)
                 .build());
         var bulkheads = BulkheadRegistry.of(BulkheadConfig.custom()

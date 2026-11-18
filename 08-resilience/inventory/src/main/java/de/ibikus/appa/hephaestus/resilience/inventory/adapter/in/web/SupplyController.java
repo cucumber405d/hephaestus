@@ -37,7 +37,8 @@ class SupplyController {
 
     @ExceptionHandler(IllegalArgumentException.class)
     ProblemDetail unknownMechanism(IllegalArgumentException e) {
-        return ProblemDetailsAdvice.problem(HttpStatus.BAD_REQUEST, "invalid-request", "Invalid request", e.getMessage());
+        return ProblemDetailsAdvice.problem(
+                HttpStatus.BAD_REQUEST, "invalid-request", "Invalid request", e.getMessage());
     }
 
     record SupplyResponse(

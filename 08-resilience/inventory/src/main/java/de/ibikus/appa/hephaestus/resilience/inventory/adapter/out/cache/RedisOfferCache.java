@@ -44,7 +44,9 @@ class RedisOfferCache implements OfferCache {
     public Optional<CachedOffer> get(String sku) {
         try {
             var value = redis.opsForValue().get(key(sku));
-            return value == null ? Optional.empty() : Optional.of(json.readValue(value, Entry.class).toCached());
+            return value == null
+                    ? Optional.empty()
+                    : Optional.of(json.readValue(value, Entry.class).toCached());
         } catch (RuntimeException e) {
             LOG.warn("Could not read the cached offer for {}: {}", sku, e.toString());
             return Optional.empty();

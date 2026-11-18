@@ -1,7 +1,7 @@
 package de.ibikus.appa.hephaestus.resilience.inventory.adapter.out.supplier;
 
-import de.ibikus.appa.hephaestus.resilience.inventory.domain.SupplierOffer;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import de.ibikus.appa.hephaestus.resilience.inventory.domain.SupplierOffer;
 import java.math.BigDecimal;
 
 /** The supplier's wire format; fields it adds later are ignored (tolerant reader). */
