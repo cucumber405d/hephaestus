@@ -34,10 +34,8 @@ public class OutboxRelay implements DisposableBean {
     private final KafkaTemplate<String, String> kafka;
     private final Messages messages;
     private final TraceCarrier carrier;
-    private final ExecutorService sender = Executors.newSingleThreadExecutor(Thread.ofPlatform()
-            .name("outbox-relay")
-            .daemon(true)
-            .factory());
+    private final ExecutorService sender = Executors.newSingleThreadExecutor(
+            Thread.ofPlatform().name("outbox-relay").daemon(true).factory());
 
     public OutboxRelay(KafkaTemplate<String, String> kafka, Messages messages, TraceCarrier carrier) {
         this.kafka = kafka;
