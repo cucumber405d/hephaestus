@@ -16,6 +16,7 @@ import de.ibikus.appa.hephaestus.observability.ordering.saga.Sagas;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -50,6 +51,7 @@ public class OrderService {
     private final Clock clock;
     private final Duration stepTimeout;
     private final TraceCarrier carrier;
+    private final SagaMetrics metrics;
 
     public OrderService(
             Orders orders,
@@ -60,7 +62,8 @@ public class OrderService {
             Levers levers,
             Clock clock,
             @Value("${saga.step-timeout}") Duration stepTimeout,
-            TraceCarrier carrier) {
+            TraceCarrier carrier,
+            SagaMetrics metrics) {
         this.orders = orders;
         this.sagas = sagas;
         this.outbox = outbox;
@@ -70,6 +73,7 @@ public class OrderService {
         this.clock = clock;
         this.stepTimeout = stepTimeout;
         this.carrier = carrier;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -118,6 +122,7 @@ public class OrderService {
         if (!event.choreography() || !firstTime(event)) {
             return;
         }
+        metrics.stepDone(event.saga(), event.type(), lastEntryAt(event.orderId()));
         orders.history(event.orderId(), "← " + event.type() + reasonSuffix(event.reason()));
         switch (event.type()) {
             case DELIVERY_SCHEDULED -> settle(event, "CONFIRMED", null);
@@ -134,6 +139,7 @@ public class OrderService {
         if (!reply.orchestration() || !firstTime(reply)) {
             return;
         }
+        metrics.stepDone(reply.saga(), reply.type(), lastEntryAt(reply.orderId()));
         orders.history(reply.orderId(), "← " + reply.type() + reasonSuffix(reply.reason()));
         var current = sagas.lock(reply.orderId());
         if (current.isEmpty()) {
@@ -158,6 +164,7 @@ public class OrderService {
                 carrier.tag("order.id", orderId.toString());
                 var current = sagas.lock(orderId).orElseThrow();
                 var decision = Orchestrator.onTimeout(current);
+                metrics.timedOut(current.step().name().toLowerCase());
                 orders.history(orderId, "⏱ " + decision.reason());
                 LOG.warn("Saga of order {}: {}", orderId, decision.reason());
                 apply(orderId, decision);
@@ -182,6 +189,7 @@ public class OrderService {
         if (decision.outcome() != null
                 && orders.settle(orderId, decision.outcome().name(), decision.reason())) {
             orders.history(orderId, "order " + decision.outcome().name());
+            metrics.settled(order.saga(), decision.outcome().name(), decision.reason(), placedAt(orderId));
         }
         for (var command : decision.commands()) {
             var message = Orders.message(order, command, decision.reason());
@@ -193,6 +201,7 @@ public class OrderService {
     private void settle(SagaMessage event, String status, String reason) {
         if (orders.settle(event.orderId(), status, reason)) {
             orders.history(event.orderId(), "order " + status);
+            metrics.settled(event.saga(), status, reason, placedAt(event.orderId()));
         }
     }
 
@@ -203,6 +212,16 @@ public class OrderService {
         }
         levers.duplicate();
         return false;
+    }
+
+    /** When the order was placed: its first history entry. */
+    private Instant placedAt(UUID orderId) {
+        return orders.historyOf(orderId).getFirst().at();
+    }
+
+    /** When the current step started: the latest history entry so far. */
+    private Instant lastEntryAt(UUID orderId) {
+        return orders.historyOf(orderId).getLast().at();
     }
 
     private static String reasonSuffix(String reason) {
