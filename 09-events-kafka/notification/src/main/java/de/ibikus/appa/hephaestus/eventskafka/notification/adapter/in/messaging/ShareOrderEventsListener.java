@@ -12,8 +12,9 @@ import org.springframework.stereotype.Component;
 /**
  * Share group "notification-share": records of one partition are handed out to any free member and acknowledged
  * one by one, so more members than partitions all get work, but the per-customer order is no longer guaranteed.
- * A failed record is redelivered (to any member) until the broker's delivery limit, then archived: share groups
- * have no dead letter topic. An invalid event is logged and acknowledged, since redelivery cannot fix it.
+ * A failed notification is released and redelivered (to any member) until the broker's delivery limit, then
+ * archived: share groups have no dead letter topic (see the recoverer in {@link ShareGroupConfiguration}). An
+ * invalid event is logged and acknowledged, since redelivery cannot fix it.
  */
 @Component
 @ConditionalOnProperty(name = "notification.mode", havingValue = "share")

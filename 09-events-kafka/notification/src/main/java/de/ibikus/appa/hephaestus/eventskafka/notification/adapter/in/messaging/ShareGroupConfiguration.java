@@ -1,6 +1,8 @@
 package de.ibikus.appa.hephaestus.eventskafka.notification.adapter.in.messaging;
 
+import de.ibikus.appa.hephaestus.eventskafka.notification.domain.NotificationFailedException;
 import java.util.Map;
+import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +37,21 @@ class ShareGroupConfiguration {
     @Bean
     ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
             ShareConsumerFactory<String, String> shareConsumerFactory) {
-        return new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+        var factory = new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+        // On a listener exception the default is REJECT (archived at once). A failed notification is worth another
+        // try: RELEASE it for redelivery to any member, until the broker's delivery limit archives it
+        factory.setShareConsumerRecordRecoverer((record, exception) -> hasCause(exception, NotificationFailedException.class)
+                ? AcknowledgeType.RELEASE
+                : AcknowledgeType.REJECT);
+        return factory;
+    }
+
+    private static boolean hasCause(Throwable t, Class<? extends Throwable> type) {
+        for (var cause = t; cause != null; cause = cause.getCause()) {
+            if (type.isInstance(cause)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

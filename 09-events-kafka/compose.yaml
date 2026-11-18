@@ -94,7 +94,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     mem_limit: 768m
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       ordering-db:
         condition: service_healthy
@@ -111,9 +111,10 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       NOTIFICATION_MODE: classic
     mem_limit: 512m
-    # A range, so --scale gives every instance its own host port
+    # A range, so --scale gives every instance its own host port; bound to localhost only: the /admin endpoints
+    # (faults, replay) are open, fine for a local playground but not for the network
     ports:
-      - "8091-8095:8080"
+      - "127.0.0.1:8091-8095:8080"
     depends_on:
       notification-db:
         condition: service_healthy
@@ -132,7 +133,7 @@ services:
       NOTIFICATION_MODE: share
     mem_limit: 512m
     ports:
-      - "8096-8100:8080"
+      - "127.0.0.1:8096-8100:8080"
     depends_on:
       notification-share-db:
         condition: service_healthy

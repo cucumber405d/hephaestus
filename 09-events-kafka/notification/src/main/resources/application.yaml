@@ -18,6 +18,8 @@ spring:
       # Read as text and parse in the application: broken JSON becomes an InvalidEventException with the raw text
       # kept for the DLT, instead of a deserialization error before our code runs
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Small batches: a slowed-down experiment (delayMs) never gets near max.poll.interval.ms
+      max-poll-records: 10
     producer:
       # Dead letter records and replays: the raw text as it came
       key-serializer: org.apache.kafka.common.serialization.StringSerializer

@@ -45,10 +45,13 @@ wait_notified() {
 faults() { curl -fs -o /dev/null -X PUT -H 'Content-Type: application/json' -d "$2" "$1/admin/faults"; }
 stat_field() { curl -fs "$1/admin/stats" | sed -n "s/.*\"$2\":\([0-9]*\).*/\1/p"; }
 partitions_of() { curl -fs "$1/admin/stats" | sed -n 's/.*"partitions":\[\([0-9,]*\)\].*/\1/p'; }
-# Host ports of the running instances of a service
+# Host ports of the running instances of a service (asks Compose per replica index)
 ports_of() {
-    compose ps --format '{{.Ports}}' "$1" 2>/dev/null \
-        | grep -o '0.0.0.0:[0-9]*->8080' | sed 's/0.0.0.0:\([0-9]*\)->8080/\1/' | sort -u
+    local count i
+    count=$(compose ps -q "$1" | wc -l | tr -d ' ')
+    for i in $(seq 1 "$count"); do
+        compose port --index "$i" "$1" 8080 2>/dev/null | sed 's/.*://' || true
+    done
 }
 wait_ready() {
     for port in $(ports_of "$1"); do
@@ -107,7 +110,8 @@ wait_notified carol 30 1 || fail "carol must not be blocked by bob's failure"
 sleep 9   # 1 + 2 + 4 s of retries, then the DLT
 [ "$(notifications bob)" = "0" ] || fail "bob must not be notified while failing"
 curl -fs -o /dev/null -X DELETE "$NOTIFY/admin/faults"
-replayed=$(curl -fs -X POST "$NOTIFY/admin/dlt/replay" | sed -n 's/.*"replayed":\([0-9]*\).*/\1/p')
+replayed=$(curl -fs -X POST "$NOTIFY/admin/dlt/replay" | sed -n 's/.*"replayed":\([0-9]*\).*/\1/p') \
+    || fail "DLT replay request failed"
 [ "${replayed:-0}" -ge 1 ] || fail "replay should resend bob's event, replayed=$replayed"
 wait_notified bob 30 1 || fail "bob not notified after replay"
 ok "bob's event: retries -> DLT -> fixed -> replayed ($replayed) -> notified; carol was not blocked"
@@ -115,7 +119,7 @@ ok "bob's event: retries -> DLT -> fixed -> replayed ($replayed) -> notified; ca
 echo "==> 5. duplicate event"
 alice_order=$(order alice)
 wait_notified alice 30 2 || fail "alice's second order"
-dup_before=$(stat_field "$NOTIFY" duplicates)
+dup_before=$(stat_field "$NOTIFY" duplicates) || fail "stats of $NOTIFY"
 [ "$(code -X POST "$ORDERING/admin/republish/$alice_order")" = "202" ] || fail "republish"
 for _ in $(seq 1 30); do [ "$(stat_field "$NOTIFY" duplicates)" -gt "$dup_before" ] && break; sleep 0.5; done
 [ "$(stat_field "$NOTIFY" duplicates)" -gt "$dup_before" ] || fail "duplicate was not detected"
@@ -158,7 +162,8 @@ sleep 15
 busy=0
 total=0
 for port in $(ports_of notification-share); do
-    n=$(stat_field "http://localhost:$port" processed)
+    n=$(stat_field "http://localhost:$port" processed || true)
+    n=${n:-0}
     total=$((total + n))
     [ "$n" -gt 0 ] && busy=$((busy + 1))
 done

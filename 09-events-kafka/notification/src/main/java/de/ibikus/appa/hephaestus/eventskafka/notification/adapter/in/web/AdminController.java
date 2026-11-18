@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -57,13 +56,8 @@ class AdminController {
     }
 
     @PostMapping("/dlt/replay")
-    Replayed replay() {
-        return new Replayed(replayer.replay());
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    ResponseEntity<String> invalid(IllegalArgumentException e) {
-        return ResponseEntity.badRequest().body(e.getMessage());
+    DltReplayer.Result replay() {
+        return replayer.replay();
     }
 
     /** Partitions this instance owns in the classic group (share group members own none). */
@@ -87,6 +81,4 @@ class AdminController {
     }
 
     record Stats(String instance, String mode, long processed, long duplicates, List<Integer> partitions) {}
-
-    record Replayed(int replayed) {}
 }

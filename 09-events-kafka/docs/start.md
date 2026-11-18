@@ -13,7 +13,8 @@ docker compose -p hephaestus-09 -f 09-events-kafka/compose.yaml --profile share 
 `../mvnw -f pom.xml package jib:dockerBuild -DskipTests`). **Kafka UI: <http://localhost:8085>** — Topics →
 `orders.events` → Messages (ключ, партиция, заголовок `eventType`); Consumers → `notification` (лаг, партиции).
 
-Порты: Ordering `8080`, Notification `8091…8095`, Notification-share `8096…8100`, Kafka с хоста `localhost:9094`.
+Порты (только `127.0.0.1`: эндпоинты `/admin` открыты без входа — это площадка, не сервис): Ordering `8080`,
+Notification `8091…8095`, Notification-share `8096…8100`, Kafka с хоста `localhost:9094`.
 
 ```bash
 order() { curl -s -H 'Content-Type: application/json' -d "{\"customerId\":\"$1\",\"lines\":[{\"sku\":\"ANVIL-01\",\"quantity\":1}]}" localhost:8080/api/orders; echo; }
@@ -30,6 +31,7 @@ seen()  { curl -s "localhost:8091/api/notifications?customerId=$1"; echo; }
 4. **DLT и переотправка:** сбой для `bob` (`"failCustomers":["bob"]`), `order bob; order carol` — carol уведомлена
    сразу, bob через ~7 s в топике `orders.events-dlt` (в Kafka UI — заголовки `kafka_dlt-exception-*`).
    Починить: `curl -X DELETE localhost:8091/admin/faults`, затем `curl -X POST localhost:8091/admin/dlt/replay` → `seen bob`.
+   Replay читает DLT до конца на момент вызова и пропускает невалидные события (`skipped`).
 4а. **Poison message:** в Kafka UI → `orders.events` → Produce Message с заголовком `eventType=OrderPlaced` и
    телом `not json` — сразу в DLT, без ретраев.
 5. **Дубль:** `id=$(order alice | sed 's/^{"id":"\([^"]*\)".*/\1/'); curl -X POST localhost:8080/admin/republish/$id`

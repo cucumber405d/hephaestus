@@ -12,8 +12,10 @@ public record Faults(Set<String> failCustomers, int transientFailures, long dela
 
     public Faults {
         failCustomers = failCustomers == null ? Set.of() : Set.copyOf(failCustomers);
-        if (transientFailures < 0 || delayMs < 0 || delayMs > 60_000) {
-            throw new IllegalArgumentException("transientFailures >= 0, delayMs within 0..60000");
+        // At most 10 s: longer pauses run into max.poll.interval.ms (classic) or the record lock (share group) and
+        // would cause rebalances or redeliveries that hide what the experiment is about
+        if (transientFailures < 0 || delayMs < 0 || delayMs > 10_000) {
+            throw new IllegalArgumentException("transientFailures >= 0, delayMs within 0..10000");
         }
     }
 }

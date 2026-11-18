@@ -91,10 +91,10 @@ class NotificationIT {
         assertThat(service.forCustomer(bob)).isEmpty();
 
         service.faults(Faults.NONE);
-        assertThat(replayer.replay()).isGreaterThanOrEqualTo(1);
+        assertThat(replayer.replay().replayed()).isGreaterThanOrEqualTo(1);
 
         assertThat(await(Duration.ofSeconds(15), () -> service.forCustomer(bob).size() == 1)).isTrue();
-        assertThat(replayer.replay()).isZero();
+        assertThat(replayer.replay().replayed()).isZero();
     }
 
     @Test
@@ -109,6 +109,8 @@ class NotificationIT {
                 .isTrue();
         // retries would take at least 1 + 2 + 4 s
         assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(7));
+        // replay skips it (sending it again cannot help) and returns instead of looping
+        assertThat(replayer.replay().replayed()).isZero();
     }
 
     private static String customer() {
