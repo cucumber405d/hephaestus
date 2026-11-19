@@ -92,6 +92,9 @@ spec:
             # Finish in-flight HTTP requests and the current Kafka record on SIGTERM
             - name: SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE
               value: 20s
+            # Histogram buckets for http.server.requests: the dashboard's p95/p99 (Micrometer publishes none by default)
+            - name: MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILESHISTOGRAM_HTTP_SERVER_REQUESTS
+              value: "true"
             # A step timeout catches a stopped participant, not a queue under the peak (ADR-0001)
             - name: SAGA_STEP_TIMEOUT
               value: 120s
