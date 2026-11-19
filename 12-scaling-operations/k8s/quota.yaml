@@ -1,6 +1,7 @@
 # kind nodes report the whole host's memory, so the scheduler would place every scaled-out pod and the kernel would
 # OOM-kill something (possibly the Kafka broker). The quota caps the namespace instead: a pod over it is not created,
 # the HPA shows FailedCreate, the saga waits in Kafka — a visible ceiling instead of random kills.
+# limits 16Gi: 14Gi plus the larger database limits (Ordering 1Gi, the others 512Mi).
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -10,4 +11,4 @@ metadata:
 spec:
   hard:
     requests.memory: 10Gi
-    limits.memory: 14Gi
+    limits.memory: 16Gi

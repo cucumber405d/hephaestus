@@ -24,12 +24,13 @@ spec:
     initdb:
       database: delivery
       owner: delivery
+  # Every PostgreSQL connection is a process with its own memory: headroom for 6 scaled-out pods x 5 connections
   resources:
     requests:
       cpu: 100m
       memory: 256Mi
     limits:
-      memory: 256Mi
+      memory: 512Mi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -84,6 +85,9 @@ spec:
                 secretKeyRef:
                   name: delivery-db-app
                   key: password
+            # The pool scales with the replicas: KEDA max 6 x 5 = 30 connections, which the database can carry
+            - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+              value: "5"
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: platform-kafka-bootstrap.kafka:9092
             # Kafka 4 consumer group protocol (KIP-848): only the moved partitions pause on a rebalance (ADR-0003)

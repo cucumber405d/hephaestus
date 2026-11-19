@@ -14,3 +14,4 @@
 | [0005](0005-disruptions-during-peak.md) | Помехи во время пика — обновление, удаление подов, drain узла | accepted | 12 |
 | [0006](0006-deployment-on-platform.md) | Сага из 11 на общей платформе, без нового Java-кода | accepted | 12, platform |
 | [0007](0007-twelve-factor-audit.md) | Аудит 12 факторов — таблица и CronJob | accepted | весь репозиторий |
+| [0008](0008-connection-budget.md) | Бюджет соединений: реплики × пул ≤ того, что выдержит база | accepted | 12 |

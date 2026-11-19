@@ -24,12 +24,14 @@ spec:
     initdb:
       database: ordering
       owner: ordering
+  # Every PostgreSQL connection is a process with its own memory: at 256Mi six scaled-out Ordering pods
+  # (60 connections) got the database OOM-killed mid-peak. Ordering's database carries the saga and the outbox.
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 250m
+      memory: 512Mi
     limits:
-      memory: 256Mi
+      memory: 1Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -84,6 +86,9 @@ spec:
                 secretKeyRef:
                   name: ordering-db-app
                   key: password
+            # The pool scales with the replicas: KEDA max 6 x 5 = 30 connections, which the database can carry
+            - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+              value: "5"
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: platform-kafka-bootstrap.kafka:9092
             # Kafka 4 consumer group protocol (KIP-848): only the moved partitions pause on a rebalance (ADR-0003)
