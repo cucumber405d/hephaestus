@@ -24,7 +24,7 @@ kubectl -n hephaestus-12 get deploy,scaledobject,pdb
 12-scaling-operations/scripts/peak.sh rollout      # посреди пика — rollout restart всех четырёх сервисов
 12-scaling-operations/scripts/peak.sh kill         # посреди пика — удаление подов (один — жёстко, как падение)
 12-scaling-operations/scripts/peak.sh drain        # посреди пика — drain worker-узла без Kafka/БД/lgtm/Envoy
-PEAK_RATE=40 PEAK_SECONDS=300 12-scaling-operations/scripts/peak.sh scale   # сильнее и дольше
+PEAK_RATE=80 12-scaling-operations/scripts/peak.sh scale  # перегрузка: очередь растёт, помехи дают таймауты
 ```
 
 `drain` нужен кластер, созданный с метками узлов `hephaestus.io/role` (stateful / drainable,

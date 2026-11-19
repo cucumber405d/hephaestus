@@ -23,7 +23,7 @@ public class PeakSaleSimulation extends Simulation {
     private static final String BASE_URL = System.getProperty("baseUrl", "http://127.0.0.1");
     private static final String HOST = System.getProperty("host", "orders.localtest.me");
     private static final double WARM_RATE = Double.parseDouble(System.getProperty("warmRate", "2"));
-    private static final double PEAK_RATE = Double.parseDouble(System.getProperty("peakRate", "20"));
+    private static final double PEAK_RATE = Double.parseDouble(System.getProperty("peakRate", "50"));
     private static final int PEAK_SECONDS = Integer.parseInt(System.getProperty("peakSeconds", "180"));
     // Customers are fresh per run (their credit is used by the confirmed orders of earlier runs)
     private static final String RUN_ID = System.getProperty("runId", Long.toString(System.currentTimeMillis()));

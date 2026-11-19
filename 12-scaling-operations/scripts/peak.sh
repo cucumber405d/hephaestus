@@ -3,7 +3,7 @@
 #   preflight -> stock refill -> Gatling (warm-up, ramp, peak, cool-down) with a disruption in the middle of the peak
 #   -> reconciliation (no accepted order lost) -> recovery (lag to 0, replicas back to the minimum).
 #   12-scaling-operations/scripts/peak.sh <scale|rollout|kill|drain>
-# Env: PEAK_RATE (20 orders/s), WARM_RATE (2), PEAK_SECONDS (180), NAMESPACE (hephaestus-12),
+# Env: PEAK_RATE (50 orders/s, the measured sustainable rate of the kind stand), WARM_RATE (2), PEAK_SECONDS (180), NAMESPACE (hephaestus-12),
 #      GATEWAY (127.0.0.1), ORDERS_HOST (orders.localtest.me), GRAFANA_HOST (grafana.localtest.me).
 # Needs kubectl (context kind-hephaestus), curl, JDK 25. Exit 0 only if every check passed.
 set -euo pipefail
@@ -22,7 +22,7 @@ ORDERS_HOST="${ORDERS_HOST:-orders.localtest.me}"
 GRAFANA_HOST="${GRAFANA_HOST:-grafana.localtest.me}"
 ORDERS_URL="http://$ORDERS_HOST"
 GRAFANA_URL="http://$GRAFANA_HOST"
-PEAK_RATE="${PEAK_RATE:-20}"
+PEAK_RATE="${PEAK_RATE:-50}"
 WARM_RATE="${WARM_RATE:-2}"
 PEAK_SECONDS="${PEAK_SECONDS:-180}"
 SERVICES="ordering payment inventory delivery"
