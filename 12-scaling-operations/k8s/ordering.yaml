@@ -1,0 +1,191 @@
+# ordering: own CloudNativePG database (wave 0) -> the 11 image, configured by environment only (wave 2) ->
+# KEDA ScaledObject and PodDisruptionBudget. Flyway migrates at startup, as in 11.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ordering-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  bootstrap:
+    initdb:
+      database: ordering
+      owner: ordering
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ordering
+  labels:
+    app.kubernetes.io/name: ordering
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  # No "replicas": the HPA that KEDA creates owns the count, and Argo CD (self-heal) would otherwise reset it
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # A new pod is Ready before an old one stops (ADR-0003)
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ordering
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ordering
+    spec:
+      # preStop 5 s + graceful shutdown 20 s + margin
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ordering
+          image: ordering
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://ordering-db-rw:5432/ordering
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ordering-db-app
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ordering-db-app
+                  key: password
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: platform-kafka-bootstrap.kafka:9092
+            # Kafka 4 consumer group protocol (KIP-848): only the moved partitions pause on a rebalance (ADR-0003)
+            - name: SPRING_KAFKA_CONSUMER_PROPERTIES_GROUP_PROTOCOL
+              value: consumer
+            # Finish in-flight HTTP requests and the current Kafka record on SIGTERM
+            - name: SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE
+              value: 20s
+            # A step timeout catches a stopped participant, not a queue under the peak (ADR-0001)
+            - name: SAGA_STEP_TIMEOUT
+              value: 120s
+            - name: OTLP_ENDPOINT
+              value: http://lgtm.observability:4318
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 2
+            failureThreshold: 90
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            # Leave the Service's endpoints before the server stops accepting requests
+            preStop:
+              sleep:
+                seconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ordering
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app.kubernetes.io/name: ordering
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# One pod at a time may be evicted (drain); minAvailable 1 would block draining a single replica forever (ADR-0003)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ordering
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ordering
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ordering
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  scaleTargetRef:
+    name: ordering
+  minReplicaCount: 2
+  # = partitions of the topics (ADR-0002)
+  maxReplicaCount: 6
+  pollingInterval: 10
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+        scaleDown:
+          # Fewer rebalances: wait 2 minutes of low load before removing consumers
+          stabilizationWindowSeconds: 120
+  triggers:
+    # Orders coming in: CPU; replies and events of the participants: lag of group "ordering"
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "60"
+    - type: kafka
+      metadata:
+        bootstrapServers: platform-kafka-bootstrap.kafka:9092
+        consumerGroup: ordering
+        lagThreshold: "20"
+        activationLagThreshold: "0"
+        offsetResetPolicy: earliest

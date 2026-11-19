@@ -1,0 +1,114 @@
+# The saga's topics with 6 partitions (10/11 create them with 3): declared here first (wave 0), so the services'
+# NewTopic beans find them existing. 6 partitions = the ceiling for consumer replicas (ADR-0002).
+# In namespace kafka: the Strimzi Topic Operator of the platform cluster watches it.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: ordering-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: ordering.events
+  partitions: 6
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: payment-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: payment.events
+  partitions: 6
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: inventory-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: inventory.events
+  partitions: 6
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: delivery-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: delivery.events
+  partitions: 6
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: payment-commands
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: payment.commands
+  partitions: 6
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: inventory-commands
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: inventory.commands
+  partitions: 6
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: delivery-commands
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: delivery.commands
+  partitions: 6
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: ordering-replies
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: ordering.replies
+  partitions: 6
+  replicas: 1
