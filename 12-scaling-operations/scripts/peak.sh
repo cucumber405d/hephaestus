@@ -113,9 +113,9 @@ fi
 
 echo "==> Gatling"
 # Compile first, so Maven's start-up does not shift the disruption out of the peak
-"$ROOT/mvnw" -B -q -f "$ROOT/12-scaling-operations/load/pom.xml" test-compile > "$RUN/compile.log" 2>&1 \
+"$ROOT/mvnw" -B -q -f "$ROOT/12-scaling-operations/load/pom.xml" test-compile -Dspotless.check.skip=true > "$RUN/compile.log" 2>&1 \
     || die "load module does not compile: $RUN/compile.log"
-"$ROOT/mvnw" -B -q -f "$ROOT/12-scaling-operations/load/pom.xml" gatling:test \
+"$ROOT/mvnw" -B -q -f "$ROOT/12-scaling-operations/load/pom.xml" gatling:test -Dspotless.check.skip=true \
     -DbaseUrl="http://$GATEWAY" -Dhost="$ORDERS_HOST" -DwarmRate="$WARM_RATE" -DpeakRate="$PEAK_RATE" -DpeakSeconds="$PEAK_SECONDS" \
     -DordersFile="$RUN/orders.csv" -DrunId="$(date +%s)" > "$RUN/gatling.log" 2>&1 &
 gatling=$!
