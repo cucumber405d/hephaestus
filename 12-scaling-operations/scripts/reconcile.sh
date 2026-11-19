@@ -39,14 +39,16 @@ deadline=$(($(date +%s) + WAIT_S))
 
 echo "==> waiting for $accepted accepted order(s) to settle (up to ${WAIT_S}s)"
 while true; do
-    if ! eval "$ORDERS_DUMP_CMD" > "$WORK/orders.txt" 2> "$WORK/orders.err"; then
+    # kubectl exec on Windows may end lines with \r: strip it from every dump, as from the CSV
+    if ! eval "$ORDERS_DUMP_CMD" 2> "$WORK/orders.err" | tr -d '\r' > "$WORK/orders.txt"; then
         echo "    cannot read orders ($(head -1 "$WORK/orders.err")), retrying" >&2
         : > "$WORK/orders.txt"   # nothing known this round: every order counts as missing
     fi
     : > "$WORK/still"
     # Join the open ids with the dump: CONFIRMED/REJECTED settle, anything else (or no row) stays open
     awk -F'|' -v settled="$WORK/settled" -v still="$WORK/still" '
-        NR == FNR { st[$1] = $2; rs[$1] = $3; next }
+        # FILENAME, not NR == FNR: with an empty dump NR == FNR holds for the second file and every id would vanish
+        FILENAME == ARGV[1] { st[$1] = $2; rs[$1] = $3; next }
         !($1 in st) { print $1 "|MISSING|" >> still; next }
         st[$1] == "CONFIRMED" || st[$1] == "REJECTED" { print $1 "|" st[$1] "|" rs[$1] >> settled; next }
         { print $1 "|" st[$1] "|" rs[$1] >> still }
@@ -63,10 +65,12 @@ missing=$(grep -c '|MISSING|' "$WORK/still" || true)
 confirmed=$(grep -c '|CONFIRMED|' "$WORK/settled" || true)
 rejected=$(grep -c '|REJECTED|' "$WORK/settled" || true)
 timeouts=$(grep -c '|REJECTED|timeout at step' "$WORK/settled" || true)
+# Every order not CONFIRMED/REJECTED at the deadline, whatever its status (PENDING, MISSING or one not known here)
+open=$(grep -c . "$WORK/still" || true)
 
 # Outcome against the expectation (CSV: id,style,expected — expected is CONFIRMED or REJECTED:<reason>)
 unexpected=$(awk -F'|' '
-    NR == FNR { got[$1] = ($2 == "REJECTED") ? "REJECTED:" $3 : $2; next }
+    FILENAME == ARGV[1] { got[$1] = ($2 == "REJECTED") ? "REJECTED:" $3 : $2; next }
     {
         id = $0; sub(/,.*/, "", id)
         want = $0; sub(/^[^,]*,[^,]*,/, "", want)
@@ -78,8 +82,8 @@ unexpected=$(awk -F'|' '
     END { print n + 0 }
 ' "$WORK/settled" "$CSV")
 
-echo "accepted=$accepted confirmed=$confirmed rejected=$rejected pending=$pending missing=$missing unexpected=$unexpected timeouts=$timeouts"
-grep '|PENDING|\||MISSING|' "$WORK/still" | head -10 | sed 's/^/    not settled: /' >&2 || true
+echo "accepted=$accepted confirmed=$confirmed rejected=$rejected open=$open pending=$pending missing=$missing unexpected=$unexpected timeouts=$timeouts"
+head -10 "$WORK/still" | sed 's/^/    not settled: /' >&2 || true
 
 # Effects in the participants' databases
 effects_failed=0
@@ -89,16 +93,22 @@ check_effects() { # name dump-command
     local name=$1 dump=$2 lost=0 kept=0
     local until=$(($(date +%s) + EFFECTS_WAIT_S))
     while true; do
-        if ! eval "$dump" > "$WORK/$name.txt" 2>"$WORK/$name.err"; then
-            echo "$name: cannot read reservations ($(head -1 "$WORK/$name.err"))"
-            effects_failed=1
-            return 0
+        if ! eval "$dump" 2>"$WORK/$name.err" | tr -d '\r' > "$WORK/$name.txt"; then
+            # A failed read (API hiccup, database restart) is retried like a mismatch
+            if [ "$(date +%s)" -ge "$until" ]; then
+                echo "$name: cannot read reservations ($(head -1 "$WORK/$name.err"))"
+                effects_failed=1
+                return 0
+            fi
+            echo "    $name: cannot read reservations yet, retrying"
+            sleep "$POLL_S"
+            continue
         fi
         # Confirmed without a RESERVED row -> lost effect; rejected with one -> compensation missing
         : > "$WORK/$name.lost"
         : > "$WORK/$name.kept"
         awk -F'|' -v lost="$WORK/$name.lost" -v kept="$WORK/$name.kept" '
-            NR == FNR { if ($2 == "RESERVED") r[$1] = 1; next }
+            FILENAME == ARGV[1] { if ($2 == "RESERVED") r[$1] = 1; next }
             $2 == "CONFIRMED" && !($1 in r) { print "lost " $1 >> lost }
             $2 == "REJECTED" && ($1 in r) { print "kept " $1 >> kept }
         ' "$WORK/$name.txt" "$WORK/settled"
@@ -144,7 +154,10 @@ check_counters() { # name invariant-command
 check_counters payment "$PAYMENT_INVARIANT_CMD"
 check_counters inventory "$INVENTORY_INVARIANT_CMD"
 
-if [ "$pending" -eq 0 ] && [ "$missing" -eq 0 ] && [ "$unexpected" -eq 0 ] && [ "$timeouts" -eq 0 ] \
+# The totals close the books: every accepted order is counted exactly once as confirmed or rejected
+settled_ok=0
+[ "$open" -eq 0 ] && [ $((confirmed + rejected)) -eq "$accepted" ] && settled_ok=1
+if [ "$settled_ok" -eq 1 ] && [ "$unexpected" -eq 0 ] && [ "$timeouts" -eq 0 ] \
     && [ "$effects_failed" -eq 0 ]; then
     echo "RECONCILE OK: no accepted order lost"
 else

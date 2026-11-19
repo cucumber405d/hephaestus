@@ -10,14 +10,16 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 failures=0
 PAYMENT_DUMP_OVERRIDE=""
+ORDERS_DUMP_OVERRIDE=""
+INVENTORY_DUMP_OVERRIDE=""
 
 order() { # id status reason -> one row of the purchase_order dump
     echo "$1|$2|${3:-}" >> "$WORK/orders.txt"
 }
 run() { # name expected-exit csv [grep pattern on output]
     local out code
-    out=$(ORDERS_DUMP_CMD="cat $WORK/orders.txt" WAIT_S=2 POLL_S=1 EFFECTS_WAIT_S=2 \
-        PAYMENT_DUMP_CMD="${PAYMENT_DUMP_OVERRIDE:-cat $WORK/payment.txt}" INVENTORY_DUMP_CMD="cat $WORK/inventory.txt" \
+    out=$(ORDERS_DUMP_CMD="${ORDERS_DUMP_OVERRIDE:-cat $WORK/orders.txt}" WAIT_S=2 POLL_S=1 EFFECTS_WAIT_S=2 \
+        PAYMENT_DUMP_CMD="${PAYMENT_DUMP_OVERRIDE:-cat $WORK/payment.txt}" INVENTORY_DUMP_CMD="${INVENTORY_DUMP_OVERRIDE:-cat $WORK/inventory.txt}" \
         PAYMENT_INVARIANT_CMD="cat $WORK/payment-drift.txt" INVENTORY_INVARIANT_CMD="cat $WORK/inventory-drift.txt" \
         bash "$RECONCILE" "$3" 2>&1)
     code=$?
@@ -45,7 +47,7 @@ printf 'a1|RESERVED\na6|RESERVED\na7|REFUNDED\n' > "$WORK/payment.txt"
 printf 'a1|RESERVED\na6|RESERVED\n' > "$WORK/inventory.txt"
 
 printf 'a1,choreography,CONFIRMED\na2,choreography,REJECTED:credit limit exceeded\na7,orchestration,REJECTED:not enough stock\n' > "$WORK/good.csv"
-run "all settled as expected" 0 "$WORK/good.csv" "accepted=3 confirmed=1 rejected=2 pending=0 missing=0 unexpected=0 timeouts=0"
+run "all settled as expected" 0 "$WORK/good.csv" "accepted=3 confirmed=1 rejected=2 open=0 pending=0 missing=0 unexpected=0 timeouts=0"
 
 printf 'a1,choreography,CONFIRMED\na3,choreography,CONFIRMED\na4,choreography,CONFIRMED\n' > "$WORK/lost.csv"
 run "pending and missing orders fail" 1 "$WORK/lost.csv" "pending=1 missing=1"
@@ -93,6 +95,37 @@ PAYMENT_DUMP_OVERRIDE=""
 printf 'a7|RESERVED\n' > "$WORK/payment.txt"
 run "a compensation that never lands fails and names the order" 1 "$WORK/comp.csv" "kept a7"
 printf 'a1|RESERVED\na6|RESERVED\na7|REFUNDED\n' > "$WORK/payment.txt"
+
+# An empty or unreadable dump must never make orders vanish (review C1: awk NR == FNR on an empty first file)
+ORDERS_DUMP_OVERRIDE="false"
+run "an unreadable orders dump fails" 1 "$WORK/good.csv" "missing=3"
+ORDERS_DUMP_OVERRIDE="true"
+run "an empty purchase_order table fails" 1 "$WORK/good.csv" "missing=3"
+ORDERS_DUMP_OVERRIDE=""
+INVENTORY_DUMP_OVERRIDE="true"
+run "an empty reservation table fails for confirmed orders" 1 "$WORK/good.csv" "inventory: 1 confirmed order"
+INVENTORY_DUMP_OVERRIDE=""
+
+# An order left in a status reconcile does not know is still open (review I1)
+order a8 SHIPPING
+printf 'a8,choreography,CONFIRMED\n' > "$WORK/odd.csv"
+run "an order in an unknown open status fails" 1 "$WORK/odd.csv" "open=1"
+
+# kubectl exec output with CRLF (Windows) must compare like LF (review M2)
+ORDERS_DUMP_OVERRIDE="sed 's/\$/\r/' $WORK/orders.txt"
+PAYMENT_DUMP_OVERRIDE="sed 's/\$/\r/' $WORK/payment.txt"
+run "CRLF database dumps compare like LF" 0 "$WORK/good.csv" "payment: reservations match"
+ORDERS_DUMP_OVERRIDE=""
+PAYMENT_DUMP_OVERRIDE=""
+
+# A reservation read that fails once (API hiccup) is retried, not a failure (review M1)
+rm -f "$WORK/inv-read"
+cat > "$WORK/inventory-flaky.sh" <<EOF
+if [ -e "$WORK/inv-read" ]; then cat "$WORK/inventory.txt"; else touch "$WORK/inv-read"; exit 1; fi
+EOF
+INVENTORY_DUMP_OVERRIDE="bash $WORK/inventory-flaky.sh"
+run "a reservation read failing once is retried" 0 "$WORK/good.csv" "inventory: reservations match"
+INVENTORY_DUMP_OVERRIDE=""
 
 # A peak run accepts thousands of orders: reconcile must not spend a process per order (minutes under Git Bash)
 : > "$WORK/orders.txt"; : > "$WORK/big.csv"; : > "$WORK/payment.txt"; : > "$WORK/inventory.txt"
