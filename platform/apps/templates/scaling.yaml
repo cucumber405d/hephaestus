@@ -1,0 +1,23 @@
+{{- if .Values.components.scaling }}
+# 12-scaling-operations: the saga of 11 under a peak sale, autoscaled by KEDA (http://orders.localtest.me).
+# Needs gateway, cnpg, observability, strimzi, kafka, keda and metricsServer (profile "scaling" or "full").
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: scaling
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision | quote }}
+    path: 12-scaling-operations/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hephaestus-12
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}

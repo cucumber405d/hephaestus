@@ -33,7 +33,7 @@ jobs:
 
       - name: Render App-of-Apps for both profiles
         run: |
-          for profile in minimal full; do
+          for profile in minimal full scaling; do
             helm template platform platform/apps -f "platform/apps/values-$profile.yaml" > "/tmp/apps-$profile.yaml"
             echo "$profile: $(grep -c '^kind: Application$' "/tmp/apps-$profile.yaml") Applications"
           done

@@ -1,0 +1,24 @@
+{{- if .Values.components.keda }}
+# KEDA: event-driven autoscaling (12 scales the saga's consumers on Kafka lag); it creates the HPAs itself
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keda
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://kedacore.github.io/charts
+    chart: keda
+    targetRevision: {{ .Values.versions.keda | quote }}
+    helm:
+      releaseName: keda
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keda
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}
