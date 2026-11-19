@@ -43,4 +43,14 @@ check "the Gateway's Envoy counts as stateful (the HTTP entry)" 0 hephaestus-wor
 envoy-gateway-system envoy-platform-abc     hephaestus-worker2
 hephaestus-12    payment-7c9-xyz                hephaestus-worker"
 
+# Stateless platform pods (operators, the Envoy Gateway controller) are rescheduled by a drain like any Deployment:
+# they must not pin a worker. The names are the real ones of the platform (Strimzi, Envoy Gateway).
+check "Kafka operators and the Envoy Gateway controller do not pin a worker" 0 hephaestus-worker2 "\
+kafka                platform-dual-role-0                                          hephaestus-worker
+kafka                platform-entity-operator-b676575d9-66c5q                      hephaestus-worker2
+kafka                strimzi-cluster-operator-6d5f7c8b9-x2k4p                      hephaestus-worker2
+envoy-gateway-system envoy-envoy-gateway-system-platform-f2076d6c-bb7c575bf-fqwc6  hephaestus-worker
+envoy-gateway-system envoy-gateway-6c95454bdb-vlvc9                                hephaestus-worker2
+observability        lgtm-5d8f9c7b6-abcde                                          hephaestus-worker"
+
 [ "$failures" -eq 0 ] && echo "drain-node self-test OK" || { echo "drain-node self-test: $failures failure(s)"; exit 1; }
