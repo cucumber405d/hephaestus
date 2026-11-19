@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-19
 decision-makers: Dmitry
 scope: 12-scaling-operations
