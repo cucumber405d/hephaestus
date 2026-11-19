@@ -167,7 +167,9 @@ kind: ScaledObject
 metadata:
   name: inventory
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    # Same wave as the Deployment: Argo CD waits for health only between waves, and a Deployment the memory quota
+    # keeps below its desired replicas never turns Healthy — a later wave would never be applied (found on the first run)
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   scaleTargetRef:
     name: inventory
