@@ -48,10 +48,23 @@ KEDA подняла Ordering до 6 реплик. В Hikari по умолчан�
 ## Где копится очередь: замер, а не догадка (прогон 50/с)
 
 На 50/с после пика оставалось около 1300 незакрытых заказов. Замер каждые 10 с (лаг каждой группы плюс незакрытые
-события outbox каждого сервиса) показал, что лаг растёт только у группы `ordering` (до 1523). У участников он в
+события outbox каждого сервиса, команда ниже) показал, что лаг растёт только у группы `ordering` (до 1523). У участников он в
 единицах, outbox пуст. Причина: один слушатель на 4 топика × 6 партиций = 24 партиции, а KEDA масштабирует поды, а
 не консьюмеров. 6 подов × 1 консьюмер — на каждого по 4 партиции. Лечится `concurrency: 4` (ADR-0008). Урок:
 «реплики ≤ партиции» неполно; правильно — `реплики × параллельность ≤ партиции топиков группы`.
+
+```bash
+while true; do
+  echo "== $(date +%T)"
+  for g in ordering payment inventory delivery; do
+    MSYS_NO_PATHCONV=1 kubectl -n kafka exec platform-dual-role-0 -c kafka -- /opt/kafka/bin/kafka-consumer-groups.sh \
+      --bootstrap-server localhost:9092 --describe --group $g 2>/dev/null | awk -v g=$g '$6 ~ /^[0-9]+$/ {s+=$6} END {printf "%s lag=%d  ", g, s}'
+    echo "outbox=$(kubectl -n hephaestus-12 exec $g-db-1 -c postgres -- psql -U postgres -d $g -Atc \
+      'select count(*) from event_publication where completion_date is null' 2>/dev/null || echo -)"
+  done
+  sleep 10
+done | tee probe.txt
+```
 
 ## Квота, PDB и HPA: drain, который не кончается (прогон drain на 50/с)
 
