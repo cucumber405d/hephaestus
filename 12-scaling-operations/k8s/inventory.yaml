@@ -98,6 +98,15 @@ spec:
               value: 20s
             - name: OTLP_ENDPOINT
               value: http://lgtm.observability:4318
+            # Every pod its own OTLP identity (service.instance.id -> Prometheus "instance"). Without it all replicas
+            # write the same series: the counter jumps between pods, rate() reads each drop as a reset and the
+            # dashboard shows tens of thousands of orders per minute at idle (the OTel agent of Delivery sets it itself)
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.instance.id=$(POD_NAME)
           resources:
             requests:
               cpu: 100m
