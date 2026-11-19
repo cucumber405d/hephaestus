@@ -69,6 +69,7 @@ printf 'a7,orchestration,REJECTED:not enough stock\n' > "$WORK/comp.csv"
 run "a rejected order still holding money fails" 1 "$WORK/comp.csv" "payment: 1 rejected order"
 
 # orders.csv written on Windows (CRLF): the expectation must still compare equal
+printf 'a1|RESERVED\na6|RESERVED\na7|REFUNDED\n' > "$WORK/payment.txt"
 printf 'a1,choreography,CONFIRMED\r\na7,orchestration,REJECTED:not enough stock\r\n' > "$WORK/crlf.csv"
 run "a CRLF orders.csv compares like LF" 0 "$WORK/crlf.csv" "unexpected=0"
 
