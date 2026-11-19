@@ -53,4 +53,25 @@ envoy-gateway-system envoy-envoy-gateway-system-platform-f2076d6c-bb7c575bf-fqwc
 envoy-gateway-system envoy-gateway-6c95454bdb-vlvc9                                hephaestus-worker2
 observability        lgtm-5d8f9c7b6-abcde                                          hephaestus-worker"
 
+# blocked_pdbs: the service PDBs that allow no eviction right now (a drain would hang on them for 5 minutes).
+# CNPG's *-db-primary PDBs always allow 0 and guard pods the drain never touches (the stateful worker).
+check_blocked() { # name want-output pdbs-fixture
+    local got
+    got=$(echo "$3" | blocked_pdbs | tr '\n' ' ')
+    if [ "$got" != "$2" ]; then
+        echo "FAIL  $1: got '$got', want '$2'"
+        failures=$((failures + 1))
+    else
+        echo "ok    $1"
+    fi
+}
+check_blocked "every service PDB allows one eviction" "" "\
+delivery               1
+delivery-db-primary    0
+ordering               1"
+check_blocked "a stale PDB that allows none is reported" "delivery " "\
+delivery               0
+delivery-db-primary    0
+ordering               1"
+
 [ "$failures" -eq 0 ] && echo "drain-node self-test OK" || { echo "drain-node self-test: $failures failure(s)"; exit 1; }

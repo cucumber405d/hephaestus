@@ -29,3 +29,16 @@ pick_drain_node() {
     done
     return 1
 }
+
+# The PDB listing blocked_pdbs reads: name and allowed disruptions
+pdb_allowed() {
+    kubectl -n "${NAMESPACE:-hephaestus-12}" get pdb --no-headers -o custom-columns=NAME:.metadata.name,ALLOWED:.status.disruptionsAllowed
+}
+
+# Service PDBs that allow no eviction right now: a drain would wait on them until its timeout. Reads pdb_allowed on
+# stdin, prints one name per line. CNPG's *-db-primary PDBs always allow 0 and guard pods the drain never touches.
+# A PDB can stay at 0 after its cause is gone: the disruption controller recomputes on pod and PDB events, not on a
+# Deployment's scale, so a scale-up the quota refused and the scale-down that followed leave expectedPods stale.
+blocked_pdbs() {
+    awk '$1 !~ /-db-primary$/ && $2 == "0" { print $1 }'
+}

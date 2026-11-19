@@ -93,6 +93,9 @@ if [ "$SCENARIO" = "drain" ]; then
     drain_node=$(pods_by_node | pick_drain_node) \
         || die "every worker hosts Kafka, lgtm, Envoy or a database: nothing safe to drain (recreate the cluster: platform/down.sh && platform/bootstrap.sh scaling)"
     ok "drain target: $drain_node"
+    blocked=$(pdb_allowed | blocked_pdbs | tr '\n' ' ')
+    [ -z "$blocked" ] || die "PDB allows no eviction: $blocked(a stale status? kubectl -n $NAMESPACE annotate pdb <name> hephaestus.io/resync=\"\$(date +%s)\" --overwrite)"
+    ok "every service PDB allows one eviction"
 fi
 
 echo "==> stock refill"
