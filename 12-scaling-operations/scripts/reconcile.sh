@@ -15,7 +15,7 @@ ORDERS_URL="${ORDERS_URL:-http://orders.localtest.me}"
 WAIT_S="${WAIT_S:-300}"
 POLL_S="${POLL_S:-10}"
 NAMESPACE="${NAMESPACE:-hephaestus-12}"
-ORDER_CMD="${ORDER_CMD:-curl -fs $ORDERS_URL/api/orders/%s}"
+ORDER_CMD="${ORDER_CMD:-curl -fs --max-time 10 --resolve ${ORDERS_URL#http://}:80:${GATEWAY:-127.0.0.1} $ORDERS_URL/api/orders/%s}"
 # order_id|status of every reservation, straight from the participants' databases (CNPG pod <db>-1)
 PAYMENT_DUMP_CMD="${PAYMENT_DUMP_CMD:-kubectl -n $NAMESPACE exec payment-db-1 -c postgres -- psql -U postgres -d payment -At -c 'select order_id, status from payment_reservation'}"
 INVENTORY_DUMP_CMD="${INVENTORY_DUMP_CMD:-kubectl -n $NAMESPACE exec inventory-db-1 -c postgres -- psql -U postgres -d inventory -At -c 'select order_id, status from stock_reservation'}"

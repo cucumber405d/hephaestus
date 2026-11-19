@@ -18,7 +18,10 @@ import java.util.stream.Stream;
  */
 public class PeakSaleSimulation extends Simulation {
 
-    private static final String BASE_URL = System.getProperty("baseUrl", "http://orders.localtest.me");
+    // The Gateway on localhost with the route's host name as Host header: no DNS for *.localtest.me needed (routers
+    // often drop public names that resolve to 127.0.0.1 — DNS rebinding protection)
+    private static final String BASE_URL = System.getProperty("baseUrl", "http://127.0.0.1");
+    private static final String HOST = System.getProperty("host", "orders.localtest.me");
     private static final double WARM_RATE = Double.parseDouble(System.getProperty("warmRate", "2"));
     private static final double PEAK_RATE = Double.parseDouble(System.getProperty("peakRate", "20"));
     private static final int PEAK_SECONDS = Integer.parseInt(System.getProperty("peakSeconds", "180"));
@@ -30,7 +33,7 @@ public class PeakSaleSimulation extends Simulation {
     private final OrderLog log = new OrderLog(ORDERS_FILE);
 
     private final HttpProtocolBuilder httpProtocol =
-            http.baseUrl(BASE_URL).contentTypeHeader("application/json").acceptHeader("application/json");
+            http.baseUrl(BASE_URL).virtualHost(HOST).contentTypeHeader("application/json").acceptHeader("application/json");
 
     private final ScenarioBuilder buyer = scenario("buyer")
             .feed(Stream.generate(() -> {

@@ -4,7 +4,7 @@
 #   -> reconciliation (no accepted order lost) -> recovery (lag to 0, replicas back to the minimum).
 #   12-scaling-operations/scripts/peak.sh <scale|rollout|kill|drain>
 # Env: PEAK_RATE (20 orders/s), WARM_RATE (2), PEAK_SECONDS (180), NAMESPACE (hephaestus-12),
-#      ORDERS_URL (http://orders.localtest.me), GRAFANA_URL (http://grafana.localtest.me).
+#      GATEWAY (127.0.0.1), ORDERS_HOST (orders.localtest.me), GRAFANA_HOST (grafana.localtest.me).
 # Needs kubectl (context kind-hephaestus), curl, JDK 25. Exit 0 only if every check passed.
 set -euo pipefail
 
@@ -16,8 +16,12 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 # shellcheck source=lib.sh
 . "$HERE/lib.sh"
 NAMESPACE="${NAMESPACE:-hephaestus-12}"
-ORDERS_URL="${ORDERS_URL:-http://orders.localtest.me}"
-GRAFANA_URL="${GRAFANA_URL:-http://grafana.localtest.me}"
+# The Gateway is reached on localhost with the route's host name; --resolve below, so no DNS for *.localtest.me needed
+GATEWAY="${GATEWAY:-127.0.0.1}"
+ORDERS_HOST="${ORDERS_HOST:-orders.localtest.me}"
+GRAFANA_HOST="${GRAFANA_HOST:-grafana.localtest.me}"
+ORDERS_URL="http://$ORDERS_HOST"
+GRAFANA_URL="http://$GRAFANA_HOST"
 PEAK_RATE="${PEAK_RATE:-20}"
 WARM_RATE="${WARM_RATE:-2}"
 PEAK_SECONDS="${PEAK_SECONDS:-180}"
@@ -29,6 +33,8 @@ mkdir -p "$RUN"
 failed=0
 drained=""
 
+# curl through the Gateway on localhost, whatever the local DNS does with *.localtest.me
+gw_curl() { curl --resolve "$ORDERS_HOST:80:$GATEWAY" --resolve "$GRAFANA_HOST:80:$GATEWAY" "$@"; }
 ok() { echo "ok    $*"; }
 bad() {
     echo "FAIL  $*"
@@ -75,7 +81,7 @@ for t in $TOPICS; do
     [ "$n" -eq 6 ] || die "topic $t has $n partitions, expected 6"
 done
 ok "8 topics with 6 partitions"
-[ "$(curl -s -o /dev/null -w '%{http_code}' "$ORDERS_URL/api/orders/00000000-0000-0000-0000-000000000000")" = "404" ] \
+[ "$(gw_curl -s -o /dev/null -w '%{http_code}' "$ORDERS_URL/api/orders/00000000-0000-0000-0000-000000000000")" = "404" ] \
     || die "$ORDERS_URL does not answer through the Gateway"
 ok "Ordering reachable at $ORDERS_URL"
 
@@ -97,7 +103,7 @@ ok "warehouse refilled"
 
 if [ -f "$ROOT/12-scaling-operations/grafana/scaling.json" ]; then
     # Idempotent import of the scaling dashboard into the platform's Grafana (admin/admin)
-    if curl -fs -u admin:admin -H 'Content-Type: application/json' -X POST "$GRAFANA_URL/api/dashboards/db" \
+    if gw_curl -fs -u admin:admin -H 'Content-Type: application/json' -X POST "$GRAFANA_URL/api/dashboards/db" \
         -d "{\"overwrite\":true,\"dashboard\":$(cat "$ROOT/12-scaling-operations/grafana/scaling.json")}" >/dev/null; then
         ok "dashboard: $GRAFANA_URL/d/hephaestus-scaling"
     else
@@ -110,7 +116,7 @@ echo "==> Gatling"
 "$ROOT/mvnw" -B -q -f "$ROOT/12-scaling-operations/load/pom.xml" test-compile > "$RUN/compile.log" 2>&1 \
     || die "load module does not compile: $RUN/compile.log"
 "$ROOT/mvnw" -B -q -f "$ROOT/12-scaling-operations/load/pom.xml" gatling:test \
-    -DbaseUrl="$ORDERS_URL" -DwarmRate="$WARM_RATE" -DpeakRate="$PEAK_RATE" -DpeakSeconds="$PEAK_SECONDS" \
+    -DbaseUrl="http://$GATEWAY" -Dhost="$ORDERS_HOST" -DwarmRate="$WARM_RATE" -DpeakRate="$PEAK_RATE" -DpeakSeconds="$PEAK_SECONDS" \
     -DordersFile="$RUN/orders.csv" -DrunId="$(date +%s)" > "$RUN/gatling.log" 2>&1 &
 gatling=$!
 
@@ -170,7 +176,7 @@ else
 fi
 
 echo "==> reconciliation"
-if ORDERS_URL="$ORDERS_URL" NAMESPACE="$NAMESPACE" "$HERE/reconcile.sh" "$RUN/orders.csv" | tee "$RUN/reconcile.txt"; then
+if ORDER_CMD="curl -fs --max-time 10 --resolve $ORDERS_HOST:80:$GATEWAY $ORDERS_URL/api/orders/%s" NAMESPACE="$NAMESPACE" "$HERE/reconcile.sh" "$RUN/orders.csv" | tee "$RUN/reconcile.txt"; then
     ok "no accepted order lost"
 else
     bad "reconciliation"
