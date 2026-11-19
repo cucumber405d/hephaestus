@@ -31,7 +31,10 @@ scope: 12-scaling-operations
 2. `rollout` — посреди пика `kubectl rollout restart` всех четырёх деплойментов (как выкатка версии).
 3. `kill` — посреди пика удаляет по одному поду каждого участника (`kubectl delete pod`, мягко) и один —
    жёстко (`--grace-period=0 --force`, как падение).
-4. `drain` — `kubectl drain` одного worker-узла (PDB должен удержать минимум), потом `uncordon`.
+4. `drain` — `kubectl drain` того worker-узла, на котором **нет** Kafka, PostgreSQL (CNPG) и lgtm (скрипт
+   выбирает узел по расположению их подов), потом `uncordon`. Брокер Kafka один и на эфемерном хранилище: его
+   выселение потеряло бы сообщения не по вине сервисов — это проверка платформы, а не 12 (learning notes:
+   реплики брокера, rack awareness). PDB — по ADR-0003.
 
 Каждый сценарий завершается сверкой ADR-0001.
 

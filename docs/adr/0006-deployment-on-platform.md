@@ -29,8 +29,9 @@ Kafka, CNPG и lgtm в профиле `full`.
 
 Выбран **A**.
 
-- `12-scaling-operations/k8s/` (Kustomize): namespace `hephaestus-12`; четыре Deployment из образов 11 с
-  тегом по коммиту; CNPG `Cluster` на сервис; `KafkaTopic` (6 партиций); ScaledObject (ADR-0002); PDB и стратегия
+- `12-scaling-operations/k8s/` (Kustomize): namespace `hephaestus-12`; четыре Deployment из образов 11
+  (`ghcr.io/cucumber405d/hephaestus/observability-*`, публичные пакеты — секрет не нужен, как в 06/07) с тегом
+  по коммиту мержа 11; CNPG `Cluster` на сервис; `KafkaTopic` (6 партиций); ScaledObject (ADR-0002); PDB и стратегия
   обновления (ADR-0003); HTTPRoute `orders.localtest.me` на Ordering.
 - Платформа: новый компонент `scaling` (Application) в `values-full.yaml`; компоненты `keda` и `metrics-server`.
 - Настройки, которых нет в образах 11, — через переменные окружения Spring (`SPRING_KAFKA_*`,
