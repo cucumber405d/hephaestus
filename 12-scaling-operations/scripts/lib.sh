@@ -3,7 +3,9 @@
 
 # The pod listing pick_drain_node reads: namespace, name, node (-o wide would put "1 (3h ago)" restarts in between)
 pods_by_node() {
-    kubectl get pods -A --no-headers -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,NODE:.spec.nodeName
+    # Finished pods (Completed Jobs such as Envoy Gateway's certgen) hold nothing a drain could take down
+    kubectl get pods -A --no-headers --field-selector=status.phase!=Succeeded,status.phase!=Failed \
+        -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,NODE:.spec.nodeName
 }
 
 # Which worker may be drained without taking platform state down (ADR-0005): reads pods_by_node on stdin, prints a
@@ -40,5 +42,6 @@ pdb_allowed() {
 # A PDB can stay at 0 after its cause is gone: the disruption controller recomputes on pod and PDB events, not on a
 # Deployment's scale, so a scale-up the quota refused and the scale-down that followed leave expectedPods stale.
 blocked_pdbs() {
-    awk '$1 !~ /-db-primary$/ && $2 == "0" { print $1 }'
+    # Anything but a positive count blocks, "<none>" included (a PDB the controller has not computed yet)
+    awk '$1 !~ /-db-primary$/ && $2 !~ /^[1-9][0-9]*$/ { print $1 }'
 }

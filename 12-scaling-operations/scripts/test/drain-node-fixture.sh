@@ -74,4 +74,8 @@ delivery               0
 delivery-db-primary    0
 ordering               1"
 
+check_blocked "a PDB the controller has not computed yet (<none>) is reported" "payment " "\
+delivery               1
+payment                <none>"
+
 [ "$failures" -eq 0 ] && echo "drain-node self-test OK" || { echo "drain-node self-test: $failures failure(s)"; exit 1; }
