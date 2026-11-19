@@ -29,8 +29,8 @@ public final class OrderLog implements AutoCloseable {
 
     public synchronized void append(String orderId, String style, String expected) {
         try {
-            out.write(orderId + "," + style + "," + expected);
-            out.newLine();
+            // \n, not newLine(): the same file on every platform (Windows would write \r\n)
+            out.write(orderId + "," + style + "," + expected + "\n");
             // A crashed run still leaves every order accepted so far
             out.flush();
         } catch (IOException e) {

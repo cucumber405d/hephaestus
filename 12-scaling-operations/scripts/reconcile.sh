@@ -25,6 +25,9 @@ INVENTORY_INVARIANT_CMD="${INVENTORY_INVARIANT_CMD:-kubectl -n $NAMESPACE exec i
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
+# A log written on Windows ends its lines with \r\n: drop the \r, or no expectation would compare equal
+tr -d '\r' < "$CSV" > "$WORK/orders.csv"
+CSV="$WORK/orders.csv"
 
 # Reads one order; prints "STATUS|reason" or "MISSING"
 fetch() {

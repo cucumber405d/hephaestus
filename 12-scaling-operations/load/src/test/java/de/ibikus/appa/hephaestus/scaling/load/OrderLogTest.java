@@ -33,6 +33,8 @@ class OrderLogTest {
         assertThat(lines).hasSize(16_000);
         assertThat(new HashSet<>(lines)).hasSize(16_000);
         assertThat(lines.getFirst()).matches("order-\\d+-\\d+,choreography,CONFIRMED");
+        // \n on every platform: reconcile.sh compares the last field as is (a Windows \r broke every comparison)
+        assertThat(Files.readString(dir.resolve("orders.csv"))).doesNotContain("\r");
     }
 
     @Test

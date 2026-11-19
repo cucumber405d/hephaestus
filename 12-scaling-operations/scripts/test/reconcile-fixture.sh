@@ -68,6 +68,10 @@ printf 'a7|RESERVED\n' > "$WORK/payment.txt"
 printf 'a7,orchestration,REJECTED:not enough stock\n' > "$WORK/comp.csv"
 run "a rejected order still holding money fails" 1 "$WORK/comp.csv" "payment: 1 rejected order"
 
+# orders.csv written on Windows (CRLF): the expectation must still compare equal
+printf 'a1,choreography,CONFIRMED\r\na7,orchestration,REJECTED:not enough stock\r\n' > "$WORK/crlf.csv"
+run "a CRLF orders.csv compares like LF" 0 "$WORK/crlf.csv" "unexpected=0"
+
 # A reservation applied twice to the stock counter (idempotency bug): rows exist once, the counter says twice
 printf 'HAMMER-01|52|26\n' > "$WORK/inventory-drift.txt"
 run "a stock counter out of line with its reservations fails" 1 "$WORK/good.csv" "inventory: 1 counter(s) out of line"
