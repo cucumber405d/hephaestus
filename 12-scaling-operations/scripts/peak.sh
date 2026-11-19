@@ -39,7 +39,8 @@ die() {
     exit 1
 }
 k() { kubectl -n "$NAMESPACE" "$@"; }
-kafka() { kubectl -n kafka exec "$BROKER" -c kafka -- "$@"; }
+# MSYS_NO_PATHCONV: Git Bash on Windows would turn /opt/kafka/... into C:/Program Files/Git/opt/... for kubectl
+kafka() { MSYS_NO_PATHCONV=1 kubectl -n kafka exec "$BROKER" -c kafka -- "$@"; }
 min_replicas() { [ "$1" = "ordering" ] && echo 2 || echo 1; }
 replicas() { k get deploy "$1" -o jsonpath='{.status.replicas}' 2>/dev/null || echo 0; }
 # Total lag of the saga's consumer groups
@@ -61,8 +62,9 @@ for s in $SERVICES; do
 done
 ok "4 services ready"
 for t in $TOPICS; do
-    n=$(kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic "$t" 2>/dev/null \
-        | grep -c 'Partition: ' || true)
+    described=$(kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic "$t" 2>&1) \
+        || die "cannot describe topic $t: $described"
+    n=$(echo "$described" | grep -c 'Partition: ' || true)
     # Fewer partitions cap the consumers below maxReplicaCount 6 (ADR-0002): the KafkaTopic must precede the services
     [ "$n" -eq 6 ] || die "topic $t has $n partitions, expected 6"
 done
