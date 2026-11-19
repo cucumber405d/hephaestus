@@ -32,8 +32,10 @@ public class PeakSaleSimulation extends Simulation {
     private final AtomicLong sequence = new AtomicLong();
     private final OrderLog log = new OrderLog(ORDERS_FILE);
 
-    private final HttpProtocolBuilder httpProtocol =
-            http.baseUrl(BASE_URL).virtualHost(HOST).contentTypeHeader("application/json").acceptHeader("application/json");
+    private final HttpProtocolBuilder httpProtocol = http.baseUrl(BASE_URL)
+            .virtualHost(HOST)
+            .contentTypeHeader("application/json")
+            .acceptHeader("application/json");
 
     private final ScenarioBuilder buyer = scenario("buyer")
             .feed(Stream.generate(() -> {
