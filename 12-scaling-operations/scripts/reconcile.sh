@@ -6,7 +6,7 @@
 #      one holds neither (its compensations ran), and the counters (account.reserved, stock_item.reserved) equal the
 #      sum of their reservations — a reservation applied twice shows up there.
 #   12-scaling-operations/scripts/reconcile.sh <orders.csv>
-# Env: WAIT_S (300), POLL_S (10), NAMESPACE (hephaestus-12);
+# Env: WAIT_S (300), POLL_S (10), EFFECTS_WAIT_S (60), NAMESPACE (hephaestus-12);
 #      ORDERS_DUMP_CMD / PAYMENT_DUMP_CMD / INVENTORY_DUMP_CMD / *_INVARIANT_CMD replace the database reads (self-test).
 # Every read is one query per database and every comparison one awk pass: no process per order, so thousands of
 # orders reconcile in seconds even under Git Bash on Windows.
@@ -15,6 +15,7 @@ set -euo pipefail
 CSV="${1:?usage: reconcile.sh <orders.csv>}"
 WAIT_S="${WAIT_S:-300}"
 POLL_S="${POLL_S:-10}"
+EFFECTS_WAIT_S="${EFFECTS_WAIT_S:-60}"
 NAMESPACE="${NAMESPACE:-hephaestus-12}"
 # id|status|reason of every order, straight from Ordering's database (CNPG pod ordering-db-1)
 ORDERS_DUMP_CMD="${ORDERS_DUMP_CMD:-kubectl -n $NAMESPACE exec ordering-db-1 -c postgres -- psql -U postgres -d ordering -At -c \"select id, status, coalesce(reason, '') from purchase_order\"}"
@@ -82,29 +83,40 @@ grep '|PENDING|\||MISSING|' "$WORK/still" | head -10 | sed 's/^/    not settled:
 
 # Effects in the participants' databases
 effects_failed=0
+# Compensations reach the participants after the order settles (eventual consistency): a mismatch is re-read
+# every POLL_S up to EFFECTS_WAIT_S before it counts.
 check_effects() { # name dump-command
     local name=$1 dump=$2 lost=0 kept=0
-    if ! eval "$dump" > "$WORK/$name.txt" 2>"$WORK/$name.err"; then
-        echo "$name: cannot read reservations ($(head -1 "$WORK/$name.err"))"
-        effects_failed=1
-        return
-    fi
-    # Confirmed without a RESERVED row -> lost effect; rejected with one -> compensation missing
-    : > "$WORK/$name.lost"
-    : > "$WORK/$name.kept"
-    awk -F'|' -v lost="$WORK/$name.lost" -v kept="$WORK/$name.kept" '
-        NR == FNR { if ($2 == "RESERVED") r[$1] = 1; next }
-        $2 == "CONFIRMED" && !($1 in r) { print "lost " $1 >> lost }
-        $2 == "REJECTED" && ($1 in r) { print "kept " $1 >> kept }
-    ' "$WORK/$name.txt" "$WORK/settled"
-    lost=$(wc -l < "$WORK/$name.lost" | tr -d ' ')
-    kept=$(wc -l < "$WORK/$name.kept" | tr -d ' ')
+    local until=$(($(date +%s) + EFFECTS_WAIT_S))
+    while true; do
+        if ! eval "$dump" > "$WORK/$name.txt" 2>"$WORK/$name.err"; then
+            echo "$name: cannot read reservations ($(head -1 "$WORK/$name.err"))"
+            effects_failed=1
+            return 0
+        fi
+        # Confirmed without a RESERVED row -> lost effect; rejected with one -> compensation missing
+        : > "$WORK/$name.lost"
+        : > "$WORK/$name.kept"
+        awk -F'|' -v lost="$WORK/$name.lost" -v kept="$WORK/$name.kept" '
+            NR == FNR { if ($2 == "RESERVED") r[$1] = 1; next }
+            $2 == "CONFIRMED" && !($1 in r) { print "lost " $1 >> lost }
+            $2 == "REJECTED" && ($1 in r) { print "kept " $1 >> kept }
+        ' "$WORK/$name.txt" "$WORK/settled"
+        lost=$(wc -l < "$WORK/$name.lost" | tr -d ' ')
+        kept=$(wc -l < "$WORK/$name.kept" | tr -d ' ')
+        [ "$lost" -eq 0 ] && [ "$kept" -eq 0 ] && break
+        [ "$(date +%s)" -ge "$until" ] && break
+        echo "    $name: $((lost + kept)) reservation(s) not in line yet, re-reading"
+        sleep "$POLL_S"
+    done
     if [ "$lost" -gt 0 ]; then
         echo "$name: $lost confirmed order(s) without a reservation"
+        head -5 "$WORK/$name.lost" | sed 's/^/    /'
         effects_failed=1
     fi
     if [ "$kept" -gt 0 ]; then
         echo "$name: $kept rejected order(s) still holding a reservation (compensation missing)"
+        head -5 "$WORK/$name.kept" | sed 's/^/    /'
         effects_failed=1
     fi
     [ "$lost" -eq 0 ] && [ "$kept" -eq 0 ] && echo "$name: reservations match ($confirmed confirmed, $rejected rejected)"

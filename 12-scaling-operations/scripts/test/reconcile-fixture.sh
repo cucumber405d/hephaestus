@@ -9,14 +9,15 @@ RECONCILE="$HERE/../reconcile.sh"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 failures=0
+PAYMENT_DUMP_OVERRIDE=""
 
 order() { # id status reason -> one row of the purchase_order dump
     echo "$1|$2|${3:-}" >> "$WORK/orders.txt"
 }
 run() { # name expected-exit csv [grep pattern on output]
     local out code
-    out=$(ORDERS_DUMP_CMD="cat $WORK/orders.txt" WAIT_S=2 POLL_S=1 \
-        PAYMENT_DUMP_CMD="cat $WORK/payment.txt" INVENTORY_DUMP_CMD="cat $WORK/inventory.txt" \
+    out=$(ORDERS_DUMP_CMD="cat $WORK/orders.txt" WAIT_S=2 POLL_S=1 EFFECTS_WAIT_S=2 \
+        PAYMENT_DUMP_CMD="${PAYMENT_DUMP_OVERRIDE:-cat $WORK/payment.txt}" INVENTORY_DUMP_CMD="cat $WORK/inventory.txt" \
         PAYMENT_INVARIANT_CMD="cat $WORK/payment-drift.txt" INVENTORY_INVARIANT_CMD="cat $WORK/inventory-drift.txt" \
         bash "$RECONCILE" "$3" 2>&1)
     code=$?
@@ -78,6 +79,20 @@ run "a stock counter out of line with its reservations fails" 1 "$WORK/good.csv"
 printf 'peak-1-3|240.00|120.00\n' > "$WORK/payment-drift.txt"
 run "a credit counter out of line with its reservations fails" 1 "$WORK/good.csv" "payment: 1 counter(s) out of line"
 : > "$WORK/payment-drift.txt"
+
+# A compensation still in flight when its order settles: the refund lands a moment later (found at 50/s).
+# The first payment dump still shows a7 RESERVED, the next ones REFUNDED.
+printf 'a1|RESERVED\na6|RESERVED\na7|REFUNDED\n' > "$WORK/payment-later.txt"
+printf 'a1|RESERVED\na6|RESERVED\na7|RESERVED\n' > "$WORK/payment.txt"
+cat > "$WORK/payment-dump.sh" <<EOF
+if [ -e "$WORK/payment-read" ]; then cat "$WORK/payment-later.txt"; else touch "$WORK/payment-read"; cat "$WORK/payment.txt"; fi
+EOF
+PAYMENT_DUMP_OVERRIDE="bash $WORK/payment-dump.sh"
+run "a compensation landing after the order settled passes" 0 "$WORK/good.csv" "payment: reservations match"
+PAYMENT_DUMP_OVERRIDE=""
+printf 'a7|RESERVED\n' > "$WORK/payment.txt"
+run "a compensation that never lands fails and names the order" 1 "$WORK/comp.csv" "kept a7"
+printf 'a1|RESERVED\na6|RESERVED\na7|REFUNDED\n' > "$WORK/payment.txt"
 
 # A peak run accepts thousands of orders: reconcile must not spend a process per order (minutes under Git Bash)
 : > "$WORK/orders.txt"; : > "$WORK/big.csv"; : > "$WORK/payment.txt"; : > "$WORK/inventory.txt"
