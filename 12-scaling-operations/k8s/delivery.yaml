@@ -24,7 +24,7 @@ spec:
     initdb:
       database: delivery
       owner: delivery
-  # Every PostgreSQL connection is a process with its own memory: headroom for 6 scaled-out pods x 5 connections
+  # Every PostgreSQL connection is a process with its own memory: headroom for 3 scaled-out pods x 5 connections
   resources:
     requests:
       cpu: 100m
@@ -85,7 +85,7 @@ spec:
                 secretKeyRef:
                   name: delivery-db-app
                   key: password
-            # The pool scales with the replicas: KEDA max 6 x 5 = 30 connections, which the database can carry
+            # The pool scales with the replicas: KEDA max 3 x 5 = 15 connections, which the database can carry
             - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
               value: "5"
             - name: KAFKA_BOOTSTRAP_SERVERS
