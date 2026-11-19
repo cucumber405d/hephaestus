@@ -197,3 +197,6 @@ spec:
         lagThreshold: "20"
         activationLagThreshold: "0"
         offsetResetPolicy: earliest
+        # A partition without a committed offset (no message yet) counts as lag 0, not as "one consumer each"
+        # (the default would scale an idle group to one replica per partition, i.e. to the maximum)
+        scaleToZeroOnInvalidOffset: "true"
