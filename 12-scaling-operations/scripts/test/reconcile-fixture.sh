@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-test of reconcile.sh without a cluster: orders are read from fixture files instead of the Ordering API,
+# Self-test of reconcile.sh without a cluster: orders are read from a fixture dump instead of Ordering's database,
 # reservations from fixture dumps instead of the databases.
 #   bash 12-scaling-operations/scripts/test/reconcile-fixture.sh
 set -uo pipefail
@@ -10,14 +10,12 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 failures=0
 
-order() { # id status reason
-    local reason=""
-    [ -n "${3:-}" ] && reason=",\"reason\":\"$3\""
-    echo "{\"id\":\"$1\",\"customerId\":\"x\",\"saga\":\"choreography\",\"status\":\"$2\"$reason,\"history\":[]}" > "$WORK/orders/$1.json"
+order() { # id status reason -> one row of the purchase_order dump
+    echo "$1|$2|${3:-}" >> "$WORK/orders.txt"
 }
 run() { # name expected-exit csv [grep pattern on output]
     local out code
-    out=$(ORDER_CMD="cat $WORK/orders/%s.json" WAIT_S=2 POLL_S=1 \
+    out=$(ORDERS_DUMP_CMD="cat $WORK/orders.txt" WAIT_S=2 POLL_S=1 \
         PAYMENT_DUMP_CMD="cat $WORK/payment.txt" INVENTORY_DUMP_CMD="cat $WORK/inventory.txt" \
         PAYMENT_INVARIANT_CMD="cat $WORK/payment-drift.txt" INVENTORY_INVARIANT_CMD="cat $WORK/inventory-drift.txt" \
         bash "$RECONCILE" "$3" 2>&1)
@@ -31,7 +29,7 @@ run() { # name expected-exit csv [grep pattern on output]
     fi
 }
 
-mkdir -p "$WORK/orders"
+: > "$WORK/orders.txt"
 # Drift rows: accounts / SKUs whose reserved total differs from their RESERVED reservations (none = consistent)
 : > "$WORK/payment-drift.txt"
 : > "$WORK/inventory-drift.txt"
@@ -80,5 +78,20 @@ run "a stock counter out of line with its reservations fails" 1 "$WORK/good.csv"
 printf 'peak-1-3|240.00|120.00\n' > "$WORK/payment-drift.txt"
 run "a credit counter out of line with its reservations fails" 1 "$WORK/good.csv" "payment: 1 counter(s) out of line"
 : > "$WORK/payment-drift.txt"
+
+# A peak run accepts thousands of orders: reconcile must not spend a process per order (minutes under Git Bash)
+: > "$WORK/orders.txt"; : > "$WORK/big.csv"; : > "$WORK/payment.txt"; : > "$WORK/inventory.txt"
+for i in $(seq 1 8000); do echo "b$i|CONFIRMED|"; done > "$WORK/orders.txt"
+for i in $(seq 1 8000); do echo "b$i,choreography,CONFIRMED"; done > "$WORK/big.csv"
+for i in $(seq 1 8000); do echo "b$i|RESERVED"; done | tee "$WORK/inventory.txt" > "$WORK/payment.txt"
+started=$(date +%s)
+run "8000 orders reconcile" 0 "$WORK/big.csv" "accepted=8000 confirmed=8000"
+took=$(($(date +%s) - started))
+if [ "$took" -gt 15 ]; then
+    echo "FAIL  8000 orders took ${took}s (want <= 15s)"
+    failures=$((failures + 1))
+else
+    echo "ok    8000 orders within ${took}s"
+fi
 
 [ "$failures" -eq 0 ] && echo "reconcile self-test OK" || { echo "reconcile self-test: $failures failure(s)"; exit 1; }

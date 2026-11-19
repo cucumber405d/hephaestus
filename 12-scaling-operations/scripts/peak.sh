@@ -176,7 +176,7 @@ else
 fi
 
 echo "==> reconciliation"
-if ORDER_CMD="curl -fs --max-time 10 --resolve $ORDERS_HOST:80:$GATEWAY $ORDERS_URL/api/orders/%s" NAMESPACE="$NAMESPACE" "$HERE/reconcile.sh" "$RUN/orders.csv" | tee "$RUN/reconcile.txt"; then
+if NAMESPACE="$NAMESPACE" "$HERE/reconcile.sh" "$RUN/orders.csv" | tee "$RUN/reconcile.txt"; then
     ok "no accepted order lost"
 else
     bad "reconciliation"

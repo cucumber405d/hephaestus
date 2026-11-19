@@ -6,16 +6,18 @@
 #      one holds neither (its compensations ran), and the counters (account.reserved, stock_item.reserved) equal the
 #      sum of their reservations — a reservation applied twice shows up there.
 #   12-scaling-operations/scripts/reconcile.sh <orders.csv>
-# Env: ORDERS_URL (http://orders.localtest.me), WAIT_S (300), POLL_S (10), NAMESPACE (hephaestus-12);
-#      ORDER_CMD / PAYMENT_DUMP_CMD / INVENTORY_DUMP_CMD replace the API and database reads (self-test).
+# Env: WAIT_S (300), POLL_S (10), NAMESPACE (hephaestus-12);
+#      ORDERS_DUMP_CMD / PAYMENT_DUMP_CMD / INVENTORY_DUMP_CMD / *_INVARIANT_CMD replace the database reads (self-test).
+# Every read is one query per database and every comparison one awk pass: no process per order, so thousands of
+# orders reconcile in seconds even under Git Bash on Windows.
 set -euo pipefail
 
 CSV="${1:?usage: reconcile.sh <orders.csv>}"
-ORDERS_URL="${ORDERS_URL:-http://orders.localtest.me}"
 WAIT_S="${WAIT_S:-300}"
 POLL_S="${POLL_S:-10}"
 NAMESPACE="${NAMESPACE:-hephaestus-12}"
-ORDER_CMD="${ORDER_CMD:-curl -fs --max-time 10 --resolve ${ORDERS_URL#http://}:80:${GATEWAY:-127.0.0.1} $ORDERS_URL/api/orders/%s}"
+# id|status|reason of every order, straight from Ordering's database (CNPG pod ordering-db-1)
+ORDERS_DUMP_CMD="${ORDERS_DUMP_CMD:-kubectl -n $NAMESPACE exec ordering-db-1 -c postgres -- psql -U postgres -d ordering -At -c \"select id, status, coalesce(reason, '') from purchase_order\"}"
 # order_id|status of every reservation, straight from the participants' databases (CNPG pod <db>-1)
 PAYMENT_DUMP_CMD="${PAYMENT_DUMP_CMD:-kubectl -n $NAMESPACE exec payment-db-1 -c postgres -- psql -U postgres -d payment -At -c 'select order_id, status from payment_reservation'}"
 INVENTORY_DUMP_CMD="${INVENTORY_DUMP_CMD:-kubectl -n $NAMESPACE exec inventory-db-1 -c postgres -- psql -U postgres -d inventory -At -c 'select order_id, status from stock_reservation'}"
@@ -29,20 +31,6 @@ trap 'rm -rf "$WORK"' EXIT
 tr -d '\r' < "$CSV" > "$WORK/orders.csv"
 CSV="$WORK/orders.csv"
 
-# Reads one order; prints "STATUS|reason" or "MISSING"
-fetch() {
-    local json
-    # shellcheck disable=SC2059
-    if ! json=$(eval "$(printf "$ORDER_CMD" "$1")" 2>/dev/null) || [ -z "$json" ]; then
-        echo "MISSING"
-        return
-    fi
-    local status reason
-    status=$(echo "$json" | sed -n 's/.*"status":"\([A-Z]*\)".*/\1/p')
-    reason=$(echo "$json" | sed -n 's/.*"reason":"\([^"]*\)".*/\1/p')
-    echo "${status:-MISSING}|$reason"
-}
-
 cut -d, -f1 "$CSV" | sort -u > "$WORK/todo"
 accepted=$(wc -l < "$WORK/todo" | tr -d ' ')
 : > "$WORK/settled"   # id|STATUS|reason
@@ -50,14 +38,18 @@ deadline=$(($(date +%s) + WAIT_S))
 
 echo "==> waiting for $accepted accepted order(s) to settle (up to ${WAIT_S}s)"
 while true; do
+    if ! eval "$ORDERS_DUMP_CMD" > "$WORK/orders.txt" 2> "$WORK/orders.err"; then
+        echo "    cannot read orders ($(head -1 "$WORK/orders.err")), retrying" >&2
+        : > "$WORK/orders.txt"   # nothing known this round: every order counts as missing
+    fi
     : > "$WORK/still"
-    while read -r id; do
-        result=$(fetch "$id")
-        case "$result" in
-            CONFIRMED\|* | REJECTED\|*) echo "$id|$result" >> "$WORK/settled" ;;
-            *) echo "$id|$result" >> "$WORK/still" ;;
-        esac
-    done < "$WORK/todo"
+    # Join the open ids with the dump: CONFIRMED/REJECTED settle, anything else (or no row) stays open
+    awk -F'|' -v settled="$WORK/settled" -v still="$WORK/still" '
+        NR == FNR { st[$1] = $2; rs[$1] = $3; next }
+        !($1 in st) { print $1 "|MISSING|" >> still; next }
+        st[$1] == "CONFIRMED" || st[$1] == "REJECTED" { print $1 "|" st[$1] "|" rs[$1] >> settled; next }
+        { print $1 "|" st[$1] "|" rs[$1] >> still }
+    ' "$WORK/orders.txt" "$WORK/todo"
     cut -d'|' -f1 "$WORK/still" > "$WORK/todo"
     [ ! -s "$WORK/todo" ] && break
     [ "$(date +%s)" -ge "$deadline" ] && break
@@ -66,27 +58,27 @@ while true; do
 done
 
 pending=$(grep -c '|PENDING|' "$WORK/still" || true)
-missing=$(grep -c '|MISSING' "$WORK/still" || true)
+missing=$(grep -c '|MISSING|' "$WORK/still" || true)
 confirmed=$(grep -c '|CONFIRMED|' "$WORK/settled" || true)
 rejected=$(grep -c '|REJECTED|' "$WORK/settled" || true)
 timeouts=$(grep -c '|REJECTED|timeout at step' "$WORK/settled" || true)
 
-# Outcome against the expectation: CONFIRMED, or REJECTED:<reason>
-unexpected=0
-while IFS=, read -r id _style expected; do
-    line=$(grep "^$id|" "$WORK/settled" || true)
-    [ -z "$line" ] && continue
-    actual=$(echo "$line" | cut -d'|' -f2)
-    reason=$(echo "$line" | cut -d'|' -f3)
-    [ "$actual" = "REJECTED" ] && actual="REJECTED:$reason"
-    if [ "$actual" != "$expected" ]; then
-        unexpected=$((unexpected + 1))
-        echo "    unexpected: $id expected $expected, got $actual" >&2
-    fi
-done < "$CSV"
+# Outcome against the expectation (CSV: id,style,expected — expected is CONFIRMED or REJECTED:<reason>)
+unexpected=$(awk -F'|' '
+    NR == FNR { got[$1] = ($2 == "REJECTED") ? "REJECTED:" $3 : $2; next }
+    {
+        id = $0; sub(/,.*/, "", id)
+        want = $0; sub(/^[^,]*,[^,]*,/, "", want)
+        if ((id in got) && got[id] != want) {
+            n++
+            print "    unexpected: " id " expected " want ", got " got[id] > "/dev/stderr"
+        }
+    }
+    END { print n + 0 }
+' "$WORK/settled" "$CSV")
 
 echo "accepted=$accepted confirmed=$confirmed rejected=$rejected pending=$pending missing=$missing unexpected=$unexpected timeouts=$timeouts"
-grep '|PENDING|\||MISSING' "$WORK/still" | head -10 | sed 's/^/    not settled: /' >&2 || true
+grep '|PENDING|\||MISSING|' "$WORK/still" | head -10 | sed 's/^/    not settled: /' >&2 || true
 
 # Effects in the participants' databases
 effects_failed=0
@@ -97,13 +89,14 @@ check_effects() { # name dump-command
         effects_failed=1
         return
     fi
-    # (grep finds nothing -> exit 1; not an error here)
-    { grep '|CONFIRMED|' "$WORK/settled" || true; } | cut -d'|' -f1 | while read -r id; do
-        grep -q "^$id|RESERVED$" "$WORK/$name.txt" || echo "lost $id"
-    done > "$WORK/$name.lost"
-    { grep '|REJECTED|' "$WORK/settled" || true; } | cut -d'|' -f1 | while read -r id; do
-        if grep -q "^$id|RESERVED$" "$WORK/$name.txt"; then echo "kept $id"; fi
-    done > "$WORK/$name.kept"
+    # Confirmed without a RESERVED row -> lost effect; rejected with one -> compensation missing
+    : > "$WORK/$name.lost"
+    : > "$WORK/$name.kept"
+    awk -F'|' -v lost="$WORK/$name.lost" -v kept="$WORK/$name.kept" '
+        NR == FNR { if ($2 == "RESERVED") r[$1] = 1; next }
+        $2 == "CONFIRMED" && !($1 in r) { print "lost " $1 >> lost }
+        $2 == "REJECTED" && ($1 in r) { print "kept " $1 >> kept }
+    ' "$WORK/$name.txt" "$WORK/settled"
     lost=$(wc -l < "$WORK/$name.lost" | tr -d ' ')
     kept=$(wc -l < "$WORK/$name.kept" | tr -d ' ')
     if [ "$lost" -gt 0 ]; then
