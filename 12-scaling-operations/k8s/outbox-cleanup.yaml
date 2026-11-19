@@ -1,0 +1,169 @@
+# Twelve-Factor XII, admin processes (ADR-0007): every night each service's outbox drops publications that were
+# sent more than a day ago. Same release as the app: the database it talks to, the credentials CNPG made for it.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ordering-outbox-cleanup
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cleanup
+              image: postgres:17
+              command: ["psql", "$(URI)", "-v", "ON_ERROR_STOP=1", "-c",
+                        "delete from event_publication where completion_date < now() - interval '1 day'"]
+              env:
+                - name: URI
+                  valueFrom:
+                    secretKeyRef:
+                      name: ordering-db-app
+                      key: uri
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: payment-outbox-cleanup
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cleanup
+              image: postgres:17
+              command: ["psql", "$(URI)", "-v", "ON_ERROR_STOP=1", "-c",
+                        "delete from event_publication where completion_date < now() - interval '1 day'"]
+              env:
+                - name: URI
+                  valueFrom:
+                    secretKeyRef:
+                      name: payment-db-app
+                      key: uri
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: inventory-outbox-cleanup
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cleanup
+              image: postgres:17
+              command: ["psql", "$(URI)", "-v", "ON_ERROR_STOP=1", "-c",
+                        "delete from event_publication where completion_date < now() - interval '1 day'"]
+              env:
+                - name: URI
+                  valueFrom:
+                    secretKeyRef:
+                      name: inventory-db-app
+                      key: uri
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: delivery-outbox-cleanup
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cleanup
+              image: postgres:17
+              command: ["psql", "$(URI)", "-v", "ON_ERROR_STOP=1", "-c",
+                        "delete from event_publication where completion_date < now() - interval '1 day'"]
+              env:
+                - name: URI
+                  valueFrom:
+                    secretKeyRef:
+                      name: delivery-db-app
+                      key: uri
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]

@@ -4,7 +4,7 @@
 Как устроено и почему — [05-platform-gitops](../05-platform-gitops/README.md).
 
 ```bash
-platform/bootstrap.sh minimal            # или: full; второй аргумент — ветка, тег или коммит (по умолчанию main)
+platform/bootstrap.sh minimal            # или: full, scaling (только то, что нужно 12); второй аргумент — ветка, тег или коммит
 05-platform-gitops/scripts/smoke.sh minimal
 platform/down.sh
 ```
@@ -14,7 +14,7 @@ platform/down.sh
 | `kind/cluster.yaml` | кластер: control-plane + 2 worker, `localhost:80` → Gateway |
 | `bootstrap.sh` | kind → Argo CD (Helm) → корневое Application `platform` |
 | `argocd/values.yaml` | настройки Argo CD (им же и применяются) |
-| `apps/` | Helm-чарт App-of-Apps: Application на компонент, профили `values-minimal.yaml` / `values-full.yaml` |
+| `apps/` | Helm-чарт App-of-Apps: Application на компонент, профили `values-minimal.yaml` / `values-full.yaml` / `values-scaling.yaml` (12: KEDA, metrics-server, Kafka, сага) |
 | `components/` | манифесты компонентов: gateway, observability, catalog, kafka, keycloak, redis |
 
 Адреса: http://argocd.localtest.me, http://grafana.localtest.me (admin/admin), http://catalog.localtest.me,

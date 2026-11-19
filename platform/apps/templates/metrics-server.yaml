@@ -1,0 +1,28 @@
+{{- if .Values.components.metricsServer }}
+# metrics-server: the resource metrics API behind CPU-based autoscaling (KEDA's cpu trigger, kubectl top).
+# kind's kubelets have self-signed serving certificates, hence --kubelet-insecure-tls (a local cluster only).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/metrics-server
+    chart: metrics-server
+    targetRevision: {{ .Values.versions.metricsServer | quote }}
+    helm:
+      releaseName: metrics-server
+      valuesObject:
+        args:
+          - --kubelet-insecure-tls
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}

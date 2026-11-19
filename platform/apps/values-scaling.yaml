@@ -1,0 +1,17 @@
+# Only what 12-scaling-operations needs (lighter than "full", fits a laptop next to the load and the CI runner):
+# Gateway, CNPG, observability, Kafka, KEDA, metrics-server and the saga itself
+components:
+  argocd: true
+  gateway: true
+  cnpg: true
+  observability: true
+  catalog: false
+  strimzi: true
+  kafka: true
+  keycloak: false
+  redis: false
+  serviceCommunication: false
+  security: false
+  keda: true
+  metricsServer: true
+  scaling: true

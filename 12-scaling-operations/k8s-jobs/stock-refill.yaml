@@ -1,0 +1,39 @@
+# Twelve-Factor XII, a one-off admin process (ADR-0004/0007): before the sale the warehouse is refilled — the seed of
+# 10/11 (ANVIL-01 10, HAMMER-01 25) would run out after a few dozen orders. TONGS-01 stays at 0 (the "not enough
+# stock" orders of the mix). Run by peak.sh: kubectl -n hephaestus-12 apply -f k8s-jobs/stock-refill.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: stock-refill
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: refill
+          image: postgres:17
+          command: ["psql", "$(URI)", "-v", "ON_ERROR_STOP=1", "-c",
+                    "update stock_item set on_hand = 100000 where sku in ('ANVIL-01', 'HAMMER-01')"]
+          env:
+            - name: URI
+              valueFrom:
+                secretKeyRef:
+                  name: inventory-db-app
+                  key: uri
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

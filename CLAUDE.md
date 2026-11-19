@@ -2,6 +2,7 @@
 
 - Спецификация: `docs/superpowers/specs/2026-11-05-hephaestus-root-design.md`; планы — `docs/superpowers/plans/`.
 - Documentation as Code: документация в `docs/`, `docs/start.md` в корне и в каждом подпроекте.
+- **ADR:** архитектурные решения — в `docs/adr/` (MADR 4.0, сквозная нумерация `NNNN-title.md`, шаблон `template.md`), реестр `docs/adr/README.md` обновляется в том же коммите; спека подпроекта ссылается на свои ADR. Правила — `docs/adr/0000-use-madr.md`.
 - **Impact-файлы:** каждая задача, фикс или фича сопровождается файлом
   `impacts/impact_YYYY_MM_DD_HH.MM.SS.md` (время 24ч, локальное, реальные секунды: `Get-Date -Format yyyy_MM_dd_HH.mm.ss` / `TZ=Europe/Berlin date +%Y_%m_%d_%H.%M.%S`), в том же коммите.
   - Максимум один экран.

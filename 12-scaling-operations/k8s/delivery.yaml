@@ -1,0 +1,209 @@
+# delivery: own CloudNativePG database (wave 0) -> the 11 image, configured by environment only (wave 2) ->
+# KEDA ScaledObject and PodDisruptionBudget. Flyway migrates at startup, as in 11.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: delivery-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  # Databases stay on the "stateful" worker (platform/kind/cluster.yaml), so the other one can be drained (ADR-0005)
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: hephaestus.io/role
+                operator: In
+                values: ["stateful"]
+  bootstrap:
+    initdb:
+      database: delivery
+      owner: delivery
+  # Every PostgreSQL connection is a process with its own memory: headroom for 3 scaled-out pods x 5 connections
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: delivery
+  labels:
+    app.kubernetes.io/name: delivery
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  # No "replicas": the HPA that KEDA creates owns the count, and Argo CD (self-heal) would otherwise reset it
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # A new pod is Ready before an old one stops (ADR-0003)
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: delivery
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: delivery
+    spec:
+      # preStop 5 s + graceful shutdown 20 s + margin
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: delivery
+          image: delivery
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://delivery-db-rw:5432/delivery
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: delivery-db-app
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: delivery-db-app
+                  key: password
+            # The pool scales with the replicas: KEDA max 3 x 5 = 15 connections, which the database can carry
+            - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+              value: "5"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: platform-kafka-bootstrap.kafka:9092
+            # Kafka 4 consumer group protocol (KIP-848): only the moved partitions pause on a rebalance (ADR-0003)
+            - name: SPRING_KAFKA_CONSUMER_PROPERTIES_GROUP_PROTOCOL
+              value: consumer
+            # Finish in-flight HTTP requests and the current Kafka record on SIGTERM
+            - name: SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE
+              value: 20s
+            # The Java agent's configuration (Delivery has no telemetry code)
+            - name: OTEL_SERVICE_NAME
+              value: delivery
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://lgtm.observability:4318
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "10000"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 640Mi
+            limits:
+              cpu: "1"
+              memory: 896Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 2
+            failureThreshold: 90
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            # Leave the Service's endpoints before the server stops accepting requests
+            preStop:
+              sleep:
+                seconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: delivery
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app.kubernetes.io/name: delivery
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# One pod at a time may be evicted (drain); minAvailable 1 would block draining a single replica forever (ADR-0003)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: delivery
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: delivery
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: delivery
+  annotations:
+    # Same wave as the Deployment: Argo CD waits for health only between waves, and a Deployment the memory quota
+    # keeps below its desired replicas never turns Healthy — a later wave would never be applied (found on the first run)
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  scaleTargetRef:
+    name: delivery
+  minReplicaCount: 1
+  # Below the partitions on purpose: Delivery never needed more than 3, and its replica is the most expensive
+  # (OTel agent, 896Mi). Every replica KEDA may ask for must fit the memory quota (ADR-0008).
+  maxReplicaCount: 3
+  pollingInterval: 10
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+        scaleDown:
+          # Fewer rebalances: wait 2 minutes of low load before removing consumers
+          stabilizationWindowSeconds: 120
+  triggers:
+    # All topics of the group (no "topic"): replicas follow the lag, at most one per partition
+    - type: kafka
+      metadata:
+        bootstrapServers: platform-kafka-bootstrap.kafka:9092
+        consumerGroup: delivery
+        lagThreshold: "20"
+        activationLagThreshold: "0"
+        offsetResetPolicy: earliest
+        # A partition without a committed offset (no message yet) counts as lag 0, not as "one consumer each"
+        # (the default would scale an idle group to one replica per partition, i.e. to the maximum)
+        scaleToZeroOnInvalidOffset: "true"

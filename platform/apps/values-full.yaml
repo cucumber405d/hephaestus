@@ -13,3 +13,7 @@ components:
   serviceCommunication: true
   # 07: needs keycloak (full profile only)
   security: true
+  # 12
+  keda: true
+  metricsServer: true
+  scaling: true

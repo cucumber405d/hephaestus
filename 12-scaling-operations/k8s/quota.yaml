@@ -1,0 +1,17 @@
+# kind nodes report the whole host's memory, so the scheduler would place every scaled-out pod and the kernel would
+# OOM-kill something (possibly the Kafka broker). The quota caps the namespace instead: a pod over it is not created,
+# the HPA shows FailedCreate, the saga waits in Kafka — a visible ceiling instead of random kills.
+# Sized for the worst case KEDA allows (ADR-0008): Ordering, Payment, Inventory at 6, Delivery at 3, the databases,
+# plus one surge pod per Deployment during a rollout or drain. requests ~14.3Gi, limits ~21.8Gi, plus Jobs.
+# A quota below that is not a ceiling but a deadlock: the HPA wants a pod the quota refuses, the PDB counts the
+# desired replicas, so the last healthy pod can never be evicted and a node drain hangs (found on the drain run).
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: memory
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  hard:
+    requests.memory: 15Gi
+    limits.memory: 23Gi

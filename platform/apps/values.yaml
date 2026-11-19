@@ -10,6 +10,9 @@ versions:
   cloudnativePg: 0.29.0
   strimzi: 1.2.0
   keycloak: 26.8.1
+  # 12: KEDA 2.21 supports Kubernetes 1.34-1.36 (kind node images of kind 0.30+); 2.20.x for 1.33-1.35
+  keda: 2.21.0
+  metricsServer: 3.13.0
 
 # Profiles (values-minimal.yaml, values-full.yaml) switch these
 components:
@@ -26,3 +29,7 @@ components:
   serviceCommunication: false
   # 07: needs keycloak (full profile only); off until its images are published
   security: false
+  # 12: autoscaling operators and the saga under load
+  keda: false
+  metricsServer: false
+  scaling: false

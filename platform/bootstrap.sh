@@ -4,7 +4,7 @@
 #   2. Argo CD via Helm (the only imperative install),
 #   3. the root Application "platform" (App-of-Apps) for a profile and a Git revision.
 # From then on Argo CD pulls everything else from Git, including its own configuration.
-#   platform/bootstrap.sh [minimal|full] [git-revision]      (defaults: minimal, main)
+#   platform/bootstrap.sh [minimal|full|scaling] [git-revision]      (defaults: minimal, main)
 # The revision (branch, tag or commit SHA) must exist on GitHub: Argo CD reads the repository, not the working tree.
 # Needs Docker, kind, kubectl, helm.
 set -euo pipefail
@@ -16,7 +16,7 @@ REPO_URL=https://github.com/cucumber405d/hephaestus.git
 
 cd "$(dirname "$0")"   # platform
 if [ ! -f "apps/values-$PROFILE.yaml" ]; then
-    echo "Unknown profile: $PROFILE (expected minimal or full)" >&2
+    echo "Unknown profile: $PROFILE (expected minimal, full or scaling)" >&2
     exit 2
 fi
 # Single source of truth for the Argo CD chart version: the App-of-Apps values (Argo CD manages itself with it)
