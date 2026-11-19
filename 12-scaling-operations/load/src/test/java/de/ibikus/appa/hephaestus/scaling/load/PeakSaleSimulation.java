@@ -33,7 +33,8 @@ public class PeakSaleSimulation extends Simulation {
     private final OrderLog log = new OrderLog(ORDERS_FILE);
 
     private final HttpProtocolBuilder httpProtocol = http.baseUrl(BASE_URL)
-            .virtualHost(HOST)
+            // Envoy picks the route by the Host header
+            .header("Host", HOST)
             .contentTypeHeader("application/json")
             .acceptHeader("application/json");
 
