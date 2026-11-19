@@ -86,9 +86,13 @@ spec:
                 secretKeyRef:
                   name: ordering-db-app
                   key: password
-            # The pool scales with the replicas: KEDA max 6 x 5 = 30 connections, which the database can carry
+            # One listener reads 4 topics x 6 partitions = 24: KEDA scales pods (max 6), not consumers, so each pod
+            # runs 4 consumers to give every partition its own (found by the 50/s probe: only the ordering group lagged)
+            - name: SPRING_KAFKA_LISTENER_CONCURRENCY
+              value: "4"
+            # 4 listener transactions + scheduler + outbox + HTTP: KEDA max 6 x 8 = 48 connections (ADR-0008)
             - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
-              value: "5"
+              value: "8"
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: platform-kafka-bootstrap.kafka:9092
             # Kafka 4 consumer group protocol (KIP-848): only the moved partitions pause on a rebalance (ADR-0003)
