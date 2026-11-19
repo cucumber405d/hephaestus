@@ -71,6 +71,16 @@ ok "8 topics with 6 partitions"
     || die "$ORDERS_URL does not answer through the Gateway"
 ok "Ordering reachable at $ORDERS_URL"
 
+if [ "$SCENARIO" = "drain" ]; then
+    # Chosen before the load: a run that cannot drain safely stops here, not in the middle of the peak.
+    # Prefer the worker labelled drainable (platform/kind/cluster.yaml), else whichever hosts no state.
+    WORKERS="$(kubectl get nodes -l hephaestus.io/role=drainable -o name | sed 's|node/||') hephaestus-worker hephaestus-worker2"
+    export WORKERS
+    drain_node=$(pods_by_node | pick_drain_node) \
+        || die "every worker hosts Kafka, lgtm, Envoy or a database: nothing safe to drain (recreate the cluster: platform/down.sh && platform/bootstrap.sh scaling)"
+    ok "drain target: $drain_node"
+fi
+
 echo "==> stock refill"
 k delete job stock-refill --ignore-not-found >/dev/null
 k apply -f "$ROOT/12-scaling-operations/k8s-jobs/stock-refill.yaml" >/dev/null
@@ -88,9 +98,12 @@ if [ -f "$ROOT/12-scaling-operations/grafana/scaling.json" ]; then
 fi
 
 echo "==> Gatling"
+# Compile first, so Maven's start-up does not shift the disruption out of the peak
+"$ROOT/mvnw" -B -q -f "$ROOT/12-scaling-operations/load/pom.xml" test-compile > "$RUN/compile.log" 2>&1 \
+    || die "load module does not compile: $RUN/compile.log"
 "$ROOT/mvnw" -B -q -f "$ROOT/12-scaling-operations/load/pom.xml" gatling:test \
     -DbaseUrl="$ORDERS_URL" -DwarmRate="$WARM_RATE" -DpeakRate="$PEAK_RATE" -DpeakSeconds="$PEAK_SECONDS" \
-    -DordersFile="$RUN/orders.csv" > "$RUN/gatling.log" 2>&1 &
+    -DordersFile="$RUN/orders.csv" -DrunId="$(date +%s)" > "$RUN/gatling.log" 2>&1 &
 gatling=$!
 
 # Replicas and lag every 10 s while the load runs
@@ -104,6 +117,13 @@ gatling=$!
     done
 ) &
 
+# The clock starts with the first accepted order (the warm-up's start), not with Maven
+for _ in $(seq 1 180); do
+    [ -s "$RUN/orders.csv" ] && break
+    kill -0 "$gatling" 2>/dev/null || die "Gatling stopped before the first order: $RUN/gatling.log"
+    sleep 1
+done
+[ -s "$RUN/orders.csv" ] || die "no order accepted within 3 minutes: $RUN/gatling.log"
 # The disruption in the middle of the peak: warm-up 60 s + ramp 30 s + half the peak
 sleep $((60 + 30 + PEAK_SECONDS / 2))
 case "$SCENARIO" in
@@ -122,8 +142,7 @@ case "$SCENARIO" in
         k delete pod "$pod" --grace-period=0 --force >/dev/null 2>&1
         ;;
     drain)
-        drained=$(kubectl get pods -A -o wide --no-headers | pick_drain_node) \
-            || die "every worker hosts Kafka, lgtm or a database: nothing safe to drain"
+        drained="$drain_node"
         echo "    draining $drained"
         kubectl drain "$drained" --ignore-daemonsets --delete-emptydir-data --timeout=300s >/dev/null \
             || bad "drain of $drained did not finish (PDB?)"

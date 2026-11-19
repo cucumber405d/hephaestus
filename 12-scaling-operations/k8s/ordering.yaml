@@ -10,6 +10,16 @@ spec:
   instances: 1
   storage:
     size: 1Gi
+  # Databases stay on the "stateful" worker (platform/kind/cluster.yaml), so the other one can be drained (ADR-0005)
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: hephaestus.io/role
+                operator: In
+                values: ["stateful"]
   bootstrap:
     initdb:
       database: ordering
@@ -178,10 +188,11 @@ spec:
           stabilizationWindowSeconds: 120
   triggers:
     # Orders coming in: CPU; replies and events of the participants: lag of group "ordering"
+    # An absolute 300m per pod, not a percentage of the small request (60 % of 100m would keep it at 6 replicas)
     - type: cpu
-      metricType: Utilization
+      metricType: AverageValue
       metadata:
-        value: "60"
+        value: 300m
     - type: kafka
       metadata:
         bootstrapServers: platform-kafka-bootstrap.kafka:9092

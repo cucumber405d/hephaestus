@@ -19,6 +19,7 @@ run() { # name expected-exit csv [grep pattern on output]
     local out code
     out=$(ORDER_CMD="cat $WORK/orders/%s.json" WAIT_S=2 POLL_S=1 \
         PAYMENT_DUMP_CMD="cat $WORK/payment.txt" INVENTORY_DUMP_CMD="cat $WORK/inventory.txt" \
+        PAYMENT_INVARIANT_CMD="cat $WORK/payment-drift.txt" INVENTORY_INVARIANT_CMD="cat $WORK/inventory-drift.txt" \
         bash "$RECONCILE" "$3" 2>&1)
     code=$?
     if [ "$code" -ne "$2" ] || { [ -n "${4:-}" ] && ! echo "$out" | grep -q -- "$4"; }; then
@@ -31,6 +32,9 @@ run() { # name expected-exit csv [grep pattern on output]
 }
 
 mkdir -p "$WORK/orders"
+# Drift rows: accounts / SKUs whose reserved total differs from their RESERVED reservations (none = consistent)
+: > "$WORK/payment-drift.txt"
+: > "$WORK/inventory-drift.txt"
 order a1 CONFIRMED
 order a2 REJECTED "credit limit exceeded"
 order a3 PENDING
@@ -63,5 +67,13 @@ printf 'a1|RESERVED\na6|RESERVED\n' > "$WORK/inventory.txt"
 printf 'a7|RESERVED\n' > "$WORK/payment.txt"
 printf 'a7,orchestration,REJECTED:not enough stock\n' > "$WORK/comp.csv"
 run "a rejected order still holding money fails" 1 "$WORK/comp.csv" "payment: 1 rejected order"
+
+# A reservation applied twice to the stock counter (idempotency bug): rows exist once, the counter says twice
+printf 'HAMMER-01|52|26\n' > "$WORK/inventory-drift.txt"
+run "a stock counter out of line with its reservations fails" 1 "$WORK/good.csv" "inventory: 1 counter(s) out of line"
+: > "$WORK/inventory-drift.txt"
+printf 'peak-1-3|240.00|120.00\n' > "$WORK/payment-drift.txt"
+run "a credit counter out of line with its reservations fails" 1 "$WORK/good.csv" "payment: 1 counter(s) out of line"
+: > "$WORK/payment-drift.txt"
 
 [ "$failures" -eq 0 ] && echo "reconcile self-test OK" || { echo "reconcile self-test: $failures failure(s)"; exit 1; }

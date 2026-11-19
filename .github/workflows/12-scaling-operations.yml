@@ -46,7 +46,7 @@ jobs:
       - name: Manifests render
         run: |
           kubectl kustomize 12-scaling-operations/k8s > /tmp/12.yaml
-          for kind in KafkaTopic:8 Cluster:4 Deployment:4 ScaledObject:4 PodDisruptionBudget:4 CronJob:4 HTTPRoute:1; do
+          for kind in ResourceQuota:1 KafkaTopic:8 Cluster:4 Deployment:4 ScaledObject:4 PodDisruptionBudget:4 CronJob:4 HTTPRoute:1; do
             n=$(grep -c "^kind: ${kind%%:*}$" /tmp/12.yaml || true)
             echo "${kind%%:*}: $n"
             [ "$n" -eq "${kind##*:}" ]

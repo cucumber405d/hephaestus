@@ -18,24 +18,29 @@ check() { # name want-exit want-node pods-fixture
     fi
 }
 
-# kubectl get pods -A -o wide --no-headers: NAMESPACE NAME READY STATUS RESTARTS AGE IP NODE NOMINATED READINESS
+# kubectl get pods -A --no-headers -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,NODE:.spec.nodeName
+# (not -o wide: its RESTARTS column "1 (3h ago)" is several words and shifts the node column)
 check "the worker without stateful pods" 0 hephaestus-worker2 "\
-kafka            platform-dual-role-0      1/1 Running 0 1h 10.0.0.1 hephaestus-worker <none> <none>
-observability    lgtm-5d8f-abc             1/1 Running 0 1h 10.0.0.2 hephaestus-worker <none> <none>
-hephaestus-12    payment-db-1              1/1 Running 0 1h 10.0.0.3 hephaestus-worker <none> <none>
-hephaestus-12    payment-7c9-xyz           1/1 Running 0 1h 10.0.0.4 hephaestus-worker2 <none> <none>
-argocd           argocd-server-1           1/1 Running 0 1h 10.0.0.5 hephaestus-worker2 <none> <none>"
+kafka            platform-dual-role-0           hephaestus-worker
+observability    lgtm-5d8f-abc                  hephaestus-worker
+hephaestus-12    payment-db-1                   hephaestus-worker
+hephaestus-12    payment-7c9-xyz                hephaestus-worker2
+argocd           argocd-server-1                hephaestus-worker2"
 
 check "a CNPG database counts as stateful" 0 hephaestus-worker "\
-hephaestus-12    ordering-7c9-abc          1/1 Running 0 1h 10.0.0.1 hephaestus-worker <none> <none>
-hephaestus-12    ordering-db-1             1/1 Running 0 1h 10.0.0.3 hephaestus-worker2 <none> <none>"
+hephaestus-12    ordering-7c9-abc               hephaestus-worker
+hephaestus-12    ordering-db-1                  hephaestus-worker2"
 
 check "both workers stateful: refuse" 1 "" "\
-kafka            platform-dual-role-0      1/1 Running 0 1h 10.0.0.1 hephaestus-worker <none> <none>
-observability    lgtm-5d8f-abc             1/1 Running 0 1h 10.0.0.2 hephaestus-worker2 <none> <none>"
+kafka            platform-dual-role-0           hephaestus-worker
+observability    lgtm-5d8f-abc                  hephaestus-worker2"
 
 check "the control plane is never drained" 0 hephaestus-worker2 "\
-kafka            platform-dual-role-0      1/1 Running 0 1h 10.0.0.1 hephaestus-worker <none> <none>
-kube-system      etcd-hephaestus-control-plane 1/1 Running 0 1h 10.0.0.9 hephaestus-control-plane <none> <none>"
+kafka            platform-dual-role-0           hephaestus-worker
+kube-system      etcd-hephaestus-control-plane  hephaestus-control-plane"
+
+check "the Gateway's Envoy counts as stateful (the HTTP entry)" 0 hephaestus-worker "\
+envoy-gateway-system envoy-platform-abc     hephaestus-worker2
+hephaestus-12    payment-7c9-xyz                hephaestus-worker"
 
 [ "$failures" -eq 0 ] && echo "drain-node self-test OK" || { echo "drain-node self-test: $failures failure(s)"; exit 1; }

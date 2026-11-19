@@ -22,17 +22,19 @@ public class PeakSaleSimulation extends Simulation {
     private static final double WARM_RATE = Double.parseDouble(System.getProperty("warmRate", "2"));
     private static final double PEAK_RATE = Double.parseDouble(System.getProperty("peakRate", "20"));
     private static final int PEAK_SECONDS = Integer.parseInt(System.getProperty("peakSeconds", "180"));
+    // Customers are fresh per run (their credit is used by the confirmed orders of earlier runs)
+    private static final String RUN_ID = System.getProperty("runId", Long.toString(System.currentTimeMillis()));
     private static final Path ORDERS_FILE = Path.of(System.getProperty("ordersFile", "target/orders.csv"));
 
     private final AtomicLong sequence = new AtomicLong();
     private final OrderLog log = new OrderLog(ORDERS_FILE);
 
-    private final HttpProtocolBuilder http =
+    private final HttpProtocolBuilder httpProtocol =
             http.baseUrl(BASE_URL).contentTypeHeader("application/json").acceptHeader("application/json");
 
     private final ScenarioBuilder buyer = scenario("buyer")
             .feed(Stream.generate(() -> {
-                        var order = OrderMix.of(sequence.getAndIncrement());
+                        var order = OrderMix.of(RUN_ID, sequence.getAndIncrement());
                         return Map.<String, Object>of(
                                 "customer", order.customer(),
                                 "style", order.style(),
@@ -42,8 +44,9 @@ public class PeakSaleSimulation extends Simulation {
                     .iterator())
             .exec(http("place order")
                     .post("/api/orders")
-                    .body(StringBody(
-                            "{\"customerId\":\"#{customer}\",\"saga\":\"#{style}\",\"lines\":[{\"sku\":\"#{sku}\",\"quantity\":1}]}"))
+                    .body(
+                            StringBody(
+                                    "{\"customerId\":\"#{customer}\",\"saga\":\"#{style}\",\"lines\":[{\"sku\":\"#{sku}\",\"quantity\":1}]}"))
                     .check(status().is(202), header("Location").saveAs("location")))
             .exec(session -> {
                 if (!session.isFailed()) {
@@ -62,7 +65,7 @@ public class PeakSaleSimulation extends Simulation {
                         rampUsersPerSec(WARM_RATE).to(PEAK_RATE).during(30),
                         constantUsersPerSec(PEAK_RATE).during(PEAK_SECONDS),
                         rampUsersPerSec(PEAK_RATE).to(WARM_RATE).during(60)))
-                .protocols(http)
+                .protocols(httpProtocol)
                 .assertions(
                         global().responseTime().percentile(95.0).lt(500),
                         global().responseTime().percentile(99.0).lt(2000),

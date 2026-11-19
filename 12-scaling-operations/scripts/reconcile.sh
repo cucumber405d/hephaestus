@@ -3,7 +3,8 @@
 #   1. every order Gatling got a 202 for reaches CONFIRMED or REJECTED within WAIT_S seconds (none PENDING, none missing),
 #   2. it ends as intended (orders.csv: expected outcome), and no order is rejected by a step timeout,
 #   3. the effects match: a confirmed order holds its money (Payment) and stock (Inventory) reservation, a rejected
-#      one holds neither (its compensations ran).
+#      one holds neither (its compensations ran), and the counters (account.reserved, stock_item.reserved) equal the
+#      sum of their reservations — a reservation applied twice shows up there.
 #   12-scaling-operations/scripts/reconcile.sh <orders.csv>
 # Env: ORDERS_URL (http://orders.localtest.me), WAIT_S (300), POLL_S (10), NAMESPACE (hephaestus-12);
 #      ORDER_CMD / PAYMENT_DUMP_CMD / INVENTORY_DUMP_CMD replace the API and database reads (self-test).
@@ -18,6 +19,9 @@ ORDER_CMD="${ORDER_CMD:-curl -fs $ORDERS_URL/api/orders/%s}"
 # order_id|status of every reservation, straight from the participants' databases (CNPG pod <db>-1)
 PAYMENT_DUMP_CMD="${PAYMENT_DUMP_CMD:-kubectl -n $NAMESPACE exec payment-db-1 -c postgres -- psql -U postgres -d payment -At -c 'select order_id, status from payment_reservation'}"
 INVENTORY_DUMP_CMD="${INVENTORY_DUMP_CMD:-kubectl -n $NAMESPACE exec inventory-db-1 -c postgres -- psql -U postgres -d inventory -At -c 'select order_id, status from stock_reservation'}"
+# Double effects (ADR-0001 item 2): a counter that moved twice for one reservation. Rows: key|counter|sum of RESERVED
+PAYMENT_INVARIANT_CMD="${PAYMENT_INVARIANT_CMD:-kubectl -n $NAMESPACE exec payment-db-1 -c postgres -- psql -U postgres -d payment -At -c \"select a.customer_id, a.reserved, coalesce(r.s, 0) from account a left join (select customer_id, sum(amount) s from payment_reservation where status = 'RESERVED' group by customer_id) r using (customer_id) where a.reserved <> coalesce(r.s, 0)\"}"
+INVENTORY_INVARIANT_CMD="${INVENTORY_INVARIANT_CMD:-kubectl -n $NAMESPACE exec inventory-db-1 -c postgres -- psql -U postgres -d inventory -At -c \"select i.sku, i.reserved, coalesce(x.q, 0) from stock_item i left join (select l.sku, sum(l.quantity) q from stock_reservation_line l join stock_reservation r using (order_id) where r.status = 'RESERVED' group by l.sku) x using (sku) where i.reserved <> coalesce(x.q, 0)\"}"
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
@@ -112,6 +116,25 @@ check_effects() { # name dump-command
 }
 check_effects payment "$PAYMENT_DUMP_CMD"
 check_effects inventory "$INVENTORY_DUMP_CMD"
+
+# The counters (account.reserved, stock_item.reserved) must equal the sum of their RESERVED reservations
+check_counters() { # name invariant-command
+    local name=$1 drift
+    if ! drift=$(eval "$2" 2>"$WORK/$name-inv.err"); then
+        echo "$name: cannot read counters ($(head -1 "$WORK/$name-inv.err"))"
+        effects_failed=1
+        return 0
+    fi
+    if [ -n "$drift" ]; then
+        echo "$name: $(echo "$drift" | grep -c .) counter(s) out of line with their reservations (key|counter|reservations):"
+        echo "$drift" | head -5 | sed 's/^/    /'
+        effects_failed=1
+    else
+        echo "$name: counters match their reservations"
+    fi
+}
+check_counters payment "$PAYMENT_INVARIANT_CMD"
+check_counters inventory "$INVENTORY_INVARIANT_CMD"
 
 if [ "$pending" -eq 0 ] && [ "$missing" -eq 0 ] && [ "$unexpected" -eq 0 ] && [ "$timeouts" -eq 0 ] \
     && [ "$effects_failed" -eq 0 ]; then

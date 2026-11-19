@@ -23,9 +23,13 @@ kubectl -n hephaestus-12 get deploy,scaledobject,pdb
 12-scaling-operations/scripts/peak.sh scale        # только нагрузка: смотрим автомасштабирование
 12-scaling-operations/scripts/peak.sh rollout      # посреди пика — rollout restart всех четырёх сервисов
 12-scaling-operations/scripts/peak.sh kill         # посреди пика — удаление подов (один — жёстко, как падение)
-12-scaling-operations/scripts/peak.sh drain        # посреди пика — drain worker-узла без Kafka/БД/lgtm
+12-scaling-operations/scripts/peak.sh drain        # посреди пика — drain worker-узла без Kafka/БД/lgtm/Envoy
 PEAK_RATE=40 PEAK_SECONDS=300 12-scaling-operations/scripts/peak.sh scale   # сильнее и дольше
 ```
+
+`drain` нужен кластер, созданный с метками узлов `hephaestus.io/role` (stateful / drainable,
+`platform/kind/cluster.yaml`): Kafka, базы, lgtm и Envoy предпочитают первый worker, второй можно осушить. На
+кластере без меток `peak.sh drain` откажется до начала нагрузки — пересоздать: `platform/down.sh && platform/bootstrap.sh scaling`.
 
 Каждый прогон: проверки перед стартом → пополнение склада (Job) → Gatling (прогрев 60 s, рост 30 s, пик, спад
 60 s) с помехой посреди пика → сверка → восстановление → сводка. Файлы прогона —
@@ -43,8 +47,10 @@ kubectl -n kafka exec platform-dual-role-0 -c kafka -- /opt/kafka/bin/kafka-cons
 ## Руками
 
 - **Потолок партиций:** при `PEAK_RATE=60` участники упираются в 6 реплик — больше партиций нет (ADR-0002).
-- **Не хватает памяти:** поды в `Pending` при масштабировании — kind на ноутбуке исчерпал память узлов; сверка всё
-  равно должна пройти, просто позже.
+- **Потолок памяти:** узлы kind сообщают всю память хоста, поэтому без ограничения планировщик разместил бы все
+  поды, а ядро начало бы убивать процессы (вплоть до брокера Kafka). Квота namespace (`k8s/quota.yaml`, 10 GiB
+  запросов) делает потолок видимым: лишний под не создаётся, у HPA — `FailedCreate`, сага ждёт в Kafka; сверка
+  всё равно должна пройти. `kubectl -n hephaestus-12 describe resourcequota memory`.
 - **Таймаут, который ловит падение, а не очередь:** `kubectl -n hephaestus-12 scale deploy delivery --replicas=0`
   (KEDA вернёт минимум, поэтому лучше `kubectl -n hephaestus-12 annotate scaledobject delivery
   autoscaling.keda.sh/paused-replicas=0`) — заказы оркестрации отклонятся через 120 s с `timeout at step delivery`.

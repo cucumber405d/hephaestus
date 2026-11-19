@@ -17,6 +17,16 @@ spec:
       labels:
         app.kubernetes.io/name: lgtm
     spec:
+      affinity:
+        nodeAffinity:
+          # Preferred, not required: a cluster created before the labels still schedules it
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: hephaestus.io/role
+                    operator: In
+                    values: ["stateful"]
       containers:
         - name: lgtm
           image: grafana/otel-lgtm:0.30.0

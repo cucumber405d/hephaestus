@@ -12,7 +12,9 @@ class OrderMixTest {
     @Test
     void mixIsEightyTenTen() {
         Map<String, Integer> expected = new HashMap<>();
-        LongStream.range(0, 1000).mapToObj(OrderMix::of).forEach(o -> expected.merge(o.expected(), 1, Integer::sum));
+        LongStream.range(0, 1000)
+                .mapToObj(i -> OrderMix.of("r1", i))
+                .forEach(o -> expected.merge(o.expected(), 1, Integer::sum));
 
         assertThat(expected)
                 .containsEntry("CONFIRMED", 800)
@@ -24,7 +26,7 @@ class OrderMixTest {
     void bothSagaStylesForEveryKindOfOrder() {
         Map<String, Integer> styles = new HashMap<>();
         LongStream.range(0, 1000)
-                .mapToObj(OrderMix::of)
+                .mapToObj(i -> OrderMix.of("r1", i))
                 .forEach(o -> styles.merge(o.expected() + "/" + o.style(), 1, Integer::sum));
 
         assertThat(styles)
@@ -38,14 +40,23 @@ class OrderMixTest {
 
     @Test
     void successUsesFreshCustomersWithinTheDefaultLimit() {
-        LongStream.range(0, 1000).mapToObj(OrderMix::of).filter(o -> o.expected().equals("CONFIRMED")).forEach(o -> {
-            assertThat(o.customer()).startsWith("peak-");
-            assertThat(o.sku()).isIn("HAMMER-01", "ANVIL-01");
-        });
+        LongStream.range(0, 1000)
+                .mapToObj(i -> OrderMix.of("r1", i))
+                .filter(o -> o.expected().equals("CONFIRMED"))
+                .forEach(o -> {
+                    assertThat(o.customer()).startsWith("peak-");
+                    assertThat(o.sku()).isIn("HAMMER-01", "ANVIL-01");
+                });
     }
 
     @Test
     void sameIndexSameOrder() {
-        assertThat(OrderMix.of(42)).isEqualTo(OrderMix.of(42));
+        assertThat(OrderMix.of("r1", 42)).isEqualTo(OrderMix.of("r1", 42));
+    }
+
+    @Test
+    void runsDoNotShareCustomers() {
+        assertThat(OrderMix.of("r1", 0).customer())
+                .isNotEqualTo(OrderMix.of("r2", 0).customer());
     }
 }

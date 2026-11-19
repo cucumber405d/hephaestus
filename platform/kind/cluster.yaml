@@ -9,5 +9,11 @@ nodes:
       - containerPort: 30080
         hostPort: 80
         protocol: TCP
+  # Roles for 12's drain scenario: state (Kafka, databases, lgtm, Envoy) prefers the first worker, so the second can
+  # be drained during a peak without taking platform state down. Labels apply when the cluster is created.
   - role: worker
+    labels:
+      hephaestus.io/role: stateful
   - role: worker
+    labels:
+      hephaestus.io/role: drainable

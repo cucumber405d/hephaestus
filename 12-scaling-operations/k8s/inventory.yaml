@@ -10,6 +10,16 @@ spec:
   instances: 1
   storage:
     size: 1Gi
+  # Databases stay on the "stateful" worker (platform/kind/cluster.yaml), so the other one can be drained (ADR-0005)
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: hephaestus.io/role
+                operator: In
+                values: ["stateful"]
   bootstrap:
     initdb:
       database: inventory
