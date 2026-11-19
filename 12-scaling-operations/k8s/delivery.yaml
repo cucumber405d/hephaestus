@@ -183,8 +183,9 @@ spec:
   scaleTargetRef:
     name: delivery
   minReplicaCount: 1
-  # = partitions of the topics (ADR-0002)
-  maxReplicaCount: 6
+  # Below the partitions on purpose: Delivery never needed more than 3, and its replica is the most expensive
+  # (OTel agent, 896Mi). Every replica KEDA may ask for must fit the memory quota (ADR-0008).
+  maxReplicaCount: 3
   pollingInterval: 10
   advanced:
     horizontalPodAutoscalerConfig:
