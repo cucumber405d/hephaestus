@@ -57,10 +57,16 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> preflight ($SCENARIO, peak $PEAK_RATE orders/s for ${PEAK_SECONDS}s, run files: $RUN)"
+# At least the minimum replicas available (not "rollout complete": the memory quota may keep extra pods from existing)
+available() { k get deploy "$1" -o jsonpath='{.status.availableReplicas}' 2>/dev/null; }
 for s in $SERVICES; do
-    k rollout status deploy/"$s" --timeout=300s >/dev/null || die "$s is not ready"
+    for _ in $(seq 1 60); do
+        [ "$(available "$s")" -ge "$(min_replicas "$s")" ] 2>/dev/null && break
+        sleep 5
+    done
+    [ "$(available "$s")" -ge "$(min_replicas "$s")" ] 2>/dev/null || die "$s has fewer than $(min_replicas "$s") available replica(s)"
 done
-ok "4 services ready"
+ok "4 services available"
 for t in $TOPICS; do
     described=$(kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic "$t" 2>&1) \
         || die "cannot describe topic $t: $described"
