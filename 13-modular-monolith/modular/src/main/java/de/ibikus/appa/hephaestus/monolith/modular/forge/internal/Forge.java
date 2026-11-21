@@ -45,9 +45,7 @@ class Forge implements WorkOrders {
                         insert into forge.work_order
                             (id, order_id, material, quantity, status, material_ready, created_at)
                         values (?, ?, ?, ?, 'PLANNED', false, clock_timestamp())
-                        on conflict (order_id) do nothing""")
-                .params(id, orderId, material, quantity)
-                .update();
+                        on conflict (order_id) do nothing""").params(id, orderId, material, quantity).update();
         if (created == 1) {
             supply(id);
         }
@@ -72,11 +70,10 @@ class Forge implements WorkOrders {
                 .orElse(0);
         if (onHand < wo.quantity()) {
             switch (supplier.order(wo.material(), wo.quantity() - onHand)) {
-                case Delivered delivered -> jdbc.sql("""
+                case Delivered delivered ->
+                    jdbc.sql("""
                                 insert into forge.material (code, on_hand) values (?, ?)
-                                on conflict (code) do update set on_hand = forge.material.on_hand + excluded.on_hand""")
-                        .params(wo.material(), delivered.quantity())
-                        .update();
+                                on conflict (code) do update set on_hand = forge.material.on_hand + excluded.on_hand""").params(wo.material(), delivered.quantity()).update();
                 case PermanentFailure failure -> {
                     fail(wo, failure);
                     return;

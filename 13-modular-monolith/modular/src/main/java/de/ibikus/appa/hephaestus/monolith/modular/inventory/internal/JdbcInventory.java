@@ -17,9 +17,6 @@ class JdbcInventory implements Inventory {
     public boolean reserve(String sku, int quantity) {
         return jdbc.sql("""
                         update inventory.stock_item set reserved = reserved + ?
-                        where sku = ? and on_hand - reserved >= ?""")
-                        .params(quantity, sku, quantity)
-                        .update()
-                == 1;
+                        where sku = ? and on_hand - reserved >= ?""").params(quantity, sku, quantity).update() == 1;
     }
 }

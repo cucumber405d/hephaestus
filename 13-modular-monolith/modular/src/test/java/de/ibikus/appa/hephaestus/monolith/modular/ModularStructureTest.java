@@ -19,7 +19,6 @@ class ModularStructureTest {
 
     @Test
     void writesTheModuleDocumentation() {
-        new Documenter(MODULES, Documenter.Options.defaults().withOutputFolder("../docs/modules"))
-                .writeDocumentation();
+        new Documenter(MODULES, Documenter.Options.defaults().withOutputFolder("../docs/modules")).writeDocumentation();
     }
 }

@@ -75,8 +75,6 @@ class OrderService implements Orders {
     void reject(UUID id, String reason) {
         jdbc.sql("""
                         update ordering.customer_order set status = 'REJECTED', reason = ?
-                        where id = ? and status = 'ACCEPTED'""")
-                .params(reason, id)
-                .update();
+                        where id = ? and status = 'ACCEPTED'""").params(reason, id).update();
     }
 }

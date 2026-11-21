@@ -1,0 +1,30 @@
+@startuml
+title <size:24>Forge</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("ModularApplication_boundary", "ModularApplication", $tags="") {
+  Container_Boundary("ModularApplication.ModularApplication_boundary", "ModularApplication", $tags="") {
+    Component(ModularApplication.ModularApplication.Supplier, "Supplier", $techn="Module", $descr="", $tags="", $link="")
+    Component(ModularApplication.ModularApplication.Forge, "Forge", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(ModularApplication.ModularApplication.Forge, ModularApplication.ModularApplication.Supplier, "uses", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

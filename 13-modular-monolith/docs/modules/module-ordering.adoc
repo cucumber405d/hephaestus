@@ -1,0 +1,14 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`de.ibikus.appa.hephaestus.monolith.modular.ordering`
+|Spring components
+|_Services_
+
+* `d.i.a.h.m.m.o.Orders` (via `d.i.a.h.m.m.o.internal.OrderService`)
+|Bean references
+|* `d.i.a.h.m.m.i.Inventory` (in Inventory)
+|Events listened to
+|* `d.i.a.h.m.m.f.WorkOrderFailed` (async) 
+* `d.i.a.h.m.m.f.WorkOrderCompleted` (async) 
+|===

@@ -31,8 +31,7 @@ public class HttpSupplierGateway implements SupplierGateway {
 
     private final RestClient http;
 
-    public HttpSupplierGateway(
-            @Value("${supplier.url}") String url, @Value("${supplier.timeout}") Duration timeout) {
+    public HttpSupplierGateway(@Value("${supplier.url}") String url, @Value("${supplier.timeout}") Duration timeout) {
         var factory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(timeout).build());
         factory.setReadTimeout(timeout);

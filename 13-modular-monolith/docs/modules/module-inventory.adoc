@@ -1,0 +1,7 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`de.ibikus.appa.hephaestus.monolith.modular.inventory`
+|Spring components
+|* `d.i.a.h.m.m.i.Inventory` (via `d.i.a.h.m.m.i.internal.JdbcInventory`)
+|===
