@@ -7,6 +7,7 @@ import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderCompleted;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderFailed;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderRequested;
 import de.ibikus.appa.hephaestus.monolith.modular.inventory.Inventory;
+import de.ibikus.appa.hephaestus.monolith.modular.migration.ForgeRouting;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -14,7 +15,7 @@ import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.Scenario;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-/** Ordering alone: it asks Forge by event and reacts to Forge's outcomes; inventory mocked, no forge beans. */
+/** Ordering alone: it asks Forge by event and reacts to Forge's outcomes; inventory and routing mocked. */
 @ApplicationModuleTest
 @Import(Containers.class)
 class OrderingModuleTest {
@@ -24,6 +25,10 @@ class OrderingModuleTest {
 
     @MockitoBean
     Inventory inventory;
+
+    // Not cut over (a mock answers false): requests stay local
+    @MockitoBean
+    ForgeRouting routing;
 
     @Test
     void aCustomOrderAsksForgeByEvent(Scenario scenario) {

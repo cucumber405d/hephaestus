@@ -2,9 +2,11 @@ package de.ibikus.appa.hephaestus.monolith.modular.ordering.internal;
 
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderRequested;
 import de.ibikus.appa.hephaestus.monolith.modular.inventory.Inventory;
+import de.ibikus.appa.hephaestus.monolith.modular.migration.ForgeRouting;
 import de.ibikus.appa.hephaestus.monolith.modular.ordering.CustomerOrder;
 import de.ibikus.appa.hephaestus.monolith.modular.ordering.OrderRequest;
 import de.ibikus.appa.hephaestus.monolith.modular.ordering.Orders;
+import de.ibikus.appa.hephaestus.monolith.modular.ordering.RemoteWorkOrderRequested;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -15,7 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Accepts the order in ordering's schema and asks Forge by event — the transaction ends here, no supplier call
- * inside it. The answer comes back as an event too ({@link ForgeOutcomes}).
+ * inside it. The answer comes back as an event too ({@link ForgeOutcomes}, {@link ForgeServiceOutcomes}).
+ * During the Strangler Fig the target is chosen here, in this transaction, and fixed in the event's type.
  */
 @Service
 class OrderService implements Orders {
@@ -23,11 +26,13 @@ class OrderService implements Orders {
     private final JdbcClient jdbc;
     private final Inventory inventory;
     private final ApplicationEventPublisher events;
+    private final ForgeRouting routing;
 
-    OrderService(JdbcClient jdbc, Inventory inventory, ApplicationEventPublisher events) {
+    OrderService(JdbcClient jdbc, Inventory inventory, ApplicationEventPublisher events, ForgeRouting routing) {
         this.jdbc = jdbc;
         this.inventory = inventory;
         this.events = events;
+        this.routing = routing;
     }
 
     @Override
@@ -46,7 +51,9 @@ class OrderService implements Orders {
                         request.material(),
                         request.quantityOrOne())
                 .update();
-        if (request.isCustom()) {
+        if (request.isCustom() && routing.remote()) {
+            events.publishEvent(new RemoteWorkOrderRequested(id, request.material(), request.quantityOrOne()));
+        } else if (request.isCustom()) {
             events.publishEvent(new WorkOrderRequested(id, request.material(), request.quantityOrOne()));
         } else if (inventory.reserve(request.sku(), 1)) {
             markReady(id);

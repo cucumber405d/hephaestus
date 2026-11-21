@@ -1,5 +1,6 @@
 package de.ibikus.appa.hephaestus.monolith.modular.forge.internal;
 
+import de.ibikus.appa.hephaestus.monolith.modular.forge.ForgeStillBusy;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrder;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderCompleted;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderFailed;
@@ -143,6 +144,37 @@ class Forge implements WorkOrders {
                 .query(UUID.class)
                 .single();
         events.publishEvent(new WorkOrderCompleted(orderId, id));
+    }
+
+    @Override
+    public List<WorkOrder> open() {
+        return jdbc.sql("select " + COLUMNS + " from forge.work_order"
+                        + " where status in ('PLANNED', 'IN_PROGRESS') order by created_at")
+                .query(WorkOrder.class)
+                .list();
+    }
+
+    @Override
+    public boolean decommissioned() {
+        return jdbc.sql("select decommissioned from forge.lifecycle where id = 1")
+                .query(Boolean.class)
+                .single();
+    }
+
+    @Override
+    @Transactional
+    public void decommission() {
+        // Lock the lifecycle row: no work order can slip in between the count and the switch
+        jdbc.sql("select decommissioned from forge.lifecycle where id = 1 for update")
+                .query(Boolean.class)
+                .single();
+        var open = jdbc.sql("select count(*) from forge.work_order where status in ('PLANNED', 'IN_PROGRESS')")
+                .query(Integer.class)
+                .single();
+        if (open > 0) {
+            throw new ForgeStillBusy(open);
+        }
+        jdbc.sql("update forge.lifecycle set decommissioned = true where id = 1").update();
     }
 
     private RuntimeException refusal(String id, String what) {

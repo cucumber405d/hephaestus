@@ -1,5 +1,5 @@
 # Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, SUPPLIER_URL,
-# SUPPLIER_TIMEOUT, FORGE_SUPPLY_RETRY.
+# SUPPLIER_TIMEOUT, FORGE_SUPPLY_RETRY, KAFKA_BOOTSTRAP_SERVERS.
 spring:
   application:
     name: modular
@@ -8,6 +8,15 @@ spring:
   threads:
     virtual:
       enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: monolith
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
   modulith:
     events:
       jdbc:

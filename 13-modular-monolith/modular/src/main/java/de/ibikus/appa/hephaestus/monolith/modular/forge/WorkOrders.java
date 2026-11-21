@@ -14,4 +14,16 @@ public interface WorkOrders {
 
     /** Creates the work order for {@code orderId} once; a repeated request for the same order changes nothing. */
     void request(UUID orderId, String material, int quantity);
+
+    /** Work orders not finished yet (PLANNED, IN_PROGRESS): what the Strangler Fig waits for before decommission. */
+    List<WorkOrder> open();
+
+    boolean decommissioned();
+
+    /**
+     * Switches the local forge off for good. Refused while work orders are open.
+     *
+     * @throws ForgeStillBusy with the number of open work orders
+     */
+    void decommission();
 }
