@@ -1,6 +1,7 @@
 package de.ibikus.appa.hephaestus.monolith.legacy;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
@@ -14,7 +15,10 @@ class LegacyStructureTest {
     @Test
     void verifyFailsWithTheKnownViolations() {
         var modules = ApplicationModules.of(LegacyApplication.class);
-        assertThatThrownBy(modules::verify)
+        var violations = catchThrowable(modules::verify);
+        // The list is the story artifact (legacy/README.md): print it into the build log
+        System.out.println("Spring Modulith on the legacy:%n%s".formatted(violations.getMessage()));
+        assertThat(violations)
                 .hasMessageContaining("Cycle detected")
                 .hasMessageContaining("ordering")
                 .hasMessageContaining("forge");

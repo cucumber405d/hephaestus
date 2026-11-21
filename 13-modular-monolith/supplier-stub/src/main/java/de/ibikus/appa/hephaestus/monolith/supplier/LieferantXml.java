@@ -21,9 +21,10 @@ final class LieferantXml {
             var factory = DocumentBuilderFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            Document doc = factory.newDocumentBuilder()
-                    .parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
-            var artNr = doc.getElementsByTagName("ArtNr").item(0).getTextContent().trim();
+            Document doc =
+                    factory.newDocumentBuilder().parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+            var artNr =
+                    doc.getElementsByTagName("ArtNr").item(0).getTextContent().trim();
             var menge = Integer.parseInt(
                     doc.getElementsByTagName("Menge").item(0).getTextContent().trim());
             return new Bestellung(artNr, menge);

@@ -28,8 +28,7 @@ class LieferantController {
             consumes = MediaType.APPLICATION_XML_VALUE,
             produces = MediaType.APPLICATION_XML_VALUE)
     String bestellen(
-            @RequestBody String body,
-            @RequestHeader(name = "X-Verzoegerung-Ms", required = false) Long verzoegerungMs)
+            @RequestBody String body, @RequestHeader(name = "X-Verzoegerung-Ms", required = false) Long verzoegerungMs)
             throws InterruptedException {
         var bestellung = LieferantXml.parse(body);
         if (verzoegerungMs != null && verzoegerungMs > 0) {
