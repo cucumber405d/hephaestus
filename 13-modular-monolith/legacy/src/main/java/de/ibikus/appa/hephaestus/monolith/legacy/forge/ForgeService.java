@@ -73,10 +73,7 @@ public class ForgeService {
     public List<WorkOrder> list(String status) {
         return jdbc.sql("""
                         select id, order_id, material, quantity, status, lieferstatus, 'MONOLITH' as origin
-                        from work_order where (cast(? as varchar) is null or status = ?) order by created_at""")
-                .params(status, status)
-                .query(WorkOrder.class)
-                .list();
+                        from work_order where (cast(? as varchar) is null or status = ?) order by created_at""").params(status, status).query(WorkOrder.class).list();
     }
 
     @Transactional

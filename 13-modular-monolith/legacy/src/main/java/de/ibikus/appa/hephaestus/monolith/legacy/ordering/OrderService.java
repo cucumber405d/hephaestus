@@ -38,12 +38,12 @@ public class OrderService {
                         id,
                         request.customerId(),
                         request.sku(),
-                        request.custom(),
+                        request.isCustom(),
                         request.material(),
-                        request.quantity() == null ? 1 : request.quantity())
+                        request.quantityOrOne())
                 .update();
-        if (request.custom()) {
-            forge.createWorkOrder(id, request.material(), request.quantity() == null ? 1 : request.quantity());
+        if (request.isCustom()) {
+            forge.createWorkOrder(id, request.material(), request.quantityOrOne());
         } else if (inventory.reserve(request.sku(), 1)) {
             markReady(id);
         } else {
