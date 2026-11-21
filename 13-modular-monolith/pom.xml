@@ -27,6 +27,7 @@
     <modules>
         <module>supplier-stub</module>
         <module>legacy</module>
+        <module>modular</module>
     </modules>
 
     <dependencyManagement>

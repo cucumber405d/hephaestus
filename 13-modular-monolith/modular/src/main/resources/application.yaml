@@ -1,0 +1,30 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, SUPPLIER_URL,
+# SUPPLIER_TIMEOUT, FORGE_SUPPLY_RETRY.
+spring:
+  application:
+    name: modular
+  main:
+    banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: true
+      # Publications not completed before a crash are handed to their listeners again on start
+      republish-outstanding-events-on-restart: true
+supplier:
+  url: ${SUPPLIER_URL:http://localhost:8081}
+  timeout: ${SUPPLIER_TIMEOUT:2s}
+forge:
+  supply-retry: ${FORGE_SUPPLY_RETRY:10s}
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
