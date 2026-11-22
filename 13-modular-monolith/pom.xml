@@ -29,6 +29,7 @@
         <module>legacy</module>
         <module>modular</module>
         <module>forge-service</module>
+        <module>traffic</module>
     </modules>
 
     <dependencyManagement>
