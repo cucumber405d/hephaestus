@@ -1,5 +1,5 @@
 # Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, SUPPLIER_URL,
-# SUPPLIER_TIMEOUT, FORGE_SUPPLY_RETRY.
+# SUPPLIER_TIMEOUT, FORGE_SUPPLY_RETRY, KAFKA_BOOTSTRAP_SERVERS, MONOLITH_URL (empty: no monolith orders in the list).
 spring:
   application:
     name: forge-service
@@ -8,11 +8,30 @@ spring:
   threads:
     virtual:
       enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: forge-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: true
+      republish-outstanding-events-on-restart: true
 supplier:
   url: ${SUPPLIER_URL:http://localhost:8081}
   timeout: ${SUPPLIER_TIMEOUT:2s}
 forge:
   supply-retry: ${FORGE_SUPPLY_RETRY:10s}
+monolith:
+  # The monolith's open work orders join the smith's list while the Strangler Fig runs; removed after decommission
+  url: ${MONOLITH_URL:}
+  timeout: 2s
 server:
   port: ${PORT:8080}
   shutdown: graceful

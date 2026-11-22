@@ -25,10 +25,10 @@ System_Boundary("ModularApplication_boundary", "ModularApplication", $tags="") {
 
 }
 
-Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Inventory, "uses", $techn="", $tags="", $link="")
-Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Migration, "uses", $techn="", $tags="", $link="")
 Rel(ModularApplication.ModularApplication.Migration, ModularApplication.ModularApplication.Forge, "uses", $techn="", $tags="", $link="")
 Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Forge, "listens to", $techn="", $tags="", $link="")
+Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Inventory, "uses", $techn="", $tags="", $link="")
+Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Migration, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes
