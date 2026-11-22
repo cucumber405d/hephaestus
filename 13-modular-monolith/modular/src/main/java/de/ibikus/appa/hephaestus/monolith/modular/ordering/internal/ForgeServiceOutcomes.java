@@ -5,11 +5,12 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Outcomes of forge-service's work orders, from Kafka: handled exactly like the local forge's events. Kafka delivers
  * at least once, so every {@code eventId} is applied once (inbox table), and in the same transaction as its effect.
+ * The JSON arrives already converted: Spring Modulith's Kafka JSON support (spring.modulith.events.kafka.enable-json)
+ * puts a JSON message converter on the listener container factory too — a {@code String} parameter would fail.
  */
 @Component
 class ForgeServiceOutcomes {
@@ -19,18 +20,15 @@ class ForgeServiceOutcomes {
 
     private final OrderService orders;
     private final JdbcClient jdbc;
-    private final JsonMapper json;
 
-    ForgeServiceOutcomes(OrderService orders, JdbcClient jdbc, JsonMapper json) {
+    ForgeServiceOutcomes(OrderService orders, JdbcClient jdbc) {
         this.orders = orders;
         this.jdbc = jdbc;
-        this.json = json;
     }
 
     @KafkaListener(topics = "forge.events", groupId = "monolith")
     @Transactional
-    void on(String message) {
-        var event = json.readValue(message, ForgeEventMessage.class);
+    void on(ForgeEventMessage event) {
         var first = jdbc.sql("insert into ordering.processed_event (event_id) values (?) on conflict do nothing")
                         .param(event.eventId())
                         .update()

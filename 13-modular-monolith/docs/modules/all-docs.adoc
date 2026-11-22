@@ -13,6 +13,10 @@ include::module-supplier.adoc[]
 plantuml::module-forge.puml[,,format=svg]
 include::module-forge.adoc[]
 
+== Migration
+plantuml::module-migration.puml[,,format=svg]
+include::module-migration.adoc[]
+
 == Ordering
 plantuml::module-ordering.puml[,,format=svg]
 include::module-ordering.adoc[]

@@ -90,8 +90,7 @@ class ForgeEventsIT {
 
     private void send(UUID eventId, String type, UUID orderId, String reason) {
         var json = "{\"eventId\":\"%s\",\"type\":\"%s\",\"orderId\":\"%s\",\"workOrderId\":\"FW-%s\",\"reason\":%s}"
-                .formatted(
-                        eventId, type, orderId, UUID.randomUUID(), reason == null ? "null" : "\"" + reason + "\"");
+                .formatted(eventId, type, orderId, UUID.randomUUID(), reason == null ? "null" : "\"" + reason + "\"");
         KafkaProbe.send(kafka.getBootstrapServers(), "forge.events", orderId.toString(), json);
     }
 }

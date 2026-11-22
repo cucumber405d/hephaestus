@@ -174,7 +174,8 @@ class Forge implements WorkOrders {
         if (open > 0) {
             throw new ForgeStillBusy(open);
         }
-        jdbc.sql("update forge.lifecycle set decommissioned = true where id = 1").update();
+        jdbc.sql("update forge.lifecycle set decommissioned = true where id = 1")
+                .update();
     }
 
     private RuntimeException refusal(String id, String what) {

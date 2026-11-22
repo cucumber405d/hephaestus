@@ -20,12 +20,15 @@ System_Boundary("ModularApplication_boundary", "ModularApplication", $tags="") {
     Component(ModularApplication.ModularApplication.Inventory, "Inventory", $techn="Module", $descr="", $tags="", $link="")
     Component(ModularApplication.ModularApplication.Supplier, "Supplier", $techn="Module", $descr="", $tags="", $link="")
     Component(ModularApplication.ModularApplication.Forge, "Forge", $techn="Module", $descr="", $tags="", $link="")
+    Component(ModularApplication.ModularApplication.Migration, "Migration", $techn="Module", $descr="", $tags="", $link="")
     Component(ModularApplication.ModularApplication.Ordering, "Ordering", $techn="Module", $descr="", $tags="", $link="")
   }
 
 }
 
 Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Inventory, "uses", $techn="", $tags="", $link="")
+Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Migration, "uses", $techn="", $tags="", $link="")
+Rel(ModularApplication.ModularApplication.Migration, ModularApplication.ModularApplication.Forge, "uses", $techn="", $tags="", $link="")
 Rel(ModularApplication.ModularApplication.Forge, ModularApplication.ModularApplication.Supplier, "uses", $techn="", $tags="", $link="")
 Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Forge, "listens to", $techn="", $tags="", $link="")
 

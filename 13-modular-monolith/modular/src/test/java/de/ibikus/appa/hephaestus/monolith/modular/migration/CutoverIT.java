@@ -86,10 +86,11 @@ class CutoverIT {
         cutover(true);
         var id = orders.place(custom());
         var record = KafkaProbe.read(kafka.getBootstrapServers(), "forge.requests", id.toString(), WAIT);
-        assertThat(record).hasValueSatisfying(json -> assertThat(json)
-                .contains("\"orderId\":\"" + id + "\"")
-                .contains("\"material\":\"IRON-01\"")
-                .contains("\"quantity\":1"));
+        assertThat(record)
+                .hasValueSatisfying(json -> assertThat(json)
+                        .contains("\"orderId\":\"" + id + "\"")
+                        .contains("\"material\":\"IRON-01\"")
+                        .contains("\"quantity\":1"));
         assertThat(localWorkOrders(id)).isZero();
     }
 
@@ -137,17 +138,21 @@ class CutoverIT {
                 .param(id)
                 .query(String.class)
                 .single();
-        await().atMost(WAIT).until(() -> mvc.post()
-                        .uri("/api/work-orders/{id}/start", wo)
-                        .exchange()
-                        .getResponse()
-                        .getStatus()
-                == 200);
+        await().atMost(WAIT)
+                .until(() -> mvc.post()
+                                .uri("/api/work-orders/{id}/start", wo)
+                                .exchange()
+                                .getResponse()
+                                .getStatus()
+                        == 200);
         assertThat(mvc.post().uri("/api/work-orders/{id}/complete", wo)).hasStatusOk();
 
         assertThat(mvc.post().uri("/admin/forge/decommission")).hasStatusOk();
         assertThat(mvc.get().uri("/api/work-orders")).hasStatus(410);
-        assertThat(mvc.get().uri("/internal/work-orders")).hasStatusOk().bodyJson().isEqualTo("[]");
+        assertThat(mvc.get().uri("/internal/work-orders"))
+                .hasStatusOk()
+                .bodyJson()
+                .isEqualTo("[]");
         assertThat(cutoverResponse(false)).isEqualTo(409);
     }
 
