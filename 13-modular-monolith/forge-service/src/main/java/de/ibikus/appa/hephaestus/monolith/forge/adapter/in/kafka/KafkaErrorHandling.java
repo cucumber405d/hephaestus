@@ -28,8 +28,8 @@ class KafkaErrorHandling {
         var template = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(
                 producers.getConfigurationProperties(), new StringSerializer(), new StringSerializer()));
         // partition -1: let Kafka choose (an auto-created DLT has fewer partitions than the topic)
-        var recoverer =
-                new DeadLetterPublishingRecoverer(template, (record, e) -> new TopicPartition(record.topic() + ".DLT", -1));
+        var recoverer = new DeadLetterPublishingRecoverer(
+                template, (record, e) -> new TopicPartition(record.topic() + ".DLT", -1));
         var backOff = new ExponentialBackOff(500, 2.0);
         backOff.setMaxInterval(10_000);
         backOff.setMaxElapsedTime(maxElapsed.toMillis());
