@@ -1,0 +1,99 @@
+# 13-modular-monolith: verify + script self-test + manifest render -> the Strangler Fig end to end in Compose -> publish the three images (main only; legacy and traffic have none).
+name: 13-modular-monolith
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "13-modular-monolith/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/13-modular-monolith.yml"
+  pull_request:
+    paths:
+      - "13-modular-monolith/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/build-subproject.yml"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/13-modular-monolith.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/build-subproject.yml
+    with:
+      subproject: 13-modular-monolith
+
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Reconciliation self-test
+        run: bash 13-modular-monolith/scripts/test/reconcile-fixture.sh
+
+      - name: Manifests render
+        run: |
+          kubectl kustomize 13-modular-monolith/k8s/overlays/local > /tmp/13.yaml
+          for kind in Cluster:2 KafkaTopic:2 Deployment:3 Service:3 HTTPRoute:1; do
+            n=$(grep -c "^kind: ${kind%%:*}$" /tmp/13.yaml || true)
+            echo "${kind%%:*}: $n"
+            [ "$n" -eq "${kind##*:}" ]
+          done
+          grep -q 'value: \^/api/work-orders/WO-' /tmp/13.yaml
+
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Strangler Fig end to end (before -> cutover -> drain -> decommission, reconciliation)
+        run: 13-modular-monolith/scripts/e2e.sh
+
+      - name: Run files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-run
+          path: 13-modular-monolith/target/e2e-*
+          if-no-files-found: ignore
+
+  publish:
+    needs: e2e
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        module: [supplier-stub, modular, forge-service]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      subproject: 13-modular-monolith
+      module: ${{ matrix.module }}
+      image-name: hephaestus/modular-monolith-${{ matrix.module }}

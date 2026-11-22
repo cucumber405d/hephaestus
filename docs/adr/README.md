@@ -15,3 +15,6 @@
 | [0006](0006-deployment-on-platform.md) | Сага из 11 на общей платформе, без нового Java-кода | accepted | 12, platform |
 | [0007](0007-twelve-factor-audit.md) | Аудит 12 факторов — таблица и CronJob | accepted | весь репозиторий |
 | [0008](0008-connection-budget.md) | Бюджет соединений: реплики × пул ≤ того, что выдержит база | accepted | 12 |
+| [0009](0009-strangler-fig-new-to-new.md) | Strangler Fig для Forge: новые в новый, старые доживают в старом | accepted | 13 |
+| [0010](0010-module-boundaries-and-events.md) | Границы модулей — Spring Modulith; события; модуль владеет своими таблицами | accepted | 13 |
+| [0011](0011-anti-corruption-layers.md) | Anti-Corruption Layer к поставщику и к монолиту | accepted | 13 |
