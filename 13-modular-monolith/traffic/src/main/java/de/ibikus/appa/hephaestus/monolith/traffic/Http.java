@@ -29,14 +29,24 @@ final class Http {
     }
 
     Response get(String url) {
-        return send(request(url).GET().build());
+        return send(request(url).GET().build(), attempts);
     }
 
+    /** Retried on 5xx and I/O errors: for calls that are idempotent (the smith's transitions answer 409 if done). */
     Response post(String url, String json) {
-        return send(request(url)
+        return send(postRequest(url, json), attempts);
+    }
+
+    /** Exactly one attempt: for calls that are not idempotent (placing an order). */
+    Response postOnce(String url, String json) {
+        return send(postRequest(url, json), 1);
+    }
+
+    private HttpRequest postRequest(String url, String json) {
+        return request(url)
                 .header("Content-Type", "application/json")
                 .POST(json == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(json))
-                .build());
+                .build();
     }
 
     private HttpRequest.Builder request(String url) {
@@ -47,9 +57,9 @@ final class Http {
         return builder;
     }
 
-    private Response send(HttpRequest request) {
+    private Response send(HttpRequest request, int tries) {
         RuntimeException last = null;
-        for (var attempt = 1; attempt <= attempts; attempt++) {
+        for (var attempt = 1; attempt <= tries; attempt++) {
             try {
                 var response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() < 500) {
@@ -62,7 +72,9 @@ final class Http {
                 Thread.currentThread().interrupt();
                 throw new IllegalStateException(e);
             }
-            pause(200L * attempt);
+            if (attempt < tries) {
+                pause(200L * attempt);
+            }
         }
         throw last;
     }

@@ -50,7 +50,7 @@ scripts/cutover.sh decommission > /dev/null || fail "decommission"
     || fail "WO- routes still reach a live forge after decommission"
 ok "decommissioned: WO- routes answer 410 (remove that rule from k8s/route.yaml next)"
 
-ORDERS_DUMP_CMD="kubectl -n $NAMESPACE exec monolith-db-1 -c postgres -- psql -U postgres -d workshop -At -c \"select id, status, coalesce(reason, '') from ordering.customer_order where custom\"" \
+ORDERS_DUMP_CMD="kubectl -n $NAMESPACE exec monolith-db-1 -c postgres -- psql -U postgres -d workshop -At -c \"select id, status, coalesce(reason, '') from ordering.customer_order where custom and customer_id like 'cutover-%'\"" \
 MONOLITH_WO_DUMP_CMD="kubectl -n $NAMESPACE exec monolith-db-1 -c postgres -- psql -U postgres -d workshop -At -c \"select order_id, id, status from forge.work_order\"" \
 SERVICE_WO_DUMP_CMD="kubectl -n $NAMESPACE exec forge-db-1 -c postgres -- psql -U postgres -d forge -At -c \"select order_id, id, status from work_order\"" \
     WAIT_S=180 scripts/reconcile.sh "$RUN/orders.csv" | tee "$RUN/reconcile.txt" || fail "reconciliation"

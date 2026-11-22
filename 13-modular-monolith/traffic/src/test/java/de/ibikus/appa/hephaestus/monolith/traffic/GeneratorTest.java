@@ -33,6 +33,21 @@ class GeneratorTest {
     }
 
     @Test
+    void anOrderIsNeverPostedTwice() throws Exception {
+        // POST /api/orders is not idempotent: a retry after a timeout or a 503 could create a second order the CSV
+        // never hears of (review I2)
+        try (var monolith = new FakeServer()
+                .then(503, "")
+                .otherwise(202, "{\"id\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\"}")) {
+            var csv = new StringWriter();
+            assertThat(new Generator(new Http(null, 5), monolith.url(), csv).place(0))
+                    .isFalse();
+            assertThat(monolith.requests).hasSize(1);
+            assertThat(csv.toString()).isEmpty();
+        }
+    }
+
+    @Test
     void theMixIsFortyFiveFortyFiveTen() {
         var mithril = 0;
         for (long i = 0; i < 200; i++) {

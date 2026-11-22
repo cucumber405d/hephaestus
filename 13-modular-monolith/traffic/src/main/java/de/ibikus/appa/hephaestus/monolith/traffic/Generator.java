@@ -45,7 +45,8 @@ final class Generator {
         var mix = OrderMix.of(i);
         Http.Response response;
         try {
-            response = http.post(ordersUrl + "/api/orders", mix.json(i));
+            // once: a retried POST could place a second order the CSV never hears of
+            response = http.postOnce(ordersUrl + "/api/orders", mix.json(i));
         } catch (IllegalStateException e) {
             System.err.println("order " + i + " not placed: " + e.getMessage());
             return false;

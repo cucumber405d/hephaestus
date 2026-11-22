@@ -62,4 +62,22 @@ run "an empty customer-order table fails" 1 "RECONCILE FAILED"
 good; : > "$WORK/orders.csv"
 run "no accepted order at all is not a success" 1 "RECONCILE FAILED"
 
+# The outcome travels over Kafka after the work order finished: the customer order lags a moment (review I1)
+good
+printf 'o1|READY|\no2|ACCEPTED|\no3|REJECTED|material not deliverable: MITHRIL-01\n' > "$WORK/orders-early.txt"
+cat > "$WORK/orders-lagging.sh" <<EOS
+if [ -e "$WORK/lag-read" ]; then cat "$WORK/orders.txt"; else touch "$WORK/lag-read"; cat "$WORK/orders-early.txt"; fi
+EOS
+rm -f "$WORK/lag-read"
+ORDERS_CMD="bash $WORK/orders-lagging.sh" run "a customer order lagging behind its work order is waited for" 0 "unexpected=0"
+
+good; printf 'o1|READY|\no2|ACCEPTED|\no3|REJECTED|material not deliverable: MITHRIL-01\n' > "$WORK/orders.txt"
+run "a customer order that never follows its work order fails" 1 "unexpected=1"
+
+# An order the generator did not record (its POST timed out after the server committed): checked all the same
+good; printf 'o4|ACCEPTED|\n' >> "$WORK/orders.txt"
+run "an order missing from the CSV is checked too" 1 "unlisted=1"
+good; printf 'o4|READY|\n' >> "$WORK/orders.txt"; printf 'o4|FW-c|DONE\n' >> "$WORK/service.txt"
+run "an order missing from the CSV but consistent passes" 0 "unlisted=0"
+
 [ "$failures" -eq 0 ] && echo "reconcile self-test OK" || { echo "reconcile self-test: $failures failure(s)"; exit 1; }
