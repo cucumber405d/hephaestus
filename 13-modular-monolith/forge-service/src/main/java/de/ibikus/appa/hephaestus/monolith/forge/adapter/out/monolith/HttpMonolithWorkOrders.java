@@ -42,8 +42,10 @@ class HttpMonolithWorkOrders implements MonolithWorkOrders {
     @Override
     public List<ListedWorkOrder> open() {
         try {
-            var items = http.get().uri("/internal/work-orders").retrieve().body(new ParameterizedTypeReference<
-                    List<MonolithWorkOrder>>() {});
+            var items = http.get()
+                    .uri("/internal/work-orders")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<MonolithWorkOrder>>() {});
             return items == null
                     ? List.of()
                     : items.stream()

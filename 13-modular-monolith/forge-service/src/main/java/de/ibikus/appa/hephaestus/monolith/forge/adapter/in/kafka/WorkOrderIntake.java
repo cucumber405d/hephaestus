@@ -23,7 +23,6 @@ class WorkOrderIntake {
 
     @KafkaListener(topics = "forge.requests", groupId = "forge-service")
     void on(RemoteWorkOrderRequested request) {
-        workOrders.request(
-                request.orderId(), request.material(), request.quantity() == null ? 1 : request.quantity());
+        workOrders.request(request.orderId(), request.material(), request.quantity() == null ? 1 : request.quantity());
     }
 }

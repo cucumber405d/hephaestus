@@ -65,10 +65,11 @@ class WorkOrderIntakeIT {
         workOrders.complete(id);
 
         var record = KafkaProbe.read(kafka.getBootstrapServers(), "forge.events", orderId.toString(), WAIT);
-        assertThat(record).hasValueSatisfying(json -> assertThat(json)
-                .contains("\"type\":\"WorkOrderCompleted\"")
-                .contains("\"workOrderId\":\"" + id + "\"")
-                .contains("\"eventId\":\""));
+        assertThat(record)
+                .hasValueSatisfying(json -> assertThat(json)
+                        .contains("\"type\":\"WorkOrderCompleted\"")
+                        .contains("\"workOrderId\":\"" + id + "\"")
+                        .contains("\"eventId\":\""));
     }
 
     @Test
@@ -76,9 +77,10 @@ class WorkOrderIntakeIT {
         var orderId = UUID.randomUUID();
         request(orderId, "MITHRIL-01", 1);
         var record = KafkaProbe.read(kafka.getBootstrapServers(), "forge.events", orderId.toString(), WAIT);
-        assertThat(record).hasValueSatisfying(json -> assertThat(json)
-                .contains("\"type\":\"WorkOrderFailed\"")
-                .contains("material not deliverable: MITHRIL-01"));
+        assertThat(record)
+                .hasValueSatisfying(json -> assertThat(json)
+                        .contains("\"type\":\"WorkOrderFailed\"")
+                        .contains("material not deliverable: MITHRIL-01"));
     }
 
     private void request(UUID orderId, String material, int quantity) {

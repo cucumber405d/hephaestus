@@ -26,9 +26,7 @@ class JdbcMaterialStock implements MaterialStock {
     public void add(String code, int quantity) {
         jdbc.sql("""
                         insert into material (code, on_hand) values (?, ?)
-                        on conflict (code) do update set on_hand = material.on_hand + excluded.on_hand""")
-                .params(code, quantity)
-                .update();
+                        on conflict (code) do update set on_hand = material.on_hand + excluded.on_hand""").params(code, quantity).update();
     }
 
     @Override

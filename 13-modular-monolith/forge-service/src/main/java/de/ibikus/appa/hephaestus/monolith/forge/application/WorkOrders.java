@@ -95,8 +95,6 @@ public class WorkOrders {
     }
 
     private RuntimeException refusal(String id, String what) {
-        return store.find(id).isPresent()
-                ? new WorkOrderConflict(id + ": " + what)
-                : new WorkOrderNotFound(id);
+        return store.find(id).isPresent() ? new WorkOrderConflict(id + ": " + what) : new WorkOrderNotFound(id);
     }
 }

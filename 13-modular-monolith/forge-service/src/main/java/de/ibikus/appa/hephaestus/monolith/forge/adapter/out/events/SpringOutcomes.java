@@ -24,7 +24,6 @@ class SpringOutcomes implements Outcomes {
 
     @Override
     public void failed(WorkOrder wo, String reason) {
-        events.publishEvent(
-                new ForgeEventMessage(UUID.randomUUID(), "WorkOrderFailed", wo.orderId(), wo.id(), reason));
+        events.publishEvent(new ForgeEventMessage(UUID.randomUUID(), "WorkOrderFailed", wo.orderId(), wo.id(), reason));
     }
 }

@@ -26,7 +26,12 @@ public class WorkOrderList {
         var items = new ArrayList<ListedWorkOrder>();
         for (var wo : workOrders.list(status)) {
             items.add(new ListedWorkOrder(
-                    wo.id(), wo.orderId(), wo.material(), wo.quantity(), wo.status().name(), "SERVICE"));
+                    wo.id(),
+                    wo.orderId(),
+                    wo.material(),
+                    wo.quantity(),
+                    wo.status().name(),
+                    "SERVICE"));
         }
         if (!monolith.configured()) {
             return new Listing(items, false);
