@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -93,7 +94,8 @@ class PendingRequestIT {
         var id = pendingLocalRequest();
         cutover(true);
 
-        when(supplier.order(anyString(), anyInt())).thenReturn(new Delivered(500));
+        // doReturn, not when(...): when() would call the mock, which still throws
+        doReturn(new Delivered(500)).when(supplier).order(anyString(), anyInt());
         incomplete.resubmitIncompletePublications(publication -> true);
 
         await().atMost(WAIT).until(() -> localWorkOrders(id) == 1);

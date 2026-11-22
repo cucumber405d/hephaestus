@@ -177,7 +177,8 @@ class Forge implements WorkOrders {
                 .query(Integer.class)
                 .single();
         // Spring Modulith's event publication registry (public schema): requests to this forge not yet handled
-        var pending = jdbc.sql("select count(*) from event_publication where event_type = ? and completion_date is null")
+        var pending = jdbc.sql(
+                        "select count(*) from event_publication where event_type = ? and completion_date is null")
                 .param(WorkOrderRequested.class.getName())
                 .query(Integer.class)
                 .single();
