@@ -1,0 +1,23 @@
+{{- if .Values.components.modularMonolith }}
+# 13-modular-monolith: the Workshop after the Strangler Fig of Forge (http://workshop.localtest.me).
+# Needs gateway, cnpg, strimzi and kafka (profile "scaling" or "full") and the images of 13 in GHCR.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: modular-monolith
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision | quote }}
+    path: 13-modular-monolith/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hephaestus-13
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}

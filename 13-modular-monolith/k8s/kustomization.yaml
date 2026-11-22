@@ -1,0 +1,23 @@
+# 13 on the shared platform (Argo CD Application "modular-monolith" in platform/apps, off until the images are
+# published) or by hand with local images (overlays/local, scripts/deploy-local.sh).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - databases.yaml
+  - topics.yaml
+  - services.yaml
+  - route.yaml
+
+# Published by CI on main (publish job of the 13 workflow); set the sha-<7> of the merge commit when enabling the
+# Argo component
+images:
+  - name: modular
+    newName: ghcr.io/cucumber405d/hephaestus/modular-monolith-modular
+    newTag: latest
+  - name: forge-service
+    newName: ghcr.io/cucumber405d/hephaestus/modular-monolith-forge-service
+    newTag: latest
+  - name: supplier-stub
+    newName: ghcr.io/cucumber405d/hephaestus/modular-monolith-supplier-stub
+    newTag: latest

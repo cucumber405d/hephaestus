@@ -14,6 +14,11 @@
     <name>Hephaestus :: 13-modular-monolith :: traffic</name>
     <description>Order generator and smith bot for the cutover runs: plain JDK, java -jar target/traffic.jar generate|bot</description>
 
+    <properties>
+        <!-- No image: a tool, not a service -->
+        <jib.skip>true</jib.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

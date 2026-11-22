@@ -4,7 +4,7 @@
 #   OR in forge-service, finished with the expected outcome (DONE, or FAILED for MITHRIL-01), and the customer order
 #   agrees (READY for DONE, REJECTED for FAILED). Waits up to WAIT_S for open work orders to finish.
 #   13-modular-monolith/scripts/reconcile.sh <orders.csv>
-# Env: WAIT_S (180), POLL_S (5), COMPOSE_FILE (13-modular-monolith/compose.yaml);
+# Env: WAIT_S (180), POLL_S (5), COMPOSE_FILE (13-modular-monolith/compose.yaml), COMPOSE_PROJECT (hephaestus-13);
 #      ORDERS_DUMP_CMD / MONOLITH_WO_DUMP_CMD / SERVICE_WO_DUMP_CMD replace the database reads (kind, self-test).
 set -euo pipefail
 
@@ -13,8 +13,8 @@ WAIT_S="${WAIT_S:-180}"
 POLL_S="${POLL_S:-5}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE_FILE="${COMPOSE_FILE:-$HERE/../compose.yaml}"
-PSQL_MONOLITH="docker compose -f $COMPOSE_FILE exec -T postgres-monolith psql -U workshop -d workshop -At -c"
-PSQL_FORGE="docker compose -f $COMPOSE_FILE exec -T postgres-forge psql -U forge -d forge -At -c"
+PSQL_MONOLITH="docker compose -f $COMPOSE_FILE -p ${COMPOSE_PROJECT:-hephaestus-13} exec -T postgres-monolith psql -U workshop -d workshop -At -c"
+PSQL_FORGE="docker compose -f $COMPOSE_FILE -p ${COMPOSE_PROJECT:-hephaestus-13} exec -T postgres-forge psql -U forge -d forge -At -c"
 # id|status|reason of every custom customer order
 ORDERS_DUMP_CMD="${ORDERS_DUMP_CMD:-$PSQL_MONOLITH \"select id, status, coalesce(reason, '') from ordering.customer_order where custom\"}"
 # order_id|work order id|status, on each side

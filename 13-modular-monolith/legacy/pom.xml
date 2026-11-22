@@ -14,6 +14,11 @@
     <name>Hephaestus :: 13-modular-monolith :: legacy</name>
     <description>Stage 0: the Workshop as a legacy monolith — one application, one database, tangled packages</description>
 
+    <properties>
+        <!-- No image: stage 0 is shown, never shipped -->
+        <jib.skip>true</jib.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
