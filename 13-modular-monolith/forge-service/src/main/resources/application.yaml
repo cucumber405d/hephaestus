@@ -32,6 +32,10 @@ monolith:
   # The monolith's open work orders join the smith's list while the Strangler Fig runs; removed after decommission
   url: ${MONOLITH_URL:}
   timeout: 2s
+kafka:
+  retry:
+    # Failed records: back off this long, then <topic>.DLT (KafkaErrorHandling)
+    max-elapsed: ${KAFKA_RETRY_MAX_ELAPSED:5m}
 server:
   port: ${PORT:8080}
   shutdown: graceful

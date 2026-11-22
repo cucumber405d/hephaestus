@@ -88,6 +88,16 @@ class ForgeEventsIT {
                 .isEqualTo(1);
     }
 
+    @Test
+    void anUnknownEventTypeGoesToTheDeadLetterTopic() {
+        // a poison message is parked on forge.events.DLT, not retried for ever and not silently skipped (review I3)
+        var id = orders.place(new OrderRequest("c1", null, true, "IRON-01", 1));
+        send(UUID.randomUUID(), "WorkOrderExploded", id, null);
+        assertThat(KafkaProbe.read(kafka.getBootstrapServers(), "forge.events.DLT", id.toString(), WAIT))
+                .hasValueSatisfying(json -> assertThat(json).contains("WorkOrderExploded"));
+        assertThat(orders.get(id).status()).isEqualTo("ACCEPTED");
+    }
+
     private void send(UUID eventId, String type, UUID orderId, String reason) {
         var json = "{\"eventId\":\"%s\",\"type\":\"%s\",\"orderId\":\"%s\",\"workOrderId\":\"FW-%s\",\"reason\":%s}"
                 .formatted(eventId, type, orderId, UUID.randomUUID(), reason == null ? "null" : "\"" + reason + "\"");

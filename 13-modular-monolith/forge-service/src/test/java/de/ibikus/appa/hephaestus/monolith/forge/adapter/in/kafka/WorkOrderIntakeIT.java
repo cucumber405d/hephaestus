@@ -83,6 +83,19 @@ class WorkOrderIntakeIT {
                         .contains("material not deliverable: MITHRIL-01"));
     }
 
+    @Test
+    void aMalformedRequestGoesToTheDeadLetterTopic() {
+        // not JSON at all: parked on forge.requests.DLT at once, the partition moves on (review I3)
+        var key = UUID.randomUUID().toString();
+        KafkaProbe.send(kafka.getBootstrapServers(), "forge.requests", key, "this is not json");
+        assertThat(KafkaProbe.read(kafka.getBootstrapServers(), "forge.requests.DLT", key, WAIT))
+                .hasValue("this is not json");
+        // and the next request on the topic is still served
+        var orderId = UUID.randomUUID();
+        request(orderId, "IRON-01", 1);
+        await().atMost(WAIT).until(() -> count(orderId) == 1);
+    }
+
     private void request(UUID orderId, String material, int quantity) {
         KafkaProbe.send(
                 kafka.getBootstrapServers(),

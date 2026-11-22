@@ -29,6 +29,10 @@ supplier:
   timeout: ${SUPPLIER_TIMEOUT:2s}
 forge:
   supply-retry: ${FORGE_SUPPLY_RETRY:10s}
+kafka:
+  retry:
+    # Failed records: back off this long, then <topic>.DLT (KafkaErrorHandling)
+    max-elapsed: ${KAFKA_RETRY_MAX_ELAPSED:5m}
 server:
   port: ${PORT:8080}
   shutdown: graceful
