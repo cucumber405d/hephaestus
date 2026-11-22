@@ -23,7 +23,8 @@ final class FakeServer implements AutoCloseable {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
             exchange.getRequestBody().readAllBytes();
-            requests.add(exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath());
+            requests.add(
+                    exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath());
             var answer = answers.isEmpty() ? fallback : answers.poll();
             var bytes = answer.body().getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(answer.status(), bytes.length == 0 ? -1 : bytes.length);

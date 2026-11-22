@@ -21,7 +21,13 @@ public interface WorkOrders {
     boolean decommissioned();
 
     /**
-     * Switches the local forge off for good. Refused while work orders are open.
+     * What still keeps the local forge busy: open work orders plus requests published to it but not yet turned into
+     * a work order (their listener has not run, failed, or waits for a republish). What drain waits for.
+     */
+    int busy();
+
+    /**
+     * Switches the local forge off for good. Refused while anything keeps it busy ({@link #busy()}).
      *
      * @throws ForgeStillBusy with the number of open work orders
      */

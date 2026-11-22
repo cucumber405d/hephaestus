@@ -17,14 +17,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class MigrationAdminController {
 
-    record Cutover(Boolean remote) {}
+    record CutoverRequest(Boolean remote) {}
 
     private final JdbcForgeRouting routing;
     private final WorkOrders workOrders;
+    private final Cutover cutover;
 
-    MigrationAdminController(JdbcForgeRouting routing, WorkOrders workOrders) {
+    MigrationAdminController(JdbcForgeRouting routing, WorkOrders workOrders, Cutover cutover) {
         this.routing = routing;
         this.workOrders = workOrders;
+        this.cutover = cutover;
     }
 
     @GetMapping("/admin/forge")
@@ -32,30 +34,29 @@ class MigrationAdminController {
         return Map.of(
                 "remote", routing.remote(),
                 "decommissioned", workOrders.decommissioned(),
-                "openLocalWorkOrders", workOrders.open().size());
+                // open work orders plus requests not yet turned into one: what drain waits for
+                "openLocalWorkOrders", workOrders.busy());
     }
 
     @PostMapping("/admin/forge/cutover")
-    ResponseEntity<Map<String, Object>> cutover(@RequestBody Cutover cutover) {
-        if (cutover.remote() == null) {
+    ResponseEntity<Map<String, Object>> cutover(@RequestBody CutoverRequest request) {
+        if (request.remote() == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "remote: true or false"));
         }
-        if (!cutover.remote() && workOrders.decommissioned()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "the local forge is decommissioned: no way back"));
+        try {
+            cutover.route(request.remote());
+        } catch (Cutover.Refused refused) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", refused.getMessage()));
         }
-        routing.remote(cutover.remote());
         return ResponseEntity.ok(state());
     }
 
     @PostMapping("/admin/forge/decommission")
     ResponseEntity<Map<String, Object>> decommission() {
-        if (!routing.remote()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "new work orders still go to the local forge: cut over first"));
-        }
         try {
-            workOrders.decommission();
+            cutover.decommission();
+        } catch (Cutover.Refused refused) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", refused.getMessage()));
         } catch (ForgeStillBusy busy) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("openLocalWorkOrders", busy.openWorkOrders()));

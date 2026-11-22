@@ -9,8 +9,7 @@ class GeneratorTest {
 
     @Test
     void acceptedOrdersGoToTheCsvWithLfAndTheirExpectedOutcome() throws Exception {
-        try (var monolith = new FakeServer()
-                .otherwise(202, "{\"id\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\"}")) {
+        try (var monolith = new FakeServer().otherwise(202, "{\"id\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\"}")) {
             var csv = new StringWriter();
             var generator = new Generator(new Http(null, 2), monolith.url(), csv);
             assertThat(generator.place(0)).isTrue();
@@ -36,9 +35,8 @@ class GeneratorTest {
     void anOrderIsNeverPostedTwice() throws Exception {
         // POST /api/orders is not idempotent: a retry after a timeout or a 503 could create a second order the CSV
         // never hears of (review I2)
-        try (var monolith = new FakeServer()
-                .then(503, "")
-                .otherwise(202, "{\"id\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\"}")) {
+        try (var monolith =
+                new FakeServer().then(503, "").otherwise(202, "{\"id\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\"}")) {
             var csv = new StringWriter();
             assertThat(new Generator(new Http(null, 5), monolith.url(), csv).place(0))
                     .isFalse();

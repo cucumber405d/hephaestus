@@ -45,12 +45,11 @@ final class SmithBot {
         }
         var done = 0;
         for (var item : parse(listed.body())) {
-            var action =
-                    switch (item.status()) {
-                        case "PLANNED" -> "start";
-                        case "IN_PROGRESS" -> "complete";
-                        default -> null;
-                    };
+            var action = switch (item.status()) {
+                case "PLANNED" -> "start";
+                case "IN_PROGRESS" -> "complete";
+                default -> null;
+            };
             if (action == null) {
                 continue;
             }

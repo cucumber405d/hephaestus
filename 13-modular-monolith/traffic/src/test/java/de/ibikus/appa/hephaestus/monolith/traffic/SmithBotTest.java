@@ -45,8 +45,7 @@ class SmithBotTest {
     @Test
     void retriesOn503() throws Exception {
         try (var monolith = new FakeServer().then(503, "").then(200, "");
-                var service = new FakeServer()
-                        .then(200, "[{\"id\":\"WO-000002\",\"status\":\"PLANNED\"}]")) {
+                var service = new FakeServer().then(200, "[{\"id\":\"WO-000002\",\"status\":\"PLANNED\"}]")) {
             var bot = new SmithBot(new Http(null, 3), monolith.url(), service.url(), null);
             assertThat(bot.round()).isEqualTo(1);
             assertThat(monolith.requests).hasSize(2);

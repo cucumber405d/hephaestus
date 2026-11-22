@@ -13,9 +13,13 @@ class JdbcForgeRouting implements ForgeRouting {
         this.jdbc = jdbc;
     }
 
+    /**
+     * For share: an order transaction holds the row until it commits, so a cutover (update) waits for every order that
+     * has already decided — after the switch, no order is still deciding by the old value.
+     */
     @Override
     public boolean remote() {
-        return jdbc.sql("select remote from migration.forge_cutover where id = 1")
+        return jdbc.sql("select remote from migration.forge_cutover where id = 1 for share")
                 .query(Boolean.class)
                 .single();
     }

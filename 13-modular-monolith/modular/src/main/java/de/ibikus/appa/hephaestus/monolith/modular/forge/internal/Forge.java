@@ -4,6 +4,7 @@ import de.ibikus.appa.hephaestus.monolith.modular.forge.ForgeStillBusy;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrder;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderCompleted;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderFailed;
+import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrderRequested;
 import de.ibikus.appa.hephaestus.monolith.modular.forge.WorkOrders;
 import de.ibikus.appa.hephaestus.monolith.modular.supplier.SupplierGateway;
 import de.ibikus.appa.hephaestus.monolith.modular.supplier.SupplyResult.Delivered;
@@ -38,6 +39,13 @@ class Forge implements WorkOrders {
     @Override
     @Transactional
     public void request(UUID orderId, String material, int quantity) {
+        // Shares the lifecycle row with decommission (for update): a request and a decommission never overlap
+        if (jdbc.sql("select decommissioned from forge.lifecycle where id = 1 for share")
+                .query(Boolean.class)
+                .single()) {
+            // stays an incomplete publication: visible, never silently dropped
+            throw new IllegalStateException("local forge decommissioned: request for order " + orderId + " refused");
+        }
         var id = "WO-%06d"
                 .formatted(jdbc.sql("select nextval('forge.work_order_seq')")
                         .query(Long.class)
@@ -162,17 +170,30 @@ class Forge implements WorkOrders {
     }
 
     @Override
-    @Transactional
-    public void decommission() {
-        // Lock the lifecycle row: no work order can slip in between the count and the switch
-        jdbc.sql("select decommissioned from forge.lifecycle where id = 1 for update")
-                .query(Boolean.class)
-                .single();
+    public int busy() {
+        // Work orders first, then publications: a listener commits its work order before Modulith marks the
+        // publication completed, so a request in flight is always seen by one of the two counts
         var open = jdbc.sql("select count(*) from forge.work_order where status in ('PLANNED', 'IN_PROGRESS')")
                 .query(Integer.class)
                 .single();
-        if (open > 0) {
-            throw new ForgeStillBusy(open);
+        // Spring Modulith's event publication registry (public schema): requests to this forge not yet handled
+        var pending = jdbc.sql("select count(*) from event_publication where event_type = ? and completion_date is null")
+                .param(WorkOrderRequested.class.getName())
+                .query(Integer.class)
+                .single();
+        return open + pending;
+    }
+
+    @Override
+    @Transactional
+    public void decommission() {
+        // Lock the lifecycle row: request() takes it for share, so no request runs between the count and the switch
+        jdbc.sql("select decommissioned from forge.lifecycle where id = 1 for update")
+                .query(Boolean.class)
+                .single();
+        var busy = busy();
+        if (busy > 0) {
+            throw new ForgeStillBusy(busy);
         }
         jdbc.sql("update forge.lifecycle set decommissioned = true where id = 1")
                 .update();
