@@ -1,9 +1,12 @@
-# The images built on this machine (jib:dockerBuild) and loaded into kind: scripts/deploy-local.sh.
+# The application with the images built on this machine (jib:dockerBuild) and loaded into kind, in hephaestus-13;
+# the topics are applied separately (namespace kafka): scripts/deploy-local.sh.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: hephaestus-13
+
 resources:
-  - ../..
+  - ../../app
 
 images:
   - name: ghcr.io/cucumber405d/hephaestus/modular-monolith-modular

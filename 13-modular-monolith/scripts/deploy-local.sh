@@ -19,7 +19,9 @@ done
 
 echo "==> manifests"
 kubectl get namespace "$NAMESPACE" > /dev/null 2>&1 || kubectl create namespace "$NAMESPACE"
-kubectl -n "$NAMESPACE" apply -k k8s/overlays/local
+# Two applies: the topics belong to namespace kafka, the application to hephaestus-13 (the overlay sets it)
+kubectl apply -f k8s/topics.yaml
+kubectl apply -k k8s/overlays/local
 # a re-deploy with the same tag: restart to pick up the newly loaded image
 kubectl -n "$NAMESPACE" rollout restart deploy/modular deploy/forge-service deploy/supplier-stub > /dev/null
 echo "==> waiting for the databases and the services"

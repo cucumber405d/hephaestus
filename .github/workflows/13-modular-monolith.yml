@@ -51,13 +51,17 @@ jobs:
 
       - name: Manifests render
         run: |
-          kubectl kustomize 13-modular-monolith/k8s/overlays/local > /tmp/13.yaml
+          kubectl kustomize 13-modular-monolith/k8s > /tmp/13.yaml
           for kind in Cluster:2 KafkaTopic:2 Deployment:3 Service:3 HTTPRoute:1; do
             n=$(grep -c "^kind: ${kind%%:*}$" /tmp/13.yaml || true)
             echo "${kind%%:*}: $n"
             [ "$n" -eq "${kind##*:}" ]
           done
           grep -q 'value: \^/api/work-orders/WO-' /tmp/13.yaml
+          # the local overlay: everything in hephaestus-13, no KafkaTopic (applied separately, namespace kafka)
+          kubectl kustomize 13-modular-monolith/k8s/overlays/local > /tmp/13-local.yaml
+          ! grep -q '^kind: KafkaTopic$' /tmp/13-local.yaml
+          [ "$(grep -c '^  namespace: hephaestus-13$' /tmp/13-local.yaml)" -eq 9 ]
 
   e2e:
     needs: verify
