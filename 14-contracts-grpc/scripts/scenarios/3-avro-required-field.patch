@@ -1,0 +1,11 @@
+# Scenario 3: a required field without default in WorkOrderRequest. Caught by Apicurio (BACKWARD): new readers cannot read old data.
+--- a/contracts/src/main/avro/work_order_request.avsc
++++ b/contracts/src/main/avro/work_order_request.avsc
+@@ -7,6 +7,7 @@
+     {"name": "orderId", "type": "string", "doc": "Customer order id (UUID)"},
+     {"name": "material", "type": "string"},
+     {"name": "quantity", "type": "int"},
++    {"name": "priority", "type": "int", "doc": "New and required: no default"},
+     {"name": "quoteId", "type": ["null", "string"], "default": null, "doc": "Since 1.1.0; absent from 1.0.0 producers"},
+     {"name": "priceCents", "type": ["null", "long"], "default": null, "doc": "Since 1.1.0; the quoted price Forge checks"}
+   ]

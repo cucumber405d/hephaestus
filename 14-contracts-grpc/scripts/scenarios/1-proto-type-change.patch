@@ -1,0 +1,12 @@
+# Scenario 1: price_cents changes type int64 -> string (another wire type). Caught by buf breaking (WIRE).
+--- a/contracts/src/main/proto/hephaestus/forge/v1/quote.proto
++++ b/contracts/src/main/proto/hephaestus/forge/v1/quote.proto
+@@ -21,7 +21,7 @@
+ 
+ message QuoteReply {
+   string quote_id = 1;
+-  int64 price_cents = 2;
++  string price_cents = 2;
+   int32 lead_time_days = 3;
+   google.protobuf.Timestamp expires_at = 4;
+ }

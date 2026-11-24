@@ -1,0 +1,9 @@
+# Scenario 5: AsyncAPI points at a schema file that does not exist. Caught by AsyncAPI validation.
+--- a/contracts/asyncapi.yaml
++++ b/contracts/asyncapi.yaml
+@@ -54,4 +54,4 @@
+       payload:
+         schemaFormat: application/vnd.apache.avro;version=1.9.0
+         schema:
+-          $ref: './src/main/avro/forge_event.avsc'
++          $ref: './src/main/avro/forge_event_v2.avsc'
