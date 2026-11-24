@@ -1,0 +1,23 @@
+== ModularApplication
+plantuml::components.puml[,,format=svg]
+
+== Inventory
+plantuml::module-inventory.puml[,,format=svg]
+include::module-inventory.adoc[]
+
+== Supplier
+plantuml::module-supplier.puml[,,format=svg]
+include::module-supplier.adoc[]
+
+== Forge
+plantuml::module-forge.puml[,,format=svg]
+include::module-forge.adoc[]
+
+== Migration
+plantuml::module-migration.puml[,,format=svg]
+include::module-migration.adoc[]
+
+== Ordering
+plantuml::module-ordering.puml[,,format=svg]
+include::module-ordering.adoc[]
+

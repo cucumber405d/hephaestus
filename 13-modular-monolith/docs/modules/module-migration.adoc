@@ -1,0 +1,9 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`de.ibikus.appa.hephaestus.monolith.modular.migration`
+|Spring components
+|* `d.i.a.h.m.m.m.ForgeRouting` (via `d.i.a.h.m.m.m.internal.JdbcForgeRouting`)
+|Bean references
+|* `d.i.a.h.m.m.f.WorkOrders` (in Forge)
+|===

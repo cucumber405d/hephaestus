@@ -1,0 +1,43 @@
+# Configuration from environment variables only: PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD, SUPPLIER_URL,
+# SUPPLIER_TIMEOUT, FORGE_SUPPLY_RETRY, KAFKA_BOOTSTRAP_SERVERS.
+spring:
+  application:
+    name: modular
+  main:
+    banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: monolith
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: true
+      # Publications not completed before a crash are handed to their listeners again on start
+      republish-outstanding-events-on-restart: true
+supplier:
+  url: ${SUPPLIER_URL:http://localhost:8081}
+  timeout: ${SUPPLIER_TIMEOUT:2s}
+forge:
+  supply-retry: ${FORGE_SUPPLY_RETRY:10s}
+kafka:
+  retry:
+    # Failed records: back off this long, then <topic>.DLT (KafkaErrorHandling)
+    max-elapsed: ${KAFKA_RETRY_MAX_ELAPSED:5m}
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true

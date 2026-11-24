@@ -1,0 +1,28 @@
+# Monolith <-> forge-service; key = the customer order. In namespace kafka: the platform's Topic Operator watches it.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: forge-requests
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: forge.requests
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: forge-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: forge.events
+  partitions: 3
+  replicas: 1

@@ -1,0 +1,35 @@
+@startuml
+title <size:24>Ordering</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("ModularApplication_boundary", "ModularApplication", $tags="") {
+  Container_Boundary("ModularApplication.ModularApplication_boundary", "ModularApplication", $tags="") {
+    Component(ModularApplication.ModularApplication.Inventory, "Inventory", $techn="Module", $descr="", $tags="", $link="")
+    Component(ModularApplication.ModularApplication.Forge, "Forge", $techn="Module", $descr="", $tags="", $link="")
+    Component(ModularApplication.ModularApplication.Migration, "Migration", $techn="Module", $descr="", $tags="", $link="")
+    Component(ModularApplication.ModularApplication.Ordering, "Ordering", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Forge, "listens to", $techn="", $tags="", $link="")
+Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Inventory, "uses", $techn="", $tags="", $link="")
+Rel(ModularApplication.ModularApplication.Ordering, ModularApplication.ModularApplication.Migration, "uses", $techn="", $tags="", $link="")
+Rel(ModularApplication.ModularApplication.Migration, ModularApplication.ModularApplication.Forge, "uses", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

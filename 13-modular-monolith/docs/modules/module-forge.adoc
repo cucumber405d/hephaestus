@@ -1,0 +1,13 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`de.ibikus.appa.hephaestus.monolith.modular.forge`
+|Spring components
+|_Services_
+
+* `d.i.a.h.m.m.f.WorkOrders` (via `d.i.a.h.m.m.f.internal.Forge`)
+|Bean references
+|* `d.i.a.h.m.m.s.SupplierGateway` (in Supplier)
+|Events listened to
+|* `d.i.a.h.m.m.f.WorkOrderRequested` (async) 
+|===

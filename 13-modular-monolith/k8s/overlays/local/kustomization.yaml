@@ -1,0 +1,29 @@
+# The application with the images built on this machine (jib:dockerBuild) and loaded into kind, in hephaestus-13;
+# the topics are applied separately (namespace kafka): scripts/deploy-local.sh.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hephaestus-13
+
+resources:
+  - ../../app
+
+images:
+  - name: ghcr.io/cucumber405d/hephaestus/modular-monolith-modular
+    newName: hephaestus/modular-monolith-modular
+    newTag: jib
+  - name: ghcr.io/cucumber405d/hephaestus/modular-monolith-forge-service
+    newName: hephaestus/modular-monolith-forge-service
+    newTag: jib
+  - name: ghcr.io/cucumber405d/hephaestus/modular-monolith-supplier-stub
+    newName: hephaestus/modular-monolith-supplier-stub
+    newTag: jib
+
+patches:
+  # kind has the images locally: never pull
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
