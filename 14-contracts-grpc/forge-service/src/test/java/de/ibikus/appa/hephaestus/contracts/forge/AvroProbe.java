@@ -23,7 +23,8 @@ public final class AvroProbe {
     private AvroProbe() {}
 
     /** Writes with the registered schema {@code version} (as a producer of that contract version would). */
-    public static void send(String bootstrap, String registryUrl, String topic, String key, Object value, String version) {
+    public static void send(
+            String bootstrap, String registryUrl, String topic, String key, Object value, String version) {
         var config = new HashMap<String, Object>(serde(registryUrl));
         config.put("apicurio.registry.artifact.version", version);
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
@@ -37,14 +38,16 @@ public final class AvroProbe {
     }
 
     /** The value of the first record with {@code key} within {@code timeout}, as a generated Avro class. */
-    public static Optional<Object> read(String bootstrap, String registryUrl, String topic, String key, Duration timeout) {
+    public static Optional<Object> read(
+            String bootstrap, String registryUrl, String topic, String key, Duration timeout) {
         var config = new HashMap<String, Object>(serde(registryUrl));
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, "probe-" + UUID.randomUUID());
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "io.apicurio.registry.serde.avro.AvroKafkaDeserializer");
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                "io.apicurio.registry.serde.avro.AvroKafkaDeserializer");
         try (var consumer = new KafkaConsumer<String, Object>(config)) {
             consumer.subscribe(List.of(topic));
             var deadline = System.nanoTime() + timeout.toNanos();

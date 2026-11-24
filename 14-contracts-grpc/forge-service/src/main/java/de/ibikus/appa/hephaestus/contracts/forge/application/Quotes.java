@@ -66,7 +66,9 @@ public class Quotes {
         if (quote == null) {
             return Verdict.UNKNOWN;
         }
-        if (!quote.material().equals(material) || quote.quantity() != quantity || quote.priceCents() != ref.priceCents()) {
+        if (!quote.material().equals(material)
+                || quote.quantity() != quantity
+                || quote.priceCents() != ref.priceCents()) {
             return Verdict.MISMATCH;
         }
         if (clock.instant().isAfter(quote.expiresAt())) {

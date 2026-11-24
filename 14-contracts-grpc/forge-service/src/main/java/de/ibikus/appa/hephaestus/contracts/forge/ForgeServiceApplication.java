@@ -1,7 +1,7 @@
 package de.ibikus.appa.hephaestus.contracts.forge;
 
-import org.springframework.boot.SpringApplication;
 import java.time.Clock;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Bean;

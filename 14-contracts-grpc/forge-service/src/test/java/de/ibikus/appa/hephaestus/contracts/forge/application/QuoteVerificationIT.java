@@ -92,7 +92,11 @@ class QuoteVerificationIT {
     void unknownQuoteFailsWorkOrder() {
         var orderId = UUID.randomUUID();
 
-        workOrders.request(orderId, "IRON-01", 1, Optional.of(new QuoteRef(UUID.randomUUID().toString(), 1200)));
+        workOrders.request(
+                orderId,
+                "IRON-01",
+                1,
+                Optional.of(new QuoteRef(UUID.randomUUID().toString(), 1200)));
 
         assertThat(reason(orderId)).isEqualTo("quote unknown");
     }

@@ -115,7 +115,12 @@ class WorkOrderIntakeIT {
                 .setQuantity(1)
                 .build();
         AvroProbe.send(
-                kafka.getBootstrapServers(), Containers.url(apicurio), "forge.requests", key, request, SchemaRegistry.CURRENT);
+                kafka.getBootstrapServers(),
+                Containers.url(apicurio),
+                "forge.requests",
+                key,
+                request,
+                SchemaRegistry.CURRENT);
 
         assertThat(KafkaProbe.read(kafka.getBootstrapServers(), "forge.requests.DLT", key, WAIT))
                 .hasValueSatisfying(text -> assertThat(text).contains("not-a-uuid"));

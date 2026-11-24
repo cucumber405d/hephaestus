@@ -40,7 +40,8 @@ class QuoteGrpcService extends QuoteServiceGrpc.QuoteServiceImplBase {
         } catch (UnknownMaterial e) {
             response.onError(Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
         } catch (InvalidQuantity e) {
-            response.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
+            response.onError(
+                    Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
         }
     }
 }

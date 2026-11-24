@@ -39,7 +39,9 @@ class QuoteGrpcIT {
 
     @BeforeEach
     void connect() {
-        channel = ManagedChannelBuilder.forAddress("localhost", PORT).usePlaintext().build();
+        channel = ManagedChannelBuilder.forAddress("localhost", PORT)
+                .usePlaintext()
+                .build();
         quotes = QuoteServiceGrpc.newBlockingStub(channel);
     }
 
@@ -79,6 +81,9 @@ class QuoteGrpcIT {
     }
 
     private static QuoteRequest request(String material, int quantity) {
-        return QuoteRequest.newBuilder().setMaterial(material).setQuantity(quantity).build();
+        return QuoteRequest.newBuilder()
+                .setMaterial(material)
+                .setQuantity(quantity)
+                .build();
     }
 }

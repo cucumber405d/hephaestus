@@ -10,8 +10,7 @@ import org.junit.jupiter.api.Test;
 class PriceListTest {
 
     private final PriceList prices = new PriceList(
-            Map.of("IRON-01", new Rate(1200, 2), "STEEL-01", new Rate(2500, 3), "MITHRIL-01", new Rate(99000, 30)),
-            5);
+            Map.of("IRON-01", new Rate(1200, 2), "STEEL-01", new Rate(2500, 3), "MITHRIL-01", new Rate(99000, 30)), 5);
 
     @Test
     void iron5Costs6000AndTakes3Days() {

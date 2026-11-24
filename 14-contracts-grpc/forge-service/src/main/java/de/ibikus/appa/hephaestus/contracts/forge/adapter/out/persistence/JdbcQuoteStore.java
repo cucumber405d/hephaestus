@@ -33,7 +33,8 @@ class JdbcQuoteStore implements QuoteStore {
 
     @Override
     public Optional<Quote> find(String id) {
-        return jdbc.sql("select id, material, quantity, price_cents, lead_time_days, expires_at from quote where id = ?")
+        return jdbc.sql(
+                        "select id, material, quantity, price_cents, lead_time_days, expires_at from quote where id = ?")
                 .param(id)
                 .query((rs, row) -> new Quote(
                         rs.getString("id"),

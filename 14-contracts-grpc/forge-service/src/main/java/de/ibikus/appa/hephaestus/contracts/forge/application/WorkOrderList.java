@@ -17,7 +17,12 @@ public class WorkOrderList {
     public List<ListedWorkOrder> list(Status status) {
         return workOrders.list(status).stream()
                 .map(wo -> new ListedWorkOrder(
-                        wo.id(), wo.orderId(), wo.material(), wo.quantity(), wo.status().name(), "SERVICE"))
+                        wo.id(),
+                        wo.orderId(),
+                        wo.material(),
+                        wo.quantity(),
+                        wo.status().name(),
+                        "SERVICE"))
                 .toList();
     }
 }
