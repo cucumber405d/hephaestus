@@ -1,0 +1,7 @@
+# buf breaking compares this tree with contracts/released/1.0.0/proto (scripts/check-proto.sh).
+# WIRE: only changes that break the binary encoding fail; a removed field that keeps its number reserved passes
+# here on purpose and is left to Pact (the consumer's expectations).
+version: v2
+breaking:
+  use:
+    - WIRE

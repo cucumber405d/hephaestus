@@ -1,0 +1,23 @@
+# Scenario 4: an enum symbol renamed in ForgeEvent. Caught by Apicurio (BACKWARD): old data carries a symbol the new reader lacks.
+--- a/contracts/src/main/avro/forge_event.avsc
++++ b/contracts/src/main/avro/forge_event.avsc
+@@ -5,7 +5,7 @@
+   "doc": "How a work order ended (topic forge.events, key = orderId). eventId lets Ordering drop a redelivery.",
+   "fields": [
+     {"name": "eventId", "type": "string", "doc": "UUID"},
+-    {"name": "type", "type": {"type": "enum", "name": "ForgeEventType", "symbols": ["WORK_ORDER_COMPLETED", "WORK_ORDER_FAILED"]}},
++    {"name": "type", "type": {"type": "enum", "name": "ForgeEventType", "symbols": ["WORK_ORDER_COMPLETED", "WORK_ORDER_REJECTED"]}},
+     {"name": "orderId", "type": "string", "doc": "Customer order id (UUID)"},
+     {"name": "workOrderId", "type": "string"},
+     {"name": "reason", "type": ["null", "string"], "default": null}
+--- a/contracts/src/test/java/de/ibikus/appa/hephaestus/contracts/MessageSizeTest.java
++++ b/contracts/src/test/java/de/ibikus/appa/hephaestus/contracts/MessageSizeTest.java
+@@ -18,7 +18,7 @@
+     void avroIsSmallerThanJson() throws Exception {
+         var event = ForgeEvent.newBuilder()
+                 .setEventId("0b8f3c1e-7d2a-4c55-9e61-2f7a9d0c4b13")
+-                .setType(ForgeEventType.WORK_ORDER_FAILED)
++                .setType(ForgeEventType.WORK_ORDER_REJECTED)
+                 .setOrderId("6f1c2a8e-0000-4000-8000-000000000001")
+                 .setWorkOrderId("FW-3a9e2c47-1d8b-4f0a-b6c2-5e7d9f1a2b3c")
+                 .setReason("material not deliverable: MITHRIL-01")

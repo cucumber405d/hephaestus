@@ -1,0 +1,48 @@
+# Scenario 2: Forge drops lead_time_days, number reserved (wire-compatible). buf passes; Pact catches it: Ordering reads it.
+--- a/contracts/src/main/proto/hephaestus/forge/v1/quote.proto
++++ b/contracts/src/main/proto/hephaestus/forge/v1/quote.proto
+@@ -22,6 +22,6 @@
+ message QuoteReply {
+   string quote_id = 1;
+   int64 price_cents = 2;
+-  int32 lead_time_days = 3;
++  reserved 3;
+   google.protobuf.Timestamp expires_at = 4;
+ }
+--- a/forge-service/src/main/java/de/ibikus/appa/hephaestus/contracts/forge/adapter/in/grpc/QuoteGrpcService.java
++++ b/forge-service/src/main/java/de/ibikus/appa/hephaestus/contracts/forge/adapter/in/grpc/QuoteGrpcService.java
+@@ -31,7 +31,6 @@
+             response.onNext(QuoteReply.newBuilder()
+                     .setQuoteId(quote.id())
+                     .setPriceCents(quote.priceCents())
+-                    .setLeadTimeDays(quote.leadTimeDays())
+                     .setExpiresAt(Timestamp.newBuilder()
+                             .setSeconds(quote.expiresAt().getEpochSecond())
+                             .setNanos(quote.expiresAt().getNano()))
+--- a/forge-service/src/test/java/de/ibikus/appa/hephaestus/contracts/forge/adapter/in/grpc/QuoteGrpcIT.java
++++ b/forge-service/src/test/java/de/ibikus/appa/hephaestus/contracts/forge/adapter/in/grpc/QuoteGrpcIT.java
+@@ -53,7 +53,6 @@
+         var reply = quotes.quote(request("IRON-01", 5));
+ 
+         assertThat(reply.getPriceCents()).isEqualTo(6000);
+-        assertThat(reply.getLeadTimeDays()).isEqualTo(3);
+         assertThat(reply.getQuoteId()).matches("[0-9a-f-]{36}");
+         assertThat(Instant.ofEpochSecond(reply.getExpiresAt().getSeconds()))
+                 .isCloseTo(Instant.now().plus(15, ChronoUnit.MINUTES), within(1, ChronoUnit.MINUTES));
+--- a/contracts/src/test/java/de/ibikus/appa/hephaestus/contracts/ContractsRoundTripTest.java
++++ b/contracts/src/test/java/de/ibikus/appa/hephaestus/contracts/ContractsRoundTripTest.java
+@@ -49,14 +49,12 @@
+         var reply = QuoteReply.newBuilder()
+                 .setQuoteId("q-1")
+                 .setPriceCents(6000)
+-                .setLeadTimeDays(3)
+                 .setExpiresAt(Timestamp.newBuilder().setSeconds(1_800_000_000L))
+                 .build();
+ 
+         var read = QuoteReply.parseFrom(reply.toByteArray());
+ 
+         assertThat(read.getPriceCents()).isEqualTo(6000);
+-        assertThat(read.getLeadTimeDays()).isEqualTo(3);
+         assertThat(read).isEqualTo(reply);
+     }
+ }

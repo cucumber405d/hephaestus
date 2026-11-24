@@ -1,0 +1,11 @@
+== OrderingApplication
+plantuml::components.puml[,,format=svg]
+
+== Inventory
+plantuml::module-inventory.puml[,,format=svg]
+include::module-inventory.adoc[]
+
+== Ordering
+plantuml::module-ordering.puml[,,format=svg]
+include::module-ordering.adoc[]
+
