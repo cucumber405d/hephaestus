@@ -56,7 +56,10 @@ jobs:
 
       # The committed pact is what forge-service is verified against: a build that changes it needs a commit
       - name: Pact file is up to date
-        run: git diff --exit-code 14-contracts-grpc/pacts
+        # untracked counts too: the first build generates the file
+        run: |
+          git status --porcelain 14-contracts-grpc/pacts
+          test -z "$(git status --porcelain 14-contracts-grpc/pacts)"
 
       - name: Upload test reports
         if: always()

@@ -64,16 +64,26 @@ baseline() {
     return $failed
 }
 
-# expect_caught <dir> <log> <check> <step name> <log must contain>
+# expect_caught <dir> <log> <check> <step name> <evidence>... — the check must fail, and its output must contain every
+# piece of evidence: the failing test alone is not enough (a missing pact file or a dead Docker fails it too).
 expect_caught() {
-    local dir="$1" log="$2" check="$3" step="$4" evidence="$5"
+    local dir="$1" log="$2" check="$3" step="$4"
+    shift 4
     if $check "$dir" "$log"; then
         echo "NOT CAUGHT: $check passed" >&2
         tail -40 "$log" >&2
         return 1
     fi
-    if ! grep -q -- "$evidence" "$log" || grep -q "COMPILATION ERROR" "$log"; then
-        echo "FAILED FOR ANOTHER REASON (expected '$evidence' in the output of $check)" >&2
+    local evidence
+    for evidence in "$@"; do
+        if ! grep -q -- "$evidence" "$log"; then
+            echo "FAILED FOR ANOTHER REASON ($check failed, but '$evidence' is not in its output)" >&2
+            tail -40 "$log" >&2
+            return 1
+        fi
+    done
+    if grep -q "COMPILATION ERROR" "$log"; then
+        echo "FAILED FOR ANOTHER REASON (compilation error)" >&2
         tail -40 "$log" >&2
         return 1
     fi
@@ -103,7 +113,7 @@ scenario() {
             if check_proto "$dir" "$log"; then
                 echo "  buf breaking: passes (wire-compatible, number reserved)"
                 expect_caught "$dir" "$log" check_pact "Pact provider verification, forge-service build" \
-                    "QuotePactProviderTest" || result=$?
+                    "QuotePactProviderTest" "lead_time_days" || result=$?
             else
                 echo "UNEXPECTED: buf breaking failed — the scenario is meant to be wire-compatible" >&2
                 tail -20 "$log" >&2
@@ -111,7 +121,7 @@ scenario() {
             fi
             ;;
         3 | 4) expect_caught "$dir" "$log" check_registry "Apicurio BACKWARD rule, schema registration" \
-            "currentSchemasAreBackwardCompatibleWithReleased" || result=$? ;;
+            "currentSchemasAreBackwardCompatibleWithReleased" "409" || result=$? ;;
         5) expect_caught "$dir" "$log" check_asyncapi "AsyncAPI validation, CI" "forge_event_v2.avsc" || result=$? ;;
         *) echo "unknown scenario $n" >&2 && result=1 ;;
     esac

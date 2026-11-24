@@ -131,6 +131,16 @@
                 <configuration>
                     <systemPropertyVariables>
                         <pact.rootDir>${project.basedir}/../pacts</pact.rootDir>
+                        <contracts.version>${contracts.version}</contracts.version>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <contracts.version>${contracts.version}</contracts.version>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

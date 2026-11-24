@@ -70,8 +70,8 @@ class SchemaCompatibilityIT {
 
         var next = addVersion(id, withRequiredField);
 
-        assertThat(next.statusCode()).isEqualTo(409);
-        assertThat(next.body()).contains("COMPATIBILITY");
+        // 409: the rule refused it (the message text differs between registry versions)
+        assertThat(next.statusCode()).as(next.body()).isEqualTo(409);
     }
 
     private static void createWithBackwardRule(String id, String schema) throws Exception {

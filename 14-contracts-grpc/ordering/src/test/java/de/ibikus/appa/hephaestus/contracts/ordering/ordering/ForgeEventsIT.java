@@ -11,6 +11,7 @@ import de.ibikus.appa.hephaestus.contracts.events.ForgeEventType;
 import de.ibikus.appa.hephaestus.contracts.ordering.AvroProbe;
 import de.ibikus.appa.hephaestus.contracts.ordering.Containers;
 import de.ibikus.appa.hephaestus.contracts.ordering.KafkaProbe;
+import de.ibikus.appa.hephaestus.contracts.ordering.SchemaRegistry;
 import de.ibikus.appa.hephaestus.contracts.ordering.ordering.internal.QuoteClient;
 import de.ibikus.appa.hephaestus.contracts.ordering.ordering.internal.QuoteClient.Quoted;
 import java.time.Duration;
@@ -98,6 +99,24 @@ class ForgeEventsIT {
         assertThat(orders.get(id).status()).isEqualTo("ACCEPTED");
     }
 
+    @Test
+    void malformedEventIdGoesToDlt() {
+        // readable Avro, but the listener refuses it (IllegalArgumentException, not retried): parked as JSON text
+        var id = orders.place(new OrderRequest("c1", null, true, "IRON-01", 1));
+        var event = ForgeEvent.newBuilder()
+                .setEventId("not-a-uuid")
+                .setType(ForgeEventType.WORK_ORDER_COMPLETED)
+                .setOrderId(id.toString())
+                .setWorkOrderId("FW-x")
+                .build();
+        AvroProbe.send(
+                kafka.getBootstrapServers(), Containers.url(apicurio), "forge.events", id.toString(), event, SchemaRegistry.CURRENT);
+
+        assertThat(KafkaProbe.read(kafka.getBootstrapServers(), "forge.events.DLT", id.toString(), WAIT))
+                .hasValueSatisfying(text -> assertThat(text).contains("not-a-uuid"));
+        assertThat(orders.get(id).status()).isEqualTo("ACCEPTED");
+    }
+
     private void send(UUID eventId, ForgeEventType type, UUID orderId, String reason) {
         var event = ForgeEvent.newBuilder()
                 .setEventId(eventId.toString())
@@ -106,7 +125,13 @@ class ForgeEventsIT {
                 .setWorkOrderId("FW-" + UUID.randomUUID())
                 .setReason(reason)
                 .build();
-        AvroProbe.send(kafka.getBootstrapServers(), Containers.url(apicurio), "forge.events", orderId.toString(), event);
+        AvroProbe.send(
+                kafka.getBootstrapServers(),
+                Containers.url(apicurio),
+                "forge.events",
+                orderId.toString(),
+                event,
+                SchemaRegistry.CURRENT);
     }
 
     private int processed(UUID eventId) {

@@ -22,20 +22,34 @@ public final class SchemaRegistry {
 
     private SchemaRegistry() {}
 
+    /** The released version, then this build's (contracts.version from Maven); producers write with the latter. */
+    public static final String RELEASED = "1.0.0";
+
+    public static final String CURRENT = System.getProperty("contracts.version", "1.1.0");
+
     public static void registerContracts(String baseUrl) {
-        for (var version : new String[] {"released/1.0.0/avro", "src/main/avro"}) {
-            register(baseUrl, "forge.requests-value", CONTRACTS.resolve(version + "/work_order_request.avsc"));
-            register(baseUrl, "forge.events-value", CONTRACTS.resolve(version + "/forge_event.avsc"));
+        var versions = new String[][] {{"released/1.0.0/avro", RELEASED}, {"src/main/avro", CURRENT}};
+        for (var version : versions) {
+            register(baseUrl, "forge.requests-value", CONTRACTS.resolve(version[0] + "/work_order_request.avsc"), version[1]);
+            register(baseUrl, "forge.events-value", CONTRACTS.resolve(version[0] + "/forge_event.avsc"), version[1]);
         }
     }
 
-    static void register(String baseUrl, String artifactId, Path schema) {
+    static void register(String baseUrl, String artifactId, Path schema, String version) {
         var api = baseUrl + "/apis/registry/v3/groups/default/artifacts";
         var content = Map.of("content", read(schema), "contentType", "application/json");
         var exists = send(HttpRequest.newBuilder(URI.create(api + "/" + artifactId)).GET());
         var created = exists.statusCode() == 404
-                ? post(api, Map.of("artifactId", artifactId, "artifactType", "AVRO", "firstVersion", Map.of("content", content)))
-                : post(api + "/" + artifactId + "/versions", Map.of("content", content));
+                ? post(
+                        api,
+                        Map.of(
+                                "artifactId",
+                                artifactId,
+                                "artifactType",
+                                "AVRO",
+                                "firstVersion",
+                                Map.of("version", version, "content", content)))
+                : post(api + "/" + artifactId + "/versions", Map.of("version", version, "content", content));
         check(created, artifactId);
         if (exists.statusCode() == 404) {
             check(post(api + "/" + artifactId + "/rules", Map.of("ruleType", "COMPATIBILITY", "config", "BACKWARD")), artifactId);

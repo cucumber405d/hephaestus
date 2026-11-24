@@ -80,7 +80,13 @@ class WorkOrderIntakeIT {
         old.put("material", "IRON-01");
         old.put("quantity", 1);
 
-        AvroProbe.send(kafka.getBootstrapServers(), Containers.url(apicurio), "forge.requests", orderId.toString(), old);
+        AvroProbe.send(
+                kafka.getBootstrapServers(),
+                Containers.url(apicurio),
+                "forge.requests",
+                orderId.toString(),
+                old,
+                SchemaRegistry.RELEASED);
 
         await().atMost(WAIT).until(() -> count(orderId) == 1);
     }
@@ -99,6 +105,26 @@ class WorkOrderIntakeIT {
         await().atMost(WAIT).until(() -> count(orderId) == 1);
     }
 
+    @Test
+    void malformedOrderIdGoesToDlt() {
+        // readable Avro, but the listener refuses it (IllegalArgumentException, not retried): parked as JSON text
+        var key = UUID.randomUUID().toString();
+        var request = WorkOrderRequest.newBuilder()
+                .setOrderId("not-a-uuid")
+                .setMaterial("IRON-01")
+                .setQuantity(1)
+                .build();
+        AvroProbe.send(
+                kafka.getBootstrapServers(), Containers.url(apicurio), "forge.requests", key, request, SchemaRegistry.CURRENT);
+
+        assertThat(KafkaProbe.read(kafka.getBootstrapServers(), "forge.requests.DLT", key, WAIT))
+                .hasValueSatisfying(text -> assertThat(text).contains("not-a-uuid"));
+        // and the partition moves on
+        var orderId = UUID.randomUUID();
+        request(orderId, "IRON-01", 1);
+        await().atMost(WAIT).until(() -> count(orderId) == 1);
+    }
+
     private void request(UUID orderId, String material, int quantity) {
         var request = WorkOrderRequest.newBuilder()
                 .setOrderId(orderId.toString())
@@ -106,7 +132,12 @@ class WorkOrderIntakeIT {
                 .setQuantity(quantity)
                 .build();
         AvroProbe.send(
-                kafka.getBootstrapServers(), Containers.url(apicurio), "forge.requests", orderId.toString(), request);
+                kafka.getBootstrapServers(),
+                Containers.url(apicurio),
+                "forge.requests",
+                orderId.toString(),
+                request,
+                SchemaRegistry.CURRENT);
     }
 
     private int count(UUID orderId) {

@@ -47,7 +47,7 @@ services:
     command:
       - >-
         for i in $$(seq 1 60); do curl -sf http://apicurio:8080/apis/registry/v3/system/info > /dev/null && break;
-        sleep 2; done; /bin/sh /register-schemas.sh http://apicurio:8080 /avro
+        sleep 2; done; /bin/sh /register-schemas.sh http://apicurio:8080 /avro 1.1.0
     depends_on:
       - apicurio
 

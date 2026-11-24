@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Installs the Pact protobuf/gRPC plugin (a native binary from GitHub, not from Maven Central) where pact-jvm looks
 # for it: ~/.pact/plugins/protobuf-<version>/. No-op when that version is present.
-# PACT_PROTOBUF_PLUGIN_VERSION pins a version (e.g. 0.6.5); default: the latest GitHub release.
+# PACT_PROTOBUF_PLUGIN_VERSION overrides the pinned version; "latest" takes the newest GitHub release.
 set -euo pipefail
 
 REPO=pactflow/pact-protobuf-plugin
-VERSION="${PACT_PROTOBUF_PLUGIN_VERSION:-}"
+# Pinned (2026-11-24): pact-jvm records the plugin version in the pact file, so a new release would change it
+VERSION="${PACT_PROTOBUF_PLUGIN_VERSION:-0.8.0}"
 # GH_TOKEN (CI): authenticated API calls, no anonymous rate limit
 AUTH=()
 [[ -n "${GH_TOKEN:-}" ]] && AUTH=(-H "Authorization: Bearer $GH_TOKEN")
-if [[ -z "$VERSION" ]]; then
+if [[ "$VERSION" == latest ]]; then
     VERSION=$(curl -fsSL "${AUTH[@]}" "https://api.github.com/repos/$REPO/releases/latest" \
         | sed -n 's/.*"tag_name": *"v-\([^"]*\)".*/\1/p' | head -1)
     [[ -n "$VERSION" ]] || { echo "could not resolve the latest $REPO release" >&2; exit 1; }
