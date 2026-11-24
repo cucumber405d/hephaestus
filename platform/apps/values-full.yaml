@@ -17,3 +17,4 @@ components:
   keda: true
   metricsServer: true
   scaling: true
+  modularMonolith: true

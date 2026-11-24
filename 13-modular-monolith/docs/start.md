@@ -29,19 +29,22 @@ curl -s -X POST localhost:18080/api/work-orders/WO-000001/start
 
 ## На kind (живой прогон через Envoy Gateway)
 
-До первой публикации образов в GHCR — локальные образы:
+13 входит в профили `scaling` и `full`: Argo CD разворачивает его из опубликованных образов (`sha-b031665`).
 
 ```bash
-platform/bootstrap.sh scaling                      # Kafka, CNPG, Gateway (если кластера ещё нет)
-13-modular-monolith/scripts/deploy-local.sh        # jib:dockerBuild -> kind load -> kubectl apply -k overlays/local
+platform/bootstrap.sh scaling                      # платформа + 12 + 13 (Application modular-monolith)
+kubectl -n argocd get applications -w              # ждать modular-monolith Synced Healthy
 13-modular-monolith/scripts/live.sh                # то же, что e2e, но через http://workshop.localtest.me
 ```
+
+С изменениями, которые ещё не опубликованы, — локальные образы поверх (Argo с self-heal вернёт свои при следующей
+синхронизации; для экспериментов — кластер с профилем без 13 или `minimal`):
+`13-modular-monolith/scripts/deploy-local.sh` (jib:dockerBuild → kind load → kubectl apply -k overlays/local).
 
 Маршрут (`k8s/route.yaml`): `^/api/work-orders/WO-.*` → монолит, остальной `/api/work-orders` → сервис, всё прочее →
 монолит. После `decommission` правило `WO-` убирается обычным коммитом.
 
-После публикации образов: `components.modularMonolith: true` в профиле платформы и теги `sha-…` в
-`k8s/kustomization.yaml` — дальше Argo.
+Новые образы: тег `sha-…` коммита мержа в `k8s/app/kustomization.yaml` — дальше Argo.
 
 ## Шаги переключения
 

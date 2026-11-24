@@ -1,5 +1,5 @@
-# Only what 12-scaling-operations needs (lighter than "full", fits a laptop next to the load and the CI runner):
-# Gateway, CNPG, observability, Kafka, KEDA, metrics-server and the saga itself
+# Only what 12-scaling-operations and 13-modular-monolith need (lighter than "full", fits a laptop next to the load
+# and the CI runner): Gateway, CNPG, observability, Kafka, KEDA, metrics-server, the saga of 12 and the Workshop of 13
 components:
   argocd: true
   gateway: true
@@ -15,3 +15,5 @@ components:
   keda: true
   metricsServer: true
   scaling: true
+  # 13: the modular monolith with Forge strangled out (needs gateway, cnpg, strimzi, kafka — all here)
+  modularMonolith: true

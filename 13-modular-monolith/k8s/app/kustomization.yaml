@@ -8,15 +8,14 @@ resources:
   - services.yaml
   - route.yaml
 
-# Published by CI on main (publish job of the 13 workflow); set the sha-<7> of the merge commit when enabling the
-# Argo component
+# Published by CI on main: sha-<7> of the merge commit of 13 (PR #16 -> b031665)
 images:
   - name: modular
     newName: ghcr.io/cucumber405d/hephaestus/modular-monolith-modular
-    newTag: latest
+    newTag: sha-b031665
   - name: forge-service
     newName: ghcr.io/cucumber405d/hephaestus/modular-monolith-forge-service
-    newTag: latest
+    newTag: sha-b031665
   - name: supplier-stub
     newName: ghcr.io/cucumber405d/hephaestus/modular-monolith-supplier-stub
-    newTag: latest
+    newTag: sha-b031665
