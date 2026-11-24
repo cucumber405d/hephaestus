@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # buf breaking (WIRE) between the current quote.proto and the released 1.0.0 copy. Needs Docker.
 set -euo pipefail
+# Git Bash (MINGW) rewrites /paths in docker arguments into C:/…/Git/… — keep them as written
+export MSYS_NO_PATHCONV=1
 
 BUF_VERSION="${BUF_VERSION:-1.74.0}"
 cd "$(dirname "$0")/../contracts"

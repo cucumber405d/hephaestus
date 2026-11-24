@@ -17,6 +17,9 @@ REPO="$(cd "$SUB/.." && pwd)"
 NAME="$(basename "$SUB")"
 SCENARIO_DIR="${SCENARIO_DIR:-$SUB/scripts/scenarios}"
 MVN_FLAGS=(-B -q -Dspotless.check.skip=true -Djacoco.skip=true)
+# The full output of every check stays here (the throwaway copy is deleted)
+LOGS="$SUB/target/breaking-change"
+mkdir -p "$LOGS"
 
 # A copy of what a build needs: root POM and wrapper, this subproject without build output.
 copy() {
@@ -55,10 +58,11 @@ baseline() {
         if $check "$dir" "$log"; then
             echo "baseline: $check OK"
         else
-            echo "baseline: $check FAILED" >&2
+            echo "baseline: $check FAILED (full log: $LOGS/baseline-$check.log)" >&2
             tail -40 "$log" >&2
             failed=1
         fi
+        cp "$log" "$LOGS/baseline-$check.log"
     done
     rm -rf "$work"
     return $failed
@@ -125,6 +129,7 @@ scenario() {
         5) expect_caught "$dir" "$log" check_asyncapi "AsyncAPI validation, CI" "forge_event_v2.avsc" || result=$? ;;
         *) echo "unknown scenario $n" >&2 && result=1 ;;
     esac
+    cp "$log" "$LOGS/scenario-$n.log"
     rm -rf "$work"
     return $result
 }

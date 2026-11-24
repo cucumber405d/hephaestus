@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Validates contracts/asyncapi.yaml, including the referenced Avro schemas. Needs Docker.
 set -euo pipefail
+# Git Bash (MINGW) rewrites /paths in docker arguments into C:/…/Git/… — keep them as written
+export MSYS_NO_PATHCONV=1
 
 ASYNCAPI_CLI_VERSION="${ASYNCAPI_CLI_VERSION:-5.0.7}"
 cd "$(dirname "$0")/../contracts"
