@@ -28,6 +28,8 @@
         <apicurio.version>3.3.5</apicurio.version>
         <!-- Latest stable on 2026-11-24 -->
         <pact.version>4.7.5</pact.version>
+        <!-- Dependency convergence (root enforcer): the newest of the versions the libraries bring -->
+        <error-prone-annotations.version>2.50.0</error-prone-annotations.version>
         <!-- Avro 1.12.2 trusts only these packages for generated classes (AVRO-4189) -->
         <avro.serializable.packages>de.ibikus.appa.hephaestus.contracts.events</avro.serializable.packages>
     </properties>
@@ -48,6 +50,12 @@
                 <version>${spring-modulith.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- grpc-api/grpc-stub 1.84.1 bring 2.50.0, their Guava 33.6.0 brings 2.47.0 -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>${error-prone-annotations.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.avro</groupId>
