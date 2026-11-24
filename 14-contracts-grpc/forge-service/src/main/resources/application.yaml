@@ -8,6 +8,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  grpc:
+    server:
+      # QuoteService (Netty, plaintext inside the cluster/compose network)
+      port: ${GRPC_PORT:9090}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     properties:
@@ -41,6 +45,20 @@ supplier:
   timeout: ${SUPPLIER_TIMEOUT:2s}
 forge:
   supply-retry: ${FORGE_SUPPLY_RETRY:10s}
+  # A quote binds Forge this long; Ordering sends quoteId and price with the request
+  quote-ttl: ${FORGE_QUOTE_TTL:15m}
+  units-per-day: 5
+  # Cents per unit and base days; brackets keep the keys as written
+  price-list:
+    "[IRON-01]":
+      cents-per-unit: 1200
+      base-days: 2
+    "[STEEL-01]":
+      cents-per-unit: 2500
+      base-days: 3
+    "[MITHRIL-01]":
+      cents-per-unit: 99000
+      base-days: 30
 kafka:
   retry:
     # Failed records: back off this long, then <topic>.DLT (KafkaErrorHandling)

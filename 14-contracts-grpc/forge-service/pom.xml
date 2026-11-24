@@ -57,6 +57,11 @@
             <artifactId>contracts-grpc-contracts</artifactId>
             <version>${contracts.version}</version>
         </dependency>
+        <!-- QuoteService: the gRPC server of Spring Boot 4.1 (Netty, port 9090) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-grpc-server</artifactId>
+        </dependency>
         <!-- Requests from Ordering over Kafka (Avro); outcomes back through the Modulith outbox and OutcomeRelay -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
