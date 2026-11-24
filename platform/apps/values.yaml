@@ -33,6 +33,5 @@ components:
   keda: false
   metricsServer: false
   scaling: false
-  # 13: the modular monolith with Forge strangled out; off until CI has published its images (then also in
-  # values-scaling.yaml / values-full.yaml); before that: 13-modular-monolith/scripts/deploy-local.sh
+  # 13: the modular monolith with Forge strangled out (images of PR #16 in GHCR); on in profiles scaling and full
   modularMonolith: false

@@ -1,6 +1,6 @@
 {{- if .Values.components.modularMonolith }}
 # 13-modular-monolith: the Workshop after the Strangler Fig of Forge (http://workshop.localtest.me).
-# Needs gateway, cnpg, strimzi and kafka (profile "scaling" or "full") and the images of 13 in GHCR.
+# Needs gateway, cnpg, strimzi and kafka: on in profiles "scaling" and "full".
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

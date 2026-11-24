@@ -1,5 +1,5 @@
-# 13 on the shared platform (Argo CD Application "modular-monolith" in platform/apps, off until the images are
-# published): the topics (namespace kafka) and the application (Argo's destination namespace hephaestus-13).
+# 13 on the shared platform (Argo CD Application "modular-monolith" in platform/apps, profiles scaling and full):
+# the topics (namespace kafka) and the application (Argo's destination namespace hephaestus-13).
 # By hand with local images: scripts/deploy-local.sh (topics.yaml + overlays/local).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
