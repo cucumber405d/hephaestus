@@ -20,6 +20,8 @@
         <!-- Not managed by Spring Boot; needed by the generated gRPC stubs -->
         <javax-annotation-api.version>1.3.2</javax-annotation-api.version>
         <apicurio.image>apicurio/apicurio-registry:${apicurio.version}</apicurio.image>
+        <!-- A library, not a service: no image -->
+        <jib.skip>true</jib.skip>
     </properties>
 
     <dependencies>
