@@ -1,0 +1,55 @@
+# Configuration from environment variables only: PORT, GRPC_PORT, SPRING_DATASOURCE_URL|USERNAME|PASSWORD,
+# SUPPLIER_URL, SUPPLIER_TIMEOUT, FORGE_SUPPLY_RETRY, KAFKA_BOOTSTRAP_SERVERS, APICURIO_URL, FORGE_QUOTE_TTL.
+spring:
+  application:
+    name: forge-service
+  main:
+    banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    properties:
+      # Apicurio Registry 3 SerDe; the pipeline registers the schemas (scripts/register-schemas.sh), never the service
+      apicurio.registry.url: ${apicurio.url}/apis/registry/v3
+      apicurio.registry.auto-register: false
+      apicurio.registry.use-specific-avro-reader: true
+    consumer:
+      group-id: forge-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Unreadable bytes become a DeserializationException the error handler parks on the DLT
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: io.apicurio.registry.serde.avro.AvroKafkaDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.apicurio.registry.serde.avro.AvroKafkaSerializer
+    listener:
+      ack-mode: record
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: true
+      republish-outstanding-events-on-restart: true
+apicurio:
+  url: ${APICURIO_URL:http://localhost:8085}
+supplier:
+  url: ${SUPPLIER_URL:http://localhost:8081}
+  timeout: ${SUPPLIER_TIMEOUT:2s}
+forge:
+  supply-retry: ${FORGE_SUPPLY_RETRY:10s}
+kafka:
+  retry:
+    # Failed records: back off this long, then <topic>.DLT (KafkaErrorHandling)
+    max-elapsed: ${KAFKA_RETRY_MAX_ELAPSED:5m}
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
