@@ -19,6 +19,7 @@
     <properties>
         <!-- Not managed by Spring Boot; needed by the generated gRPC stubs -->
         <javax-annotation-api.version>1.3.2</javax-annotation-api.version>
+        <apicurio.image>apicurio/apicurio-registry:${apicurio.version}</apicurio.image>
     </properties>
 
     <dependencies>
@@ -54,10 +55,24 @@
             <artifactId>jackson-databind</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <apicurio.image>${apicurio.image}</apicurio.image>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
             <plugin>
                 <!-- Version, protoc and the generate execution come from spring-boot-starter-parent -->
                 <groupId>io.github.ascopes</groupId>
