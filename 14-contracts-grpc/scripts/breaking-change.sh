@@ -121,7 +121,7 @@ scenario() {
             fi
             ;;
         3 | 4) expect_caught "$dir" "$log" check_registry "Apicurio BACKWARD rule, schema registration" \
-            "currentSchemasAreBackwardCompatibleWithReleased" "409" || result=$? ;;
+            "currentSchemasAreBackwardCompatibleWithReleased" "RuleViolationException" || result=$? ;;
         5) expect_caught "$dir" "$log" check_asyncapi "AsyncAPI validation, CI" "forge_event_v2.avsc" || result=$? ;;
         *) echo "unknown scenario $n" >&2 && result=1 ;;
     esac

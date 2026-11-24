@@ -70,8 +70,9 @@ class SchemaCompatibilityIT {
 
         var next = addVersion(id, withRequiredField);
 
-        // 409: the rule refused it (the message text differs between registry versions)
-        assertThat(next.statusCode()).as(next.body()).isEqualTo(409);
+        // Apicurio 3.3 answers 400 with a RuleViolationException naming the field (older versions: 409)
+        assertThat(next.statusCode()).as(next.body()).isIn(400, 409);
+        assertThat(next.body()).contains("RuleViolationException").contains("priority");
     }
 
     private static void createWithBackwardRule(String id, String schema) throws Exception {
@@ -94,8 +95,8 @@ class SchemaCompatibilityIT {
     }
 
     private static HttpResponse<String> post(String path, Object body) throws Exception {
-        var uri = URI.create("http://" + REGISTRY.getHost() + ":" + REGISTRY.getMappedPort(8080)
-                + "/apis/registry/v3" + path);
+        var uri = URI.create(
+                "http://" + REGISTRY.getHost() + ":" + REGISTRY.getMappedPort(8080) + "/apis/registry/v3" + path);
         var request = HttpRequest.newBuilder(uri)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body)))

@@ -38,7 +38,8 @@ class MessageSizeTest {
         fields.put("reason", event.getReason());
         var json = JsonMapper.builder().build().writeValueAsBytes(fields).length;
 
-        System.out.printf("ForgeEvent: JSON %d bytes, Avro %d bytes (plus the registry id header on the wire)%n", json, avro);
+        System.out.printf(
+                "ForgeEvent: JSON %d bytes, Avro %d bytes (plus the registry id header on the wire)%n", json, avro);
         assertThat(avro).isLessThan(json);
     }
 }
