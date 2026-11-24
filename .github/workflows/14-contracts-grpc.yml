@@ -1,0 +1,121 @@
+# 14-contracts-grpc: verify (incl. Pact over gRPC and the Apicurio compatibility IT) -> contract checks and the five
+# breaking-change scenarios -> end to end in Compose. No images are published (the subproject is not deployed).
+name: 14-contracts-grpc
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "14-contracts-grpc/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/14-contracts-grpc.yml"
+  pull_request:
+    paths:
+      - "14-contracts-grpc/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/14-contracts-grpc.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # The gRPC plugin of Pact is a native binary from GitHub, not a Maven artifact
+      - name: Pact protobuf plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: 14-contracts-grpc/scripts/install-pact-plugin.sh
+
+      - name: Verify
+        run: ./mvnw -B -ntp -f 14-contracts-grpc/pom.xml verify
+
+      # The committed pact is what forge-service is verified against: a build that changes it needs a commit
+      - name: Pact file is up to date
+        run: git diff --exit-code 14-contracts-grpc/pacts
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: 14-contracts-grpc-test-reports
+          path: 14-contracts-grpc/**/target/*-reports/
+          if-no-files-found: ignore
+
+  checks:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Pact protobuf plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: 14-contracts-grpc/scripts/install-pact-plugin.sh
+
+      - name: buf breaking (WIRE) against released 1.0.0
+        run: 14-contracts-grpc/scripts/check-proto.sh
+
+      - name: AsyncAPI validation
+        run: 14-contracts-grpc/scripts/check-asyncapi.sh
+
+      - name: Breaking-change script self-test
+        run: 14-contracts-grpc/scripts/test/breaking-change-selftest.sh
+
+      - name: Breaking-change scenarios (each must be caught at its step)
+        run: 14-contracts-grpc/scripts/breaking-change.sh all
+
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Quote over gRPC, Avro through Apicurio, rejections — end to end
+        run: 14-contracts-grpc/scripts/e2e.sh
+
+      - name: Run files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-run
+          path: 14-contracts-grpc/target/e2e-*
+          if-no-files-found: ignore

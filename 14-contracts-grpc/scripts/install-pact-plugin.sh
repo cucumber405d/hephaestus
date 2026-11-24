@@ -6,8 +6,11 @@ set -euo pipefail
 
 REPO=pactflow/pact-protobuf-plugin
 VERSION="${PACT_PROTOBUF_PLUGIN_VERSION:-}"
+# GH_TOKEN (CI): authenticated API calls, no anonymous rate limit
+AUTH=()
+[[ -n "${GH_TOKEN:-}" ]] && AUTH=(-H "Authorization: Bearer $GH_TOKEN")
 if [[ -z "$VERSION" ]]; then
-    VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
+    VERSION=$(curl -fsSL "${AUTH[@]}" "https://api.github.com/repos/$REPO/releases/latest" \
         | sed -n 's/.*"tag_name": *"v-\([^"]*\)".*/\1/p' | head -1)
     [[ -n "$VERSION" ]] || { echo "could not resolve the latest $REPO release" >&2; exit 1; }
 fi

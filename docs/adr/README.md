@@ -18,3 +18,6 @@
 | [0009](0009-strangler-fig-new-to-new.md) | Strangler Fig для Forge: новые в новый, старые доживают в старом | accepted | 13 |
 | [0010](0010-module-boundaries-and-events.md) | Границы модулей — Spring Modulith; события; модуль владеет своими таблицами | accepted | 13 |
 | [0011](0011-anti-corruption-layers.md) | Anti-Corruption Layer к поставщику и к монолиту | accepted | 13 |
+| [0012](0012-contracts-module.md) | Контракты — свой модуль со своей версией, сервисы её фиксируют | accepted | 14 |
+| [0013](0013-avro-apicurio-backward.md) | События — Avro в Apicurio, BACKWARD, схемы регистрирует пайплайн | accepted | 14 |
+| [0014](0014-pact-consumer-driven.md) | Синхронный контракт — Pact (consumer-driven), без брокера на старте | accepted | 14 |
