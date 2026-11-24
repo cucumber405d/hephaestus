@@ -26,7 +26,9 @@ class GrpcQuoteClientTest {
     @BeforeAll
     static void start() {
         forge = new StubForge(PORT);
-        channel = ManagedChannelBuilder.forAddress("localhost", PORT).usePlaintext().build();
+        channel = ManagedChannelBuilder.forAddress("localhost", PORT)
+                .usePlaintext()
+                .build();
     }
 
     @AfterAll
@@ -45,11 +47,10 @@ class GrpcQuoteClientTest {
 
     @Test
     void quoteIsReturned() {
-        assertThat(client.quote("IRON-01", 5))
-                .isInstanceOfSatisfying(Quoted.class, quoted -> {
-                    assertThat(quoted.priceCents()).isEqualTo(6000);
-                    assertThat(quoted.leadTimeDays()).isEqualTo(3);
-                });
+        assertThat(client.quote("IRON-01", 5)).isInstanceOfSatisfying(Quoted.class, quoted -> {
+            assertThat(quoted.priceCents()).isEqualTo(6000);
+            assertThat(quoted.leadTimeDays()).isEqualTo(3);
+        });
     }
 
     @Test

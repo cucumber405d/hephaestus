@@ -25,7 +25,7 @@ public final class AvroProbe {
     /** Writes with the registered schema {@code version} (as a producer of that contract version would). */
     public static void send(String bootstrap, String registryUrl, String topic, String key, Object value, String version) {
         var config = new HashMap<String, Object>(serde(registryUrl));
-        config.put("apicurio.registry.explicit-artifact-version", version);
+        config.put("apicurio.registry.artifact.version", version);
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "io.apicurio.registry.serde.avro.AvroKafkaSerializer");

@@ -31,7 +31,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * sending would otherwise decode as proto3's default and still match by type.
  */
 @ExtendWith(PactConsumerTestExt.class)
-@PactTestFor(providerName = "forge-service-quote", providerType = ProviderType.SYNCH_MESSAGE, pactVersion = PactSpecVersion.V4)
+@PactTestFor(
+        providerName = "forge-service-quote",
+        providerType = ProviderType.SYNCH_MESSAGE,
+        pactVersion = PactSpecVersion.V4)
 class QuotePactConsumerTest {
 
     private static final String PROTO = "../contracts/src/main/proto/hephaestus/forge/v1/quote.proto";
@@ -46,11 +49,13 @@ class QuotePactConsumerTest {
                         "pact:content-type", "application/protobuf",
                         "pact:proto-service", "QuoteService/Quote",
                         "request", Map.of("material", "IRON-01", "quantity", "5"),
-                        "response", Map.of(
-                                "quote_id", "matching(regex, '^[0-9a-f-]{36}$', '6f1c2a8e-0000-4000-8000-000000000001')",
-                                "price_cents", "6000",
-                                "lead_time_days", "3",
-                                "expires_at", Map.of("seconds", "matching(integer, 1800000000)"))))
+                        "response",
+                                Map.of(
+                                        "quote_id",
+                                                "matching(regex, '^[0-9a-f-]{36}$', '6f1c2a8e-0000-4000-8000-000000000001')",
+                                        "price_cents", "6000",
+                                        "lead_time_days", "3",
+                                        "expires_at", Map.of("seconds", "matching(integer, 1800000000)"))))
                 .toPact();
     }
 

@@ -33,7 +33,7 @@ spring:
       properties:
         # Write with the schema version this build's contract is (contracts.version, filtered in by Maven): no
         # lookup by content (the generated classes carry avro.java.string, the registered .avsc does not)
-        apicurio.registry.explicit-artifact-version: "@contracts.version@"
+        apicurio.registry.artifact.version: "@contracts.version@"
     listener:
       ack-mode: record
   modulith:

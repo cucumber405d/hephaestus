@@ -56,13 +56,14 @@ class OrderService implements Orders {
             return id;
         }
         switch (quotes.quote(request.material(), request.quantityOrOne())) {
-            case Refused refused -> transactions.executeWithoutResult(
-                    status -> insert(id, request, "REJECTED", refused.reason(), null));
-            case Quoted quoted -> transactions.executeWithoutResult(status -> {
-                insert(id, request, "ACCEPTED", null, quoted);
-                events.publishEvent(new WorkOrderRequestedEvent(
-                        id, request.material(), request.quantityOrOne(), quoted.quoteId(), quoted.priceCents()));
-            });
+            case Refused refused ->
+                transactions.executeWithoutResult(status -> insert(id, request, "REJECTED", refused.reason(), null));
+            case Quoted quoted ->
+                transactions.executeWithoutResult(status -> {
+                    insert(id, request, "ACCEPTED", null, quoted);
+                    events.publishEvent(new WorkOrderRequestedEvent(
+                            id, request.material(), request.quantityOrOne(), quoted.quoteId(), quoted.priceCents()));
+                });
         }
         return id;
     }

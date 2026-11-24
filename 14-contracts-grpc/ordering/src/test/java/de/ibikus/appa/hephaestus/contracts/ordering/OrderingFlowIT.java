@@ -51,9 +51,18 @@ class OrderingFlowIT {
     void customOrderSendsAvroRequestWithQuote() throws Exception {
         var id = place("{\"customerId\":\"c1\",\"custom\":true,\"material\":\"IRON-01\",\"quantity\":5}");
 
-        assertThat(mvc.get().uri("/api/orders/{id}", id)).bodyJson().extractingPath("$.status").isEqualTo("ACCEPTED");
-        assertThat(mvc.get().uri("/api/orders/{id}", id)).bodyJson().extractingPath("$.priceCents").isEqualTo(6000);
-        assertThat(mvc.get().uri("/api/orders/{id}", id)).bodyJson().extractingPath("$.leadTimeDays").isEqualTo(3);
+        assertThat(mvc.get().uri("/api/orders/{id}", id))
+                .bodyJson()
+                .extractingPath("$.status")
+                .isEqualTo("ACCEPTED");
+        assertThat(mvc.get().uri("/api/orders/{id}", id))
+                .bodyJson()
+                .extractingPath("$.priceCents")
+                .isEqualTo(6000);
+        assertThat(mvc.get().uri("/api/orders/{id}", id))
+                .bodyJson()
+                .extractingPath("$.leadTimeDays")
+                .isEqualTo(3);
         var record = AvroProbe.read(
                 kafka.getBootstrapServers(), Containers.url(apicurio), "forge.requests", id.toString(), WAIT);
         assertThat(record).hasValueSatisfying(value -> {

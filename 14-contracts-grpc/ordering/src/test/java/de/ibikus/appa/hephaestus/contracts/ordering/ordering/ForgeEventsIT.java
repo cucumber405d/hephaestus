@@ -110,7 +110,12 @@ class ForgeEventsIT {
                 .setWorkOrderId("FW-x")
                 .build();
         AvroProbe.send(
-                kafka.getBootstrapServers(), Containers.url(apicurio), "forge.events", id.toString(), event, SchemaRegistry.CURRENT);
+                kafka.getBootstrapServers(),
+                Containers.url(apicurio),
+                "forge.events",
+                id.toString(),
+                event,
+                SchemaRegistry.CURRENT);
 
         assertThat(KafkaProbe.read(kafka.getBootstrapServers(), "forge.events.DLT", id.toString(), WAIT))
                 .hasValueSatisfying(text -> assertThat(text).contains("not-a-uuid"));

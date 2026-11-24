@@ -30,7 +30,11 @@ public final class SchemaRegistry {
     public static void registerContracts(String baseUrl) {
         var versions = new String[][] {{"released/1.0.0/avro", RELEASED}, {"src/main/avro", CURRENT}};
         for (var version : versions) {
-            register(baseUrl, "forge.requests-value", CONTRACTS.resolve(version[0] + "/work_order_request.avsc"), version[1]);
+            register(
+                    baseUrl,
+                    "forge.requests-value",
+                    CONTRACTS.resolve(version[0] + "/work_order_request.avsc"),
+                    version[1]);
             register(baseUrl, "forge.events-value", CONTRACTS.resolve(version[0] + "/forge_event.avsc"), version[1]);
         }
     }
@@ -38,7 +42,8 @@ public final class SchemaRegistry {
     static void register(String baseUrl, String artifactId, Path schema, String version) {
         var api = baseUrl + "/apis/registry/v3/groups/default/artifacts";
         var content = Map.of("content", read(schema), "contentType", "application/json");
-        var exists = send(HttpRequest.newBuilder(URI.create(api + "/" + artifactId)).GET());
+        var exists =
+                send(HttpRequest.newBuilder(URI.create(api + "/" + artifactId)).GET());
         var created = exists.statusCode() == 404
                 ? post(
                         api,
@@ -52,7 +57,9 @@ public final class SchemaRegistry {
                 : post(api + "/" + artifactId + "/versions", Map.of("version", version, "content", content));
         check(created, artifactId);
         if (exists.statusCode() == 404) {
-            check(post(api + "/" + artifactId + "/rules", Map.of("ruleType", "COMPATIBILITY", "config", "BACKWARD")), artifactId);
+            check(
+                    post(api + "/" + artifactId + "/rules", Map.of("ruleType", "COMPATIBILITY", "config", "BACKWARD")),
+                    artifactId);
         }
     }
 
