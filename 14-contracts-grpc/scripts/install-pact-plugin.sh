@@ -6,7 +6,7 @@ set -euo pipefail
 
 REPO=pactflow/pact-protobuf-plugin
 # Pinned (2026-11-24): pact-jvm records the plugin version in the pact file, so a new release would change it
-VERSION="${PACT_PROTOBUF_PLUGIN_VERSION:-0.8.0}"
+VERSION="${PACT_PROTOBUF_PLUGIN_VERSION:-0.8.1}"
 # GH_TOKEN (CI): authenticated API calls, no anonymous rate limit
 AUTH=()
 [[ -n "${GH_TOKEN:-}" ]] && AUTH=(-H "Authorization: Bearer $GH_TOKEN")

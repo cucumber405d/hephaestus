@@ -6,7 +6,7 @@
 - Pact-плагин для gRPC — это бинарник с GitHub, а не артефакт Maven Central. Ставится один раз (Linux, macOS, WSL2):
 
 ```bash
-14-contracts-grpc/scripts/install-pact-plugin.sh        # версия 0.8.0; PACT_PROTOBUF_PLUGIN_VERSION=… — другая
+14-contracts-grpc/scripts/install-pact-plugin.sh        # версия 0.8.1; PACT_PROTOBUF_PLUGIN_VERSION=… — другая
 ```
 
 ## Сборка и тесты
