@@ -151,7 +151,9 @@ services:
       # Drill 4 raises it to 60 s: a kill before the flush makes Connect send again (at least once).
       # The image's entrypoint derives CONNECT_OFFSET_FLUSH_INTERVAL_MS from this variable (default 60000).
       OFFSET_FLUSH_INTERVAL_MS: ${OFFSET_FLUSH_INTERVAL_MS:-10000}
-    mem_limit: 768m
+      # The image defaults to -Xmx2G: above the container limit the kernel kills Connect while it scans plugins
+      HEAP_OPTS: -Xms256M -Xmx512M
+    mem_limit: 1g
     ports:
       - "127.0.0.1:18083:8083"
     depends_on:
