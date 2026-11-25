@@ -1,8 +1,8 @@
 package de.ibikus.appa.hephaestus.cdc.forge.adapter.in.kafka;
 
-import de.ibikus.appa.hephaestus.contracts.events.WorkOrderRequest;
 import de.ibikus.appa.hephaestus.cdc.forge.application.QuoteRef;
 import de.ibikus.appa.hephaestus.cdc.forge.application.WorkOrders;
+import de.ibikus.appa.hephaestus.contracts.events.WorkOrderRequest;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.kafka.annotation.KafkaListener;

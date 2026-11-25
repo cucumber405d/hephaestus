@@ -6,14 +6,14 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 
-import de.ibikus.appa.hephaestus.contracts.events.ForgeEvent;
-import de.ibikus.appa.hephaestus.contracts.events.ForgeEventType;
 import de.ibikus.appa.hephaestus.cdc.ordering.AvroProbe;
 import de.ibikus.appa.hephaestus.cdc.ordering.Containers;
 import de.ibikus.appa.hephaestus.cdc.ordering.KafkaProbe;
 import de.ibikus.appa.hephaestus.cdc.ordering.SchemaRegistry;
 import de.ibikus.appa.hephaestus.cdc.ordering.ordering.internal.QuoteClient;
 import de.ibikus.appa.hephaestus.cdc.ordering.ordering.internal.QuoteClient.Quoted;
+import de.ibikus.appa.hephaestus.contracts.events.ForgeEvent;
+import de.ibikus.appa.hephaestus.contracts.events.ForgeEventType;
 import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;

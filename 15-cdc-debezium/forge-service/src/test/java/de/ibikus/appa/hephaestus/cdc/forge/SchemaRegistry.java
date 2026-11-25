@@ -35,7 +35,8 @@ public final class SchemaRegistry {
                     "cdc.forge.requests-value",
                     CONTRACTS.resolve(version[0] + "/work_order_request.avsc"),
                     version[1]);
-            register(baseUrl, "cdc.forge.events-value", CONTRACTS.resolve(version[0] + "/forge_event.avsc"), version[1]);
+            register(
+                    baseUrl, "cdc.forge.events-value", CONTRACTS.resolve(version[0] + "/forge_event.avsc"), version[1]);
         }
     }
 

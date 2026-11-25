@@ -1,12 +1,12 @@
 package de.ibikus.appa.hephaestus.cdc.forge.adapter.in.grpc;
 
 import com.google.protobuf.Timestamp;
-import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteReply;
-import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteRequest;
-import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteServiceGrpc;
 import de.ibikus.appa.hephaestus.cdc.forge.application.Quotes;
 import de.ibikus.appa.hephaestus.cdc.forge.domain.InvalidQuantity;
 import de.ibikus.appa.hephaestus.cdc.forge.domain.UnknownMaterial;
+import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteReply;
+import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteRequest;
+import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteServiceGrpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;

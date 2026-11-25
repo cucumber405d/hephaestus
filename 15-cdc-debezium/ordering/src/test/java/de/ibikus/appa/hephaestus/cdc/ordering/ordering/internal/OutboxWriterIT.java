@@ -63,7 +63,9 @@ class OutboxWriterIT {
                         "payload", rs.getBytes(4)))
                 .list();
         assertThat(rows).hasSize(1);
-        assertThat(rows.getFirst()).containsEntry("aggregate_type", "forge.requests").containsEntry("type", "WorkOrderRequest");
+        assertThat(rows.getFirst())
+                .containsEntry("aggregate_type", "forge.requests")
+                .containsEntry("type", "WorkOrderRequest");
 
         var request = deserialize((byte[]) rows.getFirst().get("payload"));
         assertThat(request.getOrderId()).isEqualTo(id.toString());

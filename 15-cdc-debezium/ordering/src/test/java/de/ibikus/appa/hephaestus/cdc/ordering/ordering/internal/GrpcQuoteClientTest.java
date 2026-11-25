@@ -2,11 +2,11 @@ package de.ibikus.appa.hephaestus.cdc.ordering.ordering.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteServiceGrpc;
 import de.ibikus.appa.hephaestus.cdc.ordering.FreePort;
 import de.ibikus.appa.hephaestus.cdc.ordering.StubForge;
 import de.ibikus.appa.hephaestus.cdc.ordering.ordering.internal.QuoteClient.Quoted;
 import de.ibikus.appa.hephaestus.cdc.ordering.ordering.internal.QuoteClient.Refused;
+import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;

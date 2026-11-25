@@ -53,7 +53,9 @@ class OutboxModeIT {
                         id.toString(),
                         Duration.ofSeconds(15)))
                 .isPresent();
-        assertThat(jdbc.sql("select count(*) from ordering.outbox").query(Integer.class).single())
+        assertThat(jdbc.sql("select count(*) from ordering.outbox")
+                        .query(Integer.class)
+                        .single())
                 .isZero();
     }
 }

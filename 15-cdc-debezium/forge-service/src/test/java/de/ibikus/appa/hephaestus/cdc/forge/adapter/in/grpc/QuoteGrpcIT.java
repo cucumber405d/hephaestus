@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
-import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteRequest;
-import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteServiceGrpc;
 import de.ibikus.appa.hephaestus.cdc.forge.Containers;
 import de.ibikus.appa.hephaestus.cdc.forge.FreePort;
+import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteRequest;
+import de.ibikus.appa.hephaestus.contracts.api.forge.v1.QuoteServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;

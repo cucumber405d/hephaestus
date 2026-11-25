@@ -37,7 +37,8 @@ class OutboxBytesIT {
         var event = new WorkOrderRequestedEvent(UUID.randomUUID(), "IRON-01", 5, "q-1", 6000);
         var key = event.orderId().toString();
 
-        kafka.send(WorkOrderRequests.TOPIC, key, WorkOrderRequests.toAvro(event)).get(10, TimeUnit.SECONDS);
+        kafka.send(WorkOrderRequests.TOPIC, key, WorkOrderRequests.toAvro(event))
+                .get(10, TimeUnit.SECONDS);
         var relayBytes = KafkaProbe.readBytes(
                         broker.getBootstrapServers(), WorkOrderRequests.TOPIC, key, Duration.ofSeconds(15))
                 .orElseThrow();

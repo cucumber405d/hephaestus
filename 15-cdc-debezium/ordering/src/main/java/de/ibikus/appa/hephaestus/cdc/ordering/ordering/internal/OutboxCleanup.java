@@ -25,7 +25,8 @@ class OutboxCleanup {
 
     @Scheduled(fixedDelayString = "${outbox.cleanup-interval}")
     int cleanup() {
-        return jdbc.sql("delete from ordering.outbox where created_at < clock_timestamp() - (? * interval '1 millisecond')")
+        return jdbc.sql(
+                        "delete from ordering.outbox where created_at < clock_timestamp() - (? * interval '1 millisecond')")
                 .param(retention.toMillis())
                 .update();
     }
