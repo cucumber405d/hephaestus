@@ -1,0 +1,122 @@
+# 14 in Docker Compose: Ordering, forge-service, the supplier stub, Kafka, Apicurio Registry and two PostgreSQL —
+# the quote over gRPC and Avro through the registry end to end without a cluster (scripts/e2e.sh; CI).
+# Images from ../mvnw ... jib:dockerBuild (tag jib).
+#   docker compose -f 15-cdc-debezium/compose.yaml -p hephaestus-15 up -d --wait
+# Ports: ordering 18080, forge-service 18081, supplier 18082, Apicurio 18085, Kafka (host) 19094.
+services:
+  kafka:
+    image: apache/kafka:4.2.2
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:19094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "127.0.0.1:19094:9094"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  # The schema registry (in-memory storage: the schemas come from schema-init on every start)
+  apicurio:
+    image: apicurio/apicurio-registry:3.3.5
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:18085:8080"
+
+  # The pipeline's step, not the services': register the Avro schemas with the BACKWARD rule, then exit
+  schema-init:
+    image: curlimages/curl:8.11.1
+    volumes:
+      - ./scripts/register-schemas.sh:/register-schemas.sh:ro
+      - ./contracts/src/main/avro:/avro:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        for i in $$(seq 1 60); do curl -sf http://apicurio:8080/apis/registry/v3/system/info > /dev/null && break;
+        sleep 2; done; /bin/sh /register-schemas.sh http://apicurio:8080 /avro 1.1.0
+    depends_on:
+      - apicurio
+
+  postgres-ordering:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ordering
+      POSTGRES_PASSWORD: ordering
+      POSTGRES_DB: ordering
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ordering -d ordering"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  postgres-forge:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: forge
+      POSTGRES_DB: forge
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U forge -d forge"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  supplier-stub:
+    image: hephaestus/cdc-debezium-supplier-stub:${IMAGE_TAG:-jib}
+    mem_limit: 384m
+    ports:
+      - "127.0.0.1:18082:8080"
+
+  forge-service:
+    image: hephaestus/cdc-debezium-forge-service:${IMAGE_TAG:-jib}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-forge:5432/forge
+      SPRING_DATASOURCE_USERNAME: forge
+      SPRING_DATASOURCE_PASSWORD: forge
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      APICURIO_URL: http://apicurio:8080
+      SUPPLIER_URL: http://supplier-stub:8080
+    mem_limit: 640m
+    ports:
+      - "127.0.0.1:18081:8080"
+    depends_on:
+      postgres-forge:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-init:
+        condition: service_completed_successfully
+
+  ordering:
+    image: hephaestus/cdc-debezium-ordering:${IMAGE_TAG:-jib}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-ordering:5432/ordering
+      SPRING_DATASOURCE_USERNAME: ordering
+      SPRING_DATASOURCE_PASSWORD: ordering
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      APICURIO_URL: http://apicurio:8080
+      FORGE_GRPC_TARGET: static://forge-service:9090
+    mem_limit: 640m
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      postgres-ordering:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-init:
+        condition: service_completed_successfully
