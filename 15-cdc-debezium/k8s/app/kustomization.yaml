@@ -22,17 +22,18 @@ configMapGenerator:
     files:
       - schema-init/register-schemas.sh
 
-# Published by CI on main (sha-<7>); set to the merge commit's sha when the platform app is enabled
+# Published by CI on main: sha-<7> of 2de88df (earlier publishes of 15 failed on the contracts jar;
+# fixed by #20 and #21)
 images:
   - name: ordering
     newName: ghcr.io/cucumber405d/hephaestus/cdc-debezium-ordering
-    newTag: latest
+    newTag: sha-2de88df
   - name: forge-service
     newName: ghcr.io/cucumber405d/hephaestus/cdc-debezium-forge-service
-    newTag: latest
+    newTag: sha-2de88df
   - name: supplier-stub
     newName: ghcr.io/cucumber405d/hephaestus/cdc-debezium-supplier-stub
-    newTag: latest
+    newTag: sha-2de88df
 
 # KafkaConnect.spec.image is not a container field: the images transformer does not touch it
 patches:
@@ -42,4 +43,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/image
-        value: ghcr.io/cucumber405d/hephaestus/cdc-debezium-connect:latest
+        value: ghcr.io/cucumber405d/hephaestus/cdc-debezium-connect:sha-2de88df

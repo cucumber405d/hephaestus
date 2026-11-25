@@ -1,5 +1,6 @@
-# Only what 12-scaling-operations and 13-modular-monolith need (lighter than "full", fits a laptop next to the load
-# and the CI runner): Gateway, CNPG, observability, Kafka, KEDA, metrics-server, the saga of 12 and the Workshop of 13
+# Only what 12-scaling-operations, 13-modular-monolith and 15-cdc-debezium need (lighter than "full", fits a laptop
+# next to the load and the CI runner): Gateway, CNPG, observability, Kafka, KEDA, metrics-server, the saga of 12, the
+# Workshop of 13 and the CDC flow of 15
 components:
   argocd: true
   gateway: true
@@ -17,3 +18,5 @@ components:
   scaling: true
   # 13: the modular monolith with Forge strangled out (needs gateway, cnpg, strimzi, kafka — all here)
   modularMonolith: true
+  # 15: Ordering -> Forge with the outbox delivered by Debezium (same needs as 13)
+  cdcDebezium: true

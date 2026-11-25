@@ -18,3 +18,4 @@ components:
   metricsServer: true
   scaling: true
   modularMonolith: true
+  cdcDebezium: true
