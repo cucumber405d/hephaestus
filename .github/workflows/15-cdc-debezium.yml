@@ -182,6 +182,8 @@ jobs:
     needs: [drills, checks]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
+      # one failing module must not cancel the others (their logs then say nothing)
+      fail-fast: false
       matrix:
         module: [supplier-stub, ordering, forge-service]
     permissions:
