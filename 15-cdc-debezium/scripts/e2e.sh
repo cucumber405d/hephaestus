@@ -3,11 +3,17 @@
 # time, travels as Avro through Apicurio, and becomes READY when the smith completes it; refusals carry their reason;
 # without Forge the order is rejected at once ("quote unavailable").
 #   15-cdc-debezium/scripts/e2e.sh     (SKIP_BUILD=true reuses images, KEEP_STACK=true keeps the stack up)
+# OUTBOX_MODE=debezium (default: the outbox and Kafka Connect deliver) | modulith (the relay of 14 delivers).
 # Needs JDK 25, Docker, curl, python3.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."   # 15-cdc-debezium
 PROJECT=hephaestus-15
+export OUTBOX_MODE="${OUTBOX_MODE:-debezium}"
+# Short retention: the cleanup's deletes must happen during the run (they must not reach the topic)
+export OUTBOX_RETENTION="${OUTBOX_RETENTION:-5s}" OUTBOX_CLEANUP_INTERVAL="${OUTBOX_CLEANUP_INTERVAL:-5s}"
+CONNECT=http://localhost:18083
+CUSTOM_IDS=()
 ORDERING=http://localhost:18080
 FORGE=http://localhost:18081
 REGISTRY=http://localhost:18085
@@ -16,7 +22,7 @@ RUN="target/e2e-$(date +%Y%m%d-%H%M%S)"
 ok() { echo "ok    $*"; }
 fail() {
     echo "FAIL  $*" >&2
-    compose logs --tail=60 ordering forge-service schema-init >&2 || true
+    compose logs --tail=60 ordering forge-service schema-init connect >&2 || true
     exit 1
 }
 compose() { docker compose -f compose.yaml -p "$PROJECT" "$@"; }
@@ -60,7 +66,11 @@ for url in "$ORDERING/actuator/health/readiness" "$FORGE/actuator/health/readine
     for _ in $(seq 1 60); do [ "$(code "$url")" = "200" ] && break; sleep 2; done
     [ "$(code "$url")" = "200" ] || fail "$url not ready"
 done
-ok "ordering, forge-service, supplier, Kafka, Apicurio, two databases up"
+ok "ordering, forge-service, supplier, Kafka, Apicurio, Kafka Connect, two databases up (mode $OUTBOX_MODE)"
+
+echo "==> connector"
+compose --profile init run --rm connector-init > "$RUN/connector.log" 2>&1 || { cat "$RUN/connector.log"; fail "connector"; }
+ok "Debezium connector ordering-outbox RUNNING"
 
 echo "==> registry"
 rule=$(curl -sf "$REGISTRY/apis/registry/v3/groups/default/artifacts/cdc.forge.requests-value/rules/COMPATIBILITY")
@@ -69,6 +79,7 @@ ok "schemas registered by schema-init, rule BACKWARD"
 
 echo "==> a quoted custom order"
 id=$(place '{"customerId":"e2e","custom":true,"material":"IRON-01","quantity":5}')
+CUSTOM_IDS+=("$id")
 [ "$(order "$id" | json status)" = "ACCEPTED" ] || fail "IRON-01 x5 not ACCEPTED: $(order "$id")"
 [ "$(order "$id" | json priceCents)" = "6000" ] || fail "price: $(order "$id")"
 [ "$(order "$id" | json leadTimeDays)" = "3" ] || fail "lead time: $(order "$id")"
@@ -89,6 +100,7 @@ ok "work order $wo done, order READY (Avro ForgeEvent back)"
 
 echo "==> refusals"
 id=$(place '{"customerId":"e2e","custom":true,"material":"MITHRIL-01","quantity":1}')
+CUSTOM_IDS+=("$id")
 wait_status "$id" REJECTED 30
 [ "$(order "$id" | json reason)" = "material not deliverable: MITHRIL-01" ] || fail "MITHRIL reason: $(order "$id")"
 ok "MITHRIL-01 quoted, then REJECTED by Forge: material not deliverable"
@@ -99,6 +111,26 @@ ok "FOO REJECTED at once: unknown material"
 id=$(place '{"customerId":"e2e","sku":"HAMMER-01"}')
 [ "$(order "$id" | json status)" = "READY" ] || fail "HAMMER-01 not READY: $(order "$id")"
 ok "stock order HAMMER-01 READY without a quote"
+
+echo "==> one record per order on cdc.forge.requests, also after the outbox cleanup"
+sleep 15
+keys=$(compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+    --topic cdc.forge.requests --from-beginning --timeout-ms 10000 \
+    --property print.key=true --property print.value=false 2> /dev/null || true)
+for cid in "${CUSTOM_IDS[@]}"; do
+    n=$(grep -c "^$cid\$" <<< "$keys" || true)
+    [ "$n" = "1" ] || fail "order $cid has $n records on cdc.forge.requests (expected exactly 1)"
+done
+ok "each quoted order: exactly one record, no tombstone"
+if [ "$OUTBOX_MODE" = "debezium" ]; then
+    left=$(compose exec -T postgres-ordering psql -U ordering -d ordering -Atc "select count(*) from ordering.outbox")
+    [ "$left" = "0" ] || fail "outbox not cleaned up: $left rows"
+    ok "outbox cleaned up (rows older than $OUTBOX_RETENTION), deletes did not reach the topic"
+else
+    left=$(compose exec -T postgres-ordering psql -U ordering -d ordering -Atc "select count(*) from ordering.outbox")
+    [ "$left" = "0" ] || fail "modulith mode wrote $left outbox rows"
+    ok "modulith mode: no outbox rows, the relay delivered"
+fi
 
 echo "==> without Forge"
 compose stop forge-service > /dev/null 2>&1

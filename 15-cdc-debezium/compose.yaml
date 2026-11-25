@@ -51,12 +51,18 @@ services:
     depends_on:
       - apicurio
 
+  # Logical decoding for Debezium; the connector's user "cdc" from the init script; 15432 for the drills (psql)
   postgres-ordering:
     image: postgres:17
+    command: ["postgres", "-c", "wal_level=logical"]
     environment:
       POSTGRES_USER: ordering
       POSTGRES_PASSWORD: ordering
       POSTGRES_DB: ordering
+    volumes:
+      - ./connect/cdc-role.sql:/docker-entrypoint-initdb.d/cdc-role.sql:ro
+    ports:
+      - "127.0.0.1:15432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ordering -d ordering"]
       interval: 2s
@@ -110,6 +116,10 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       APICURIO_URL: http://apicurio:8080
       FORGE_GRPC_TARGET: static://forge-service:9090
+      # debezium (default): outbox + Kafka Connect; modulith: the relay of 14
+      OUTBOX_MODE: ${OUTBOX_MODE:-debezium}
+      OUTBOX_RETENTION: ${OUTBOX_RETENTION:-1h}
+      OUTBOX_CLEANUP_INTERVAL: ${OUTBOX_CLEANUP_INTERVAL:-5m}
     mem_limit: 640m
     ports:
       - "127.0.0.1:18080:8080"
@@ -120,3 +130,40 @@ services:
         condition: service_healthy
       schema-init:
         condition: service_completed_successfully
+
+  # Kafka Connect with the Debezium PostgreSQL connector (the outbox -> cdc.forge.requests)
+  connect:
+    # Latest stable on 2026-11-25 (3.7 series); connect/Dockerfile uses the same version
+    image: quay.io/debezium/connect:3.7.0.Final
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: cdc-connect
+      CONFIG_STORAGE_TOPIC: cdc-connect-configs
+      OFFSET_STORAGE_TOPIC: cdc-connect-offsets
+      STATUS_STORAGE_TOPIC: cdc-connect-status
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      # Drill 4 raises it to 60 s: a kill before the flush makes Connect send again (at least once)
+      CONNECT_OFFSET_FLUSH_INTERVAL_MS: ${OFFSET_FLUSH_INTERVAL_MS:-10000}
+    mem_limit: 768m
+    ports:
+      - "127.0.0.1:18083:8083"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # Registers the connector once Ordering has migrated the outbox (table + publication), then exits.
+  # Profile "init": not part of "up --wait" (a one-shot nobody depends on would fail it); scripts call
+  # "docker compose run --rm connector-init".
+  connector-init:
+    profiles: ["init"]
+    image: curlimages/curl:8.11.1
+    volumes:
+      - ./scripts/register-connector.sh:/register-connector.sh:ro
+      - ./connect/ordering-outbox.json:/ordering-outbox.json:ro
+    entrypoint: ["/bin/sh", "/register-connector.sh", "http://connect:8083", "/ordering-outbox.json",
+                 "http://ordering:8080/actuator/health/readiness"]
+    depends_on:
+      - connect
+      - ordering
