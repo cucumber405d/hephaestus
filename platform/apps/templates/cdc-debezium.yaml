@@ -1,6 +1,6 @@
 {{- if .Values.components.cdcDebezium }}
 # 15-cdc-debezium: 14's Ordering and Forge with the outbox delivered by Debezium (http://cdc.localtest.me).
-# Needs gateway, cnpg, strimzi and kafka; off until its images are in GHCR.
+# Needs gateway, cnpg, strimzi and kafka: on in profiles "scaling" and "full".
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

@@ -47,4 +47,5 @@ platform/bootstrap.sh scaling
 15-cdc-debezium/scripts/live.sh                       # заказ → Debezium → Forge → READY через cdc.localtest.me
 ```
 
-Через Argo CD — флаг `cdcDebezium` в `platform/apps/values*.yaml` после первой публикации образов в GHCR.
+Через Argo CD — профили `scaling` и `full` (флаг `cdcDebezium`), образы `sha-2de88df` из GHCR:
+`platform/bootstrap.sh scaling`, затем `scripts/live.sh`.
