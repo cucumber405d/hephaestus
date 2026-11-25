@@ -21,3 +21,5 @@
 | [0012](0012-contracts-module.md) | Контракты — свой модуль со своей версией, сервисы её фиксируют | accepted | 14 |
 | [0013](0013-avro-apicurio-backward.md) | События — Avro в Apicurio, BACKWARD, схемы регистрирует пайплайн | accepted | 14 |
 | [0014](0014-pact-consumer-driven.md) | Синхронный контракт — Pact (consumer-driven), без брокера на старте | accepted | 14 |
+| [0015](0015-outbox-delivery-by-cdc.md) | Доставка outbox через CDC (Debezium), relay — для сравнения | accepted | 15 |
+| [0016](0016-outbox-carries-avro-bytes.md) | В outbox готовые байты Avro, Connect их не конвертирует | accepted | 15 |
