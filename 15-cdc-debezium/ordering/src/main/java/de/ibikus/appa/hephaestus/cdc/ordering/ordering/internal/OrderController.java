@@ -6,6 +6,7 @@ import de.ibikus.appa.hephaestus.cdc.ordering.ordering.Orders;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +27,13 @@ class OrderController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     Map<String, UUID> place(@RequestBody OrderRequest request) {
         return Map.of("id", orders.place(request));
+    }
+
+    /** Debezium mode: the request cannot be serialized, so the order is not accepted — the caller may retry. */
+    @ExceptionHandler(SchemaRegistryUnavailable.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    Map<String, String> registryUnavailable(SchemaRegistryUnavailable e) {
+        return Map.of("error", e.getMessage());
     }
 
     @GetMapping("/api/orders/{id}")

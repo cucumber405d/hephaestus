@@ -20,7 +20,7 @@ public class Containers {
     @Bean
     @ServiceConnection
     PostgreSQLContainer postgres() {
-        return new PostgreSQLContainer(DockerImageName.parse("postgres:17"));
+        return new PostgreSQLContainer(DockerImageName.parse("postgres:17")).withInitScript("cdc-role.sql");
     }
 
     @Bean

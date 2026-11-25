@@ -19,7 +19,8 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.kafka.KafkaContainer;
 
 /** The whole service over REST with a stub Forge on gRPC: the quote lands on the order and in the Avro request. */
-@SpringBootTest
+// The relay of 14 puts the request on the topic; in debezium mode only Kafka Connect would (Compose e2e)
+@SpringBootTest(properties = "outbox.mode=modulith")
 @AutoConfigureMockMvc
 @Import(Containers.class)
 class OrderingFlowIT {

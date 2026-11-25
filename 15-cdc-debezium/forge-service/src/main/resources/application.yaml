@@ -19,6 +19,8 @@ spring:
       apicurio.registry.url: ${apicurio.url}/apis/registry/v3
       apicurio.registry.auto-register: false
       apicurio.registry.use-specific-avro-reader: true
+      # The schema id travels in the value, not in Kafka headers (as Ordering's outbox bytes do)
+      apicurio.registry.headers.enabled: false
     consumer:
       group-id: forge-service
       auto-offset-reset: earliest

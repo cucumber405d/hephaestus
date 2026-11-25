@@ -66,6 +66,7 @@ public final class AvroProbe {
         return Map.of(
                 "apicurio.registry.url", registryUrl + "/apis/registry/v3",
                 "apicurio.registry.auto-register", false,
-                "apicurio.registry.use-specific-avro-reader", true);
+                "apicurio.registry.use-specific-avro-reader", true,
+                "apicurio.registry.headers.enabled", false);
     }
 }

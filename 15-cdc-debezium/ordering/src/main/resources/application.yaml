@@ -14,6 +14,10 @@ spring:
         forge:
           # Forge's QuoteService (plaintext inside the compose network)
           target: ${FORGE_GRPC_TARGET:static://localhost:9090}
+  flyway:
+    placeholders:
+      # The connector's database user (V2__outbox.sql grants it the outbox)
+      cdcUser: ${CDC_USER:cdc}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     properties:
@@ -21,6 +25,8 @@ spring:
       apicurio.registry.url: ${apicurio.url}/apis/registry/v3
       apicurio.registry.auto-register: false
       apicurio.registry.use-specific-avro-reader: true
+      # The schema id travels in the value, not in Kafka headers: the outbox holds only the value (15)
+      apicurio.registry.headers.enabled: false
     consumer:
       group-id: ordering
       auto-offset-reset: earliest
@@ -45,6 +51,11 @@ spring:
           enabled: true
       # Publications not completed before a crash are handed to their listeners again on start
       republish-outstanding-events-on-restart: true
+outbox:
+  # debezium: the order transaction writes ordering.outbox, Debezium publishes it; modulith: RequestRelay (14)
+  mode: ${OUTBOX_MODE:debezium}
+  retention: ${OUTBOX_RETENTION:1h}
+  cleanup-interval: ${OUTBOX_CLEANUP_INTERVAL:5m}
 apicurio:
   url: ${APICURIO_URL:http://localhost:8085}
 forge:
