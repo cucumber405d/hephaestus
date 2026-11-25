@@ -121,12 +121,21 @@ ok "stock order HAMMER-01 READY without a quote"
 
 echo "==> one record per order on cdc.forge.requests, also after the outbox cleanup"
 sleep 15
-keys=$(compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
-    --topic cdc.forge.requests --from-beginning --timeout-ms 10000 \
-    --property print.key=true --property print.value=false 2> /dev/null || true)
+# The task must still run after real traffic (heartbeats, cleanup deletes), not only right after registration
+state=$(curl -s "$CONNECT/connectors/ordering-outbox/status")
+case "$state" in
+    *'"tasks":[{"id":0,"state":"RUNNING"'*) ok "connector task still RUNNING after the traffic" ;;
+    *) fail "connector task not RUNNING: $state" ;;
+esac
+# Joining the consumer group can take seconds: a generous idle timeout, keys only (first field), no CR
+compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+    --topic cdc.forge.requests --from-beginning --timeout-ms 30000 \
+    --property print.key=true --property print.value=false 2> "$RUN/keys.err" \
+    | tr -d '\r' | cut -f1 > "$RUN/keys.txt" || true
+[ -s "$RUN/keys.txt" ] || fail "read no records from cdc.forge.requests ($(tail -3 "$RUN/keys.err"))"
 for cid in "${CUSTOM_IDS[@]}"; do
-    n=$(grep -c "^$cid\$" <<< "$keys" || true)
-    [ "$n" = "1" ] || fail "order $cid has $n records on cdc.forge.requests (expected exactly 1)"
+    n=$(grep -cFx "$cid" "$RUN/keys.txt" || true)
+    [ "$n" = "1" ] || fail "order $cid has $n records on cdc.forge.requests (expected exactly 1; $RUN/keys.txt)"
 done
 ok "each quoted order: exactly one record, no tombstone"
 if [ "$OUTBOX_MODE" = "debezium" ]; then

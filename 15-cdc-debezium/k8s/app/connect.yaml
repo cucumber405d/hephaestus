@@ -94,7 +94,13 @@ spec:
     # commits the last processed LSN even when no new outbox event arrives (WAL written only by other tables
     # would also need heartbeat.action.query on a captured table)
     heartbeat.interval.ms: 10000
-    transforms: outbox
+    # Heartbeat records (a Struct) would fail the ByteArrayConverter: drop them first; their offsets still commit
+    transforms: heartbeat,outbox
+    transforms.heartbeat.type: org.apache.kafka.connect.transforms.Filter
+    transforms.heartbeat.predicate: isHeartbeat
+    predicates: isHeartbeat
+    predicates.isHeartbeat.type: org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+    predicates.isHeartbeat.pattern: __debezium-heartbeat\..*
     transforms.outbox.type: io.debezium.transforms.outbox.EventRouter
     transforms.outbox.table.field.event.id: id
     transforms.outbox.table.field.event.key: aggregate_id

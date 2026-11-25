@@ -70,9 +70,9 @@ retained_wal() {
 # keys of the placed orders that have more than one record on the topic
 duplicates() {
     compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
-        --topic cdc.forge.requests --from-beginning --timeout-ms 10000 \
+        --topic cdc.forge.requests --from-beginning --timeout-ms 30000 \
         --property print.key=true --property print.value=false 2> /dev/null \
-        | { grep -Fxf "$RUN/orders.txt" || true; } | sort | uniq -d | wc -l | tr -d ' '
+        | tr -d '\r' | cut -f1 | { grep -Fxf "$RUN/orders.txt" || true; } | sort | uniq -d | wc -l | tr -d ' '
 }
 latency() {
     local ids
