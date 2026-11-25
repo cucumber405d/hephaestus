@@ -53,7 +53,9 @@ jobs:
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/$IMAGE_NAME"
           tag="sha-${GITHUB_SHA::7}"
           # Modules of the same reactor the service depends on (15: the contracts jar) are not in Maven Central:
-          # install them first, without running jib:build on them
+          # install them first, without running jib:build on them. Their POMs name the root POM (hephaestus-parent)
+          # as grandparent, which the second Maven run resolves from ~/.m2 too: install it alone (-N) first.
+          ./mvnw -B -ntp -N install -Dspotless.check.skip=true -Djacoco.skip=true
           ./mvnw -B -ntp -f "$SUBPROJECT/pom.xml" -pl "$MODULE" -am install -DskipTests \
             -Dspotless.check.skip=true -Djacoco.skip=true
           ./mvnw -B -ntp -f "$SUBPROJECT/pom.xml" -pl "$MODULE" package jib:build -DskipTests \
