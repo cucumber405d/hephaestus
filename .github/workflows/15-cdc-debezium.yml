@@ -76,6 +76,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Windows checkouts (core.fileMode=false) lose the executable bit silently: check what git records
+      - name: Scripts are executable in git
+        run: |
+          bad=$(git ls-files -s 15-cdc-debezium/scripts | awk '$1 != "100755" && ($4 ~ /\.(sh|py)$/) {print $4}')
+          [ -z "$bad" ] || { echo "not executable in git: $bad"; exit 1; }
+
       - name: Reconciliation self-test
         run: 15-cdc-debezium/scripts/test/reconcile-fixture.sh
 
