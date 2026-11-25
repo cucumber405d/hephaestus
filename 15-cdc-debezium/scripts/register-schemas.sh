@@ -1,6 +1,7 @@
 #!/bin/sh
 # Registers the Avro schemas in Apicurio Registry (v3 REST API) with the BACKWARD compatibility rule.
 # Services never auto-register: the pipeline (here, compose's schema-init) owns the schemas.
+# Running it again is harmless: an already registered version is kept, the rule is set again.
 # Usage: register-schemas.sh <registry-url> <avro-dir> <version>   e.g. http://apicurio:8080 /avro 1.1.0
 # <version> is the contract version (contracts/pom.xml): producers write with exactly that registered version.
 # POSIX sh on purpose: it runs in the curl image, which has no bash and no jq.
@@ -21,7 +22,11 @@ register() {
     file="$AVRO_DIR/$2"
     content="{\"content\":$(json_string "$file"),\"contentType\":\"application/json\"}"
     status=$(curl -s -o /dev/null -w '%{http_code}' "$API/$artifact")
-    if [ "$status" = "404" ]; then
+    # Idempotent: a re-run (compose run starts schema-init again, every Argo sync runs the hook) keeps the version
+    if [ "$status" = "200" ] && [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/$artifact/versions/$VERSION")" = "200" ]; then
+        echo "$artifact $VERSION already registered"
+        status=200
+    elif [ "$status" = "404" ]; then
         status=$(curl -s -o /tmp/register.out -w '%{http_code}' -X POST "$API" -H 'Content-Type: application/json' \
             -d "{\"artifactId\":\"$artifact\",\"artifactType\":\"AVRO\",\"firstVersion\":{\"version\":\"$VERSION\",\"content\":$content}}")
     else

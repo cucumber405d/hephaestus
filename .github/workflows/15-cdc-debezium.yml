@@ -79,6 +79,9 @@ jobs:
       - name: Reconciliation self-test
         run: 15-cdc-debezium/scripts/test/reconcile-fixture.sh
 
+      - name: Schema registration is idempotent
+        run: 15-cdc-debezium/scripts/test/register-schemas-fixture.sh
+
       # kustomize reads nothing outside k8s/app: the schema Job's files are copies, they must not drift
       - name: Schema Job files equal their sources
         run: |

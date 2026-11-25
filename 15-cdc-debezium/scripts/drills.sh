@@ -39,7 +39,7 @@ start_stack() {
     compose down -v > /dev/null 2>&1 || true
     OUTBOX_MODE="$MODE" compose up -d --wait > "$RUN/compose.log" 2>&1 || { cat "$RUN/compose.log"; exit 1; }
     wait_ready
-    OUTBOX_MODE="$MODE" compose --profile init run --rm connector-init > "$RUN/connector.log" 2>&1 \
+    OUTBOX_MODE="$MODE" compose --profile init run --rm --no-deps connector-init > "$RUN/connector.log" 2>&1 \
         || { cat "$RUN/connector.log"; exit 1; }
 }
 

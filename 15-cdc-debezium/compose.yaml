@@ -159,8 +159,8 @@ services:
         condition: service_healthy
 
   # Registers the connector once Ordering has migrated the outbox (table + publication), then exits.
-  # Profile "init": not part of "up --wait" (a one-shot nobody depends on would fail it); scripts call
-  # "docker compose run --rm connector-init".
+  # Profile "init": not part of "up --wait" (a one-shot nobody depends on would fail it); the stack is already up,
+  # so scripts call "docker compose run --rm --no-deps connector-init".
   connector-init:
     profiles: ["init"]
     image: curlimages/curl:8.11.1
