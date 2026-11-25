@@ -1,0 +1,57 @@
+# Ordering <-> forge-service on the shared Kafka; "cdc." so they never meet 13's JSON topics forge.requests/events.
+# In namespace kafka: the platform's Topic Operator watches it. Key = the customer order.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: cdc-forge-requests
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: cdc.forge.requests
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: cdc-forge-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: cdc.forge.events
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: cdc-forge-requests-dlt
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: cdc.forge.requests.DLT
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: cdc-forge-events-dlt
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: cdc.forge.events.DLT
+  partitions: 1
+  replicas: 1

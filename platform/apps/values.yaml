@@ -35,3 +35,5 @@ components:
   scaling: false
   # 13: the modular monolith with Forge strangled out (images of PR #16 in GHCR); on in profiles scaling and full
   modularMonolith: false
+  # 15: the Debezium outbox (needs gateway, cnpg, strimzi, kafka); enable after its first image publish
+  cdcDebezium: false

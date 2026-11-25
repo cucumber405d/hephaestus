@@ -1,0 +1,55 @@
+# Two databases, two owners. Ordering's with logical decoding (Debezium reads its WAL) and the connector's role.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ordering-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  postgresql:
+    parameters:
+      wal_level: logical
+      # A stopped connector keeps its slot: cap the WAL it may hold before the slot is invalidated (learning-notes)
+      max_slot_wal_keep_size: 512MB
+  managed:
+    roles:
+      - name: cdc
+        ensure: present
+        login: true
+        replication: true
+        passwordSecret:
+          name: cdc-credentials
+  bootstrap:
+    initdb:
+      database: ordering
+      owner: ordering
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: forge-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  bootstrap:
+    initdb:
+      database: forge
+      owner: forge
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi

@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "WorkOrderRequest",
+  "namespace": "de.ibikus.appa.hephaestus.contracts.events",
+  "doc": "Ordering asks Forge for a custom piece (topic forge.requests, key = orderId). Since 1.1.0 it carries the binding quote.",
+  "fields": [
+    {"name": "orderId", "type": "string", "doc": "Customer order id (UUID)"},
+    {"name": "material", "type": "string"},
+    {"name": "quantity", "type": "int"},
+    {"name": "quoteId", "type": ["null", "string"], "default": null, "doc": "Since 1.1.0; absent from 1.0.0 producers"},
+    {"name": "priceCents", "type": ["null", "long"], "default": null, "doc": "Since 1.1.0; the quoted price Forge checks"}
+  ]
+}

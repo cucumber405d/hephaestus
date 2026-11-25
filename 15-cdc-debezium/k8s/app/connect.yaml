@@ -1,0 +1,98 @@
+# Kafka Connect by Strimzi with the Debezium PostgreSQL plugin (image from connect/Dockerfile), and the connector as a
+# resource: the outbox of ordering-db -> cdc.forge.requests, the Avro bytes copied unchanged.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: cdc-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    # connectors are KafkaConnector resources, not REST calls
+    strimzi.io/use-connector-resources: "true"
+spec:
+  replicas: 1
+  image: connect
+  bootstrapServers: platform-kafka-bootstrap.kafka:9092
+  config:
+    group.id: cdc-connect
+    config.storage.topic: cdc-connect-configs
+    offset.storage.topic: cdc-connect-offsets
+    status.storage.topic: cdc-connect-status
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    # ${secrets:<namespace>/<secret>:<key>} in connector configs (Strimzi's provider, part of the Strimzi image)
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 768Mi
+---
+# The provider reads the secret with Connect's service account (<cluster>-connect)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cdc-connect-secrets
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cdc-credentials"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cdc-connect-secrets
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+subjects:
+  - kind: ServiceAccount
+    name: cdc-connect-connect
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cdc-connect-secrets
+---
+# Same settings as connect/ordering-outbox.json (Compose); the table and publication come from Ordering's Flyway
+# migration — until Ordering has run once the task fails and Strimzi restarts it.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: ordering-outbox
+  labels:
+    strimzi.io/cluster: cdc-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  autoRestart:
+    enabled: true
+  config:
+    plugin.name: pgoutput
+    database.hostname: ordering-db-rw
+    database.port: 5432
+    database.user: ${secrets:hephaestus-15/cdc-credentials:username}
+    database.password: ${secrets:hephaestus-15/cdc-credentials:password}
+    database.dbname: ordering
+    topic.prefix: ordering
+    table.include.list: ordering.outbox
+    publication.name: cdc_outbox
+    publication.autocreate.mode: disabled
+    slot.name: cdc_outbox
+    snapshot.mode: no_data
+    tombstones.on.delete: false
+    binary.handling.mode: bytes
+    transforms: outbox
+    transforms.outbox.type: io.debezium.transforms.outbox.EventRouter
+    transforms.outbox.table.field.event.id: id
+    transforms.outbox.table.field.event.key: aggregate_id
+    transforms.outbox.table.field.event.payload: payload
+    transforms.outbox.route.by.field: aggregate_type
+    transforms.outbox.route.topic.replacement: cdc.${routedByValue}
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.converters.ByteArrayConverter
