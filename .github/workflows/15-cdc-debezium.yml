@@ -72,6 +72,7 @@ jobs:
 
   checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
@@ -99,6 +100,14 @@ jobs:
           kubectl kustomize 15-cdc-debezium/k8s/overlays/local > /tmp/15-local.yaml
           ! grep -q '^kind: KafkaTopic$' /tmp/15-local.yaml
           grep -q 'image: hephaestus/cdc-debezium-connect:jib' /tmp/15-local.yaml
+
+      # kustomize does not validate custom resources: check them against the CRDs of the platform's Strimzi
+      - name: Strimzi resources match their CRDs, connector after Ordering
+        run: |
+          curl -sSfL -o /tmp/strimzi-crds.yaml \
+            https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.2.0/strimzi-crds-1.2.0.yaml
+          pip install --quiet jsonschema pyyaml
+          python3 15-cdc-debezium/scripts/test/k8s-check.py /tmp/strimzi-crds.yaml /tmp/15.yaml
 
   e2e:
     needs: verify

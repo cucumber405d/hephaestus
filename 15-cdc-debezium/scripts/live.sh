@@ -19,6 +19,11 @@ ready=$(kubectl -n "$NAMESPACE" get kafkaconnector ordering-outbox \
     -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
 [ "$ready" = "True" ] || fail "KafkaConnector ordering-outbox not Ready"
 ok "KafkaConnector ordering-outbox Ready"
+# Ready can hide a FAILED task; the task itself must run
+task=$(kubectl -n "$NAMESPACE" get kafkaconnector ordering-outbox \
+    -o jsonpath='{.status.connectorStatus.tasks[0].state}')
+[ "$task" = "RUNNING" ] || fail "connector task is '$task', not RUNNING"
+ok "connector task RUNNING"
 
 id=$(api -X POST "http://$GATEWAY/api/orders" -H 'Content-Type: application/json' \
     -d '{"customerId":"live","custom":true,"material":"IRON-01","quantity":5}' | json id)

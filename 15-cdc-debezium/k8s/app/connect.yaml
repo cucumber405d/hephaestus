@@ -12,11 +12,12 @@ spec:
   replicas: 1
   image: connect
   bootstrapServers: platform-kafka-bootstrap.kafka:9092
+  # Strimzi v1: the group and the storage topics are spec fields (forbidden in config)
+  groupId: cdc-connect
+  configStorageTopic: cdc-connect-configs
+  offsetStorageTopic: cdc-connect-offsets
+  statusStorageTopic: cdc-connect-status
   config:
-    group.id: cdc-connect
-    config.storage.topic: cdc-connect-configs
-    offset.storage.topic: cdc-connect-offsets
-    status.storage.topic: cdc-connect-status
     config.storage.replication.factor: 1
     offset.storage.replication.factor: 1
     status.storage.replication.factor: 1
@@ -57,16 +58,19 @@ roleRef:
   kind: Role
   name: cdc-connect-secrets
 ---
-# Same settings as connect/ordering-outbox.json (Compose); the table and publication come from Ordering's Flyway
-# migration — until Ordering has run once the task fails and Strimzi restarts it.
+# Same settings as connect/ordering-outbox.json (Compose). The table and publication come from Ordering's Flyway
+# migration, so the connector syncs one wave after Ordering is healthy: started earlier it fails before creating
+# the slot, and orders accepted until the slot exists would never be published (snapshot.mode no_data).
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaConnector
 metadata:
   name: ordering-outbox
   labels:
     strimzi.io/cluster: cdc-connect
+    # deploy-local.sh applies it only after the ordering rollout (Argo: the later wave)
+    hephaestus.io/stage: after-ordering
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   class: io.debezium.connector.postgresql.PostgresConnector
   tasksMax: 1
@@ -87,6 +91,9 @@ spec:
     snapshot.mode: no_data
     tombstones.on.delete: false
     binary.handling.mode: bytes
+    # commits the last processed LSN even when no new outbox event arrives (WAL written only by other tables
+    # would also need heartbeat.action.query on a captured table)
+    heartbeat.interval.ms: 10000
     transforms: outbox
     transforms.outbox.type: io.debezium.transforms.outbox.EventRouter
     transforms.outbox.table.field.event.id: id

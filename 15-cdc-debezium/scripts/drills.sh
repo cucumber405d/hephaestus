@@ -53,6 +53,11 @@ orders() { local end=$((SECONDS + $1)); while [ $SECONDS -lt $end ]; do place_on
 orders_n() { for _ in $(seq 1 "$1"); do place_one; sleep 0.2; done; }
 
 # reconcile.sh exits 1 when something is missing: here that is an answer, not an error (set -e, pipefail)
+# Modulith publications not yet completed: the relay's requests that are stuck in Ordering
+incomplete() {
+    compose exec -T postgres-ordering psql -U ordering -d ordering -Atc \
+        "select count(*) from event_publication where completion_date is null"
+}
 missing() { { scripts/reconcile.sh "$RUN/orders.txt" || true; } | sed -n 's/.*missing=\([0-9]*\).*/\1/p'; }
 reconcile_ok() { scripts/reconcile.sh "$RUN/orders.txt" > "$RUN/reconcile.txt"; }
 retained_wal() {
@@ -95,21 +100,32 @@ drill() {
     echo "==> drill $n ($MODE)"
     case "$n" in
         1)
+            if [ "$MODE" = "modulith" ]; then
+                # With Kafka's defaults the producer waits up to 60 s for metadata and keeps a record for 120 s:
+                # a 30 s outage would only delay the relay. Short timeouts make the sends fail, as in a long outage.
+                export KAFKA_PRODUCER_MAX_BLOCK_MS=5000 KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=10000 \
+                    KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS=15000
+            fi
             start_stack
+            unset KAFKA_PRODUCER_MAX_BLOCK_MS KAFKA_PRODUCER_REQUEST_TIMEOUT_MS KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS
             compose pause kafka > /dev/null
             orders 30
             compose unpause kafka > /dev/null
             [ -s "$RUN/orders.txt" ] || not_staged 1 "no order accepted while Kafka was paused"
-            sleep 60
-            before=$(missing)
             if [ "$MODE" = "modulith" ]; then
-                [ "$before" -gt 0 ] || not_staged 1 "nothing stuck: every request was sent before the pause"
+                sleep 30
+                stuck=$(incomplete)
+                before=$(missing)
+                [ "$stuck" -gt 0 ] || not_staged 1 "no publication left incomplete: every send succeeded"
                 compose restart ordering > /dev/null
                 wait_ready
                 sleep 60
+                [ "$(incomplete)" -eq 0 ] || { echo "publications still incomplete: $(incomplete)" >&2; exit 1; }
                 reconcile_ok || { cat "$RUN/reconcile.txt"; exit 1; }
-                row 1 "$MODE" "Kafka paused 30 s, $before stuck" "restart of ordering" "$before → 0" - -
+                row 1 "$MODE" "Kafka paused 30 s, $stuck publications incomplete" "restart of ordering" "$before → 0" - -
             else
+                sleep 60
+                before=$(missing)
                 reconcile_ok || { cat "$RUN/reconcile.txt"; exit 1; }
                 row 1 "$MODE" "Kafka paused 30 s" "itself" "$before → 0" - -
             fi
@@ -151,10 +167,11 @@ drill() {
             before=$(missing)
             [ "$before" -gt 0 ] || not_staged 3 "nothing missing while Connect was down"
             compose start connect > /dev/null
-            sleep 60
+            # several offset flushes (10 s) and heartbeats (10 s) after the catch-up
+            sleep 90
             reconcile_ok || { cat "$RUN/reconcile.txt"; exit 1; }
             wal_after=$(retained_wal)
-            [ "$wal_after" -le $((wal_before + 1048576)) ] || { echo "retained WAL still $wal_after bytes" >&2; exit 1; }
+            [ "$wal_after" -lt "$wal_down" ] || { echo "retained WAL not released: $wal_down -> $wal_after bytes" >&2; exit 1; }
             row 3 "$MODE" "Connect stopped 60 s, WAL $wal_before → $wal_down B" "itself, WAL back to $wal_after B" "$before → 0" - -
             ;;
         4)

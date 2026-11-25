@@ -120,6 +120,10 @@ services:
       OUTBOX_MODE: ${OUTBOX_MODE:-debezium}
       OUTBOX_RETENTION: ${OUTBOX_RETENTION:-1h}
       OUTBOX_CLEANUP_INTERVAL: ${OUTBOX_CLEANUP_INTERVAL:-5m}
+      # Kafka's defaults; drills.sh shortens them for drill 1 in modulith mode
+      KAFKA_PRODUCER_MAX_BLOCK_MS: ${KAFKA_PRODUCER_MAX_BLOCK_MS:-60000}
+      KAFKA_PRODUCER_REQUEST_TIMEOUT_MS: ${KAFKA_PRODUCER_REQUEST_TIMEOUT_MS:-30000}
+      KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS: ${KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS:-120000}
     mem_limit: 640m
     ports:
       - "127.0.0.1:18080:8080"
@@ -144,8 +148,9 @@ services:
       CONFIG_STORAGE_REPLICATION_FACTOR: 1
       OFFSET_STORAGE_REPLICATION_FACTOR: 1
       STATUS_STORAGE_REPLICATION_FACTOR: 1
-      # Drill 4 raises it to 60 s: a kill before the flush makes Connect send again (at least once)
-      CONNECT_OFFSET_FLUSH_INTERVAL_MS: ${OFFSET_FLUSH_INTERVAL_MS:-10000}
+      # Drill 4 raises it to 60 s: a kill before the flush makes Connect send again (at least once).
+      # The image's entrypoint derives CONNECT_OFFSET_FLUSH_INTERVAL_MS from this variable (default 60000).
+      OFFSET_FLUSH_INTERVAL_MS: ${OFFSET_FLUSH_INTERVAL_MS:-10000}
     mem_limit: 768m
     ports:
       - "127.0.0.1:18083:8083"

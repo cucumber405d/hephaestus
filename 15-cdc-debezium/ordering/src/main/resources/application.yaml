@@ -42,6 +42,10 @@ spring:
         # Write with the schema version this build's contract is (contracts.version, filtered in by Maven): no
         # lookup by content (the generated classes carry avro.java.string, the registered .avsc does not)
         apicurio.registry.artifact.version: "@contracts.version@"
+        # Kafka's defaults; drill 1 (modulith) shortens them so an outage really fails the relay's sends
+        max.block.ms: ${KAFKA_PRODUCER_MAX_BLOCK_MS:60000}
+        request.timeout.ms: ${KAFKA_PRODUCER_REQUEST_TIMEOUT_MS:30000}
+        delivery.timeout.ms: ${KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS:120000}
     listener:
       ack-mode: record
   modulith:

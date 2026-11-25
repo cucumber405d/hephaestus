@@ -70,7 +70,12 @@ ok "ordering, forge-service, supplier, Kafka, Apicurio, Kafka Connect, two datab
 
 echo "==> connector"
 compose --profile init run --rm connector-init > "$RUN/connector.log" 2>&1 || { cat "$RUN/connector.log"; fail "connector"; }
-ok "Debezium connector ordering-outbox RUNNING"
+ok "Debezium connector ordering-outbox RUNNING (registered in both modes)"
+# The Debezium image rewrites CONNECT_OFFSET_FLUSH_INTERVAL_MS from OFFSET_FLUSH_INTERVAL_MS: check what Connect got
+flush=$(compose exec -T connect sh -c 'grep "^offset.flush.interval.ms=" "$KAFKA_HOME/config/connect-distributed.properties"' \
+    | cut -d= -f2 | tr -d '\r')
+[ "$flush" = "${OFFSET_FLUSH_INTERVAL_MS:-10000}" ] || fail "Connect flushes offsets every '${flush}' ms, not ${OFFSET_FLUSH_INTERVAL_MS:-10000}"
+ok "Connect flushes offsets every $flush ms"
 
 echo "==> registry"
 rule=$(curl -sf "$REGISTRY/apis/registry/v3/groups/default/artifacts/cdc.forge.requests-value/rules/COMPATIBILITY")

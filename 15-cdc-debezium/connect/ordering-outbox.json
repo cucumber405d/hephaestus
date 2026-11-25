@@ -14,6 +14,7 @@
   "snapshot.mode": "no_data",
   "tombstones.on.delete": "false",
   "binary.handling.mode": "bytes",
+  "heartbeat.interval.ms": "10000",
   "transforms": "outbox",
   "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
   "transforms.outbox.table.field.event.id": "id",
