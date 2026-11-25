@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.ibikus.appa.hephaestus</groupId>
+        <artifactId>hephaestus-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>cdc-debezium</artifactId>
+    <packaging>pom</packaging>
+    <name>Hephaestus :: 15-cdc-debezium</name>
+    <description>14's Ordering and Forge with the work order request delivered by Debezium from an outbox table (CDC), the in-app relay kept for comparison</description>
+
+    <properties>
+        <!-- Latest stable on 2026-11-21 (2.2 is a release candidate); 2.1.x is built on Boot 4.1 -->
+        <spring-modulith.version>2.1.2</spring-modulith.version>
+        <jre.image>eclipse-temurin:25-jre</jre.image>
+        <!-- Git commit of the images; CI passes -Dimage.revision=$GITHUB_SHA -->
+        <image.revision>unknown</image.revision>
+        <!-- Latest stable on 2026-11-24 -->
+        <avro.version>1.12.2</avro.version>
+        <!-- Latest stable on 2026-11-24; the registry image uses the same version -->
+        <apicurio.version>3.3.5</apicurio.version>
+        <!-- Latest stable on 2026-11-24 -->
+        <pact.version>4.7.5</pact.version>
+        <!-- Dependency convergence (root enforcer): the newest of the versions the libraries bring -->
+        <error-prone-annotations.version>2.50.0</error-prone-annotations.version>
+        <!-- The JVM flavour: grpc-services brings -jre, the rest of gRPC -android -->
+        <guava.version>33.6.0-jre</guava.version>
+        <!-- Avro 1.12.2 trusts only these packages for generated classes (AVRO-4189) -->
+        <avro.serializable.packages>de.ibikus.appa.hephaestus.contracts.events</avro.serializable.packages>
+    </properties>
+
+    <modules>
+        <!-- Order matters: ordering writes the pact file that forge-service verifies -->
+        <module>contracts</module>
+        <module>supplier-stub</module>
+        <module>ordering</module>
+        <module>forge-service</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.modulith</groupId>
+                <artifactId>spring-modulith-bom</artifactId>
+                <version>${spring-modulith.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+            <!-- grpc-api/grpc-stub 1.84.1 bring 2.50.0, their Guava 33.6.0 brings 2.47.0 -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>${error-prone-annotations.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro</artifactId>
+                <version>${avro.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.apicurio</groupId>
+                <artifactId>apicurio-registry-avro-serde-kafka</artifactId>
+                <version>${apicurio.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>au.com.dius.pact.consumer</groupId>
+                <artifactId>junit5</artifactId>
+                <version>${pact.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>au.com.dius.pact.provider</groupId>
+                <artifactId>junit5</artifactId>
+                <version>${pact.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <!-- Same image shape as 03 and 11: non-root, JVM sized from the container limit -->
+                    <groupId>com.google.cloud.tools</groupId>
+                    <artifactId>jib-maven-plugin</artifactId>
+                    <configuration>
+                        <from>
+                            <image>${jre.image}</image>
+                        </from>
+                        <to>
+                            <image>hephaestus/cdc-debezium-${service.name}:jib</image>
+                        </to>
+                        <container>
+                            <mainClass>${main.class}</mainClass>
+                            <user>1000:1000</user>
+                            <ports>
+                                <port>8080</port>
+                            </ports>
+                            <environment>
+                                <JAVA_TOOL_OPTIONS>-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError -Dorg.apache.avro.SERIALIZABLE_PACKAGES=${avro.serializable.packages}</JAVA_TOOL_OPTIONS>
+                            </environment>
+                            <labels>
+                                <org.opencontainers.image.source>https://github.com/cucumber405d/hephaestus</org.opencontainers.image.source>
+                                <org.opencontainers.image.revision>${image.revision}</org.opencontainers.image.revision>
+                                <org.opencontainers.image.title>cdc-debezium-${service.name}</org.opencontainers.image.title>
+                            </labels>
+                        </container>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <org.apache.avro.SERIALIZABLE_PACKAGES>${avro.serializable.packages}</org.apache.avro.SERIALIZABLE_PACKAGES>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <org.apache.avro.SERIALIZABLE_PACKAGES>${avro.serializable.packages}</org.apache.avro.SERIALIZABLE_PACKAGES>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

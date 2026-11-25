@@ -1,0 +1,226 @@
+# 15-cdc-debezium: verify -> checks (reconcile fixture, manifests) -> e2e in both outbox modes -> failure drills in
+# both modes -> publish the four images (main only).
+name: 15-cdc-debezium
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "15-cdc-debezium/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/15-cdc-debezium.yml"
+  pull_request:
+    paths:
+      - "15-cdc-debezium/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/15-cdc-debezium.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # The gRPC plugin of Pact is a native binary from GitHub, not a Maven artifact
+      - name: Pact protobuf plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: 15-cdc-debezium/scripts/install-pact-plugin.sh
+
+      - name: Verify
+        run: ./mvnw -B -ntp -f 15-cdc-debezium/pom.xml verify
+
+      # untracked counts too: a build that changes or creates the pact needs a commit
+      - name: Pact file is up to date
+        run: |
+          git status --porcelain 15-cdc-debezium/pacts
+          test -z "$(git status --porcelain 15-cdc-debezium/pacts)"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: 15-cdc-debezium-test-reports
+          path: 15-cdc-debezium/**/target/*-reports/
+          if-no-files-found: ignore
+
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Windows checkouts (core.fileMode=false) lose the executable bit silently: check what git records
+      - name: Scripts are executable in git
+        run: |
+          bad=$(git ls-files -s 15-cdc-debezium/scripts | awk '$1 != "100755" && ($4 ~ /\.(sh|py)$/) {print $4}')
+          [ -z "$bad" ] || { echo "not executable in git: $bad"; exit 1; }
+
+      - name: Reconciliation self-test
+        run: 15-cdc-debezium/scripts/test/reconcile-fixture.sh
+
+      - name: Schema registration is idempotent
+        run: 15-cdc-debezium/scripts/test/register-schemas-fixture.sh
+
+      # kustomize reads nothing outside k8s/app: the schema Job's files are copies, they must not drift
+      - name: Schema Job files equal their sources
+        run: |
+          cd 15-cdc-debezium
+          cmp scripts/register-schemas.sh k8s/app/schema-init/register-schemas.sh
+          cmp contracts/src/main/avro/work_order_request.avsc k8s/app/schema-init/work_order_request.avsc
+          cmp contracts/src/main/avro/forge_event.avsc k8s/app/schema-init/forge_event.avsc
+
+      - name: Manifests render
+        run: |
+          kubectl kustomize 15-cdc-debezium/k8s > /tmp/15.yaml
+          for kind in Cluster:2 KafkaTopic:4 KafkaConnect:1 KafkaConnector:1 Deployment:4 Job:1 HTTPRoute:1; do
+            n=$(grep -c "^kind: ${kind%%:*}$" /tmp/15.yaml || true)
+            echo "${kind%%:*}: $n"
+            [ "$n" -eq "${kind##*:}" ]
+          done
+          grep -q 'wal_level: logical' /tmp/15.yaml
+          # the local overlay: everything in hephaestus-15, no KafkaTopic (applied separately, namespace kafka)
+          kubectl kustomize 15-cdc-debezium/k8s/overlays/local > /tmp/15-local.yaml
+          ! grep -q '^kind: KafkaTopic$' /tmp/15-local.yaml
+          grep -q 'image: hephaestus/cdc-debezium-connect:jib' /tmp/15-local.yaml
+
+      # kustomize does not validate custom resources: check them against the CRDs of the platform's Strimzi
+      - name: Strimzi resources match their CRDs, connector after Ordering
+        run: |
+          curl -sSfL -o /tmp/strimzi-crds.yaml \
+            https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.2.0/strimzi-crds-1.2.0.yaml
+          pip install --quiet jsonschema pyyaml
+          python3 15-cdc-debezium/scripts/test/k8s-check.py /tmp/strimzi-crds.yaml /tmp/15.yaml
+
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [debezium, modulith]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: End to end, outbox mode ${{ matrix.mode }}
+        env:
+          OUTBOX_MODE: ${{ matrix.mode }}
+        run: 15-cdc-debezium/scripts/e2e.sh
+
+      - name: Run files
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-run-${{ matrix.mode }}
+          path: 15-cdc-debezium/target/e2e-*
+          if-no-files-found: ignore
+
+  drills:
+    needs: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [debezium, modulith]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Failure drills, outbox mode ${{ matrix.mode }}
+        env:
+          BUILD: "true"
+        run: 15-cdc-debezium/scripts/drills.sh all ${{ matrix.mode }}
+
+      - name: Drill results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: drills-${{ matrix.mode }}
+          path: 15-cdc-debezium/target/drills/
+          if-no-files-found: ignore
+
+  publish:
+    needs: [drills, checks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        module: [supplier-stub, ordering, forge-service]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      subproject: 15-cdc-debezium
+      module: ${{ matrix.module }}
+      image-name: hephaestus/cdc-debezium-${{ matrix.module }}
+
+  publish-connect:
+    needs: [drills, checks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Short sha
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Kafka Connect image with the Debezium plugin
+        uses: docker/build-push-action@v6
+        with:
+          context: 15-cdc-debezium/connect
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/hephaestus/cdc-debezium-connect:sha-${{ steps.sha.outputs.short }}
+            ghcr.io/${{ github.repository_owner }}/hephaestus/cdc-debezium-connect:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}

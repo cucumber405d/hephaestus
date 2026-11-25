@@ -1,0 +1,23 @@
+{{- if .Values.components.cdcDebezium }}
+# 15-cdc-debezium: 14's Ordering and Forge with the outbox delivered by Debezium (http://cdc.localtest.me).
+# Needs gateway, cnpg, strimzi and kafka; off until its images are in GHCR.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cdc-debezium
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision | quote }}
+    path: 15-cdc-debezium/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hephaestus-15
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}

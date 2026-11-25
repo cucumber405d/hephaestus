@@ -1,0 +1,57 @@
+# The two Kafka topics between Ordering and Forge. Payloads are the Avro schemas in src/main/avro, by reference:
+# this file never repeats a field. Validated in CI by scripts/check-asyncapi.sh.
+asyncapi: 3.0.0
+info:
+  title: Hephaestus Workshop — Ordering and Forge
+  version: 1.1.0
+  description: Custom work orders from Ordering to Forge and their outcomes back. Key = customer order id.
+servers:
+  local:
+    host: localhost:9092
+    protocol: kafka
+    description: Compose (scripts/e2e.sh)
+defaultContentType: application/vnd.apache.avro+binary
+channels:
+  forgeRequests:
+    address: cdc.forge.requests
+    description: Ordering asks Forge for a custom piece, with the binding quote (since 1.1.0).
+    messages:
+      workOrderRequest:
+        $ref: '#/components/messages/WorkOrderRequest'
+  forgeEvents:
+    address: cdc.forge.events
+    description: How a work order ended; at least once, eventId for deduplication.
+    messages:
+      forgeEvent:
+        $ref: '#/components/messages/ForgeEvent'
+operations:
+  sendWorkOrderRequest:
+    action: send
+    summary: Ordering publishes a request after it accepted a quoted custom order.
+    channel:
+      $ref: '#/channels/forgeRequests'
+    messages:
+      - $ref: '#/channels/forgeRequests/messages/workOrderRequest'
+  receiveForgeEvent:
+    action: receive
+    summary: Ordering applies the outcome to the customer order (READY or REJECTED).
+    channel:
+      $ref: '#/channels/forgeEvents'
+    messages:
+      - $ref: '#/channels/forgeEvents/messages/forgeEvent'
+components:
+  messages:
+    WorkOrderRequest:
+      name: WorkOrderRequest
+      contentType: application/vnd.apache.avro+binary
+      payload:
+        schemaFormat: application/vnd.apache.avro;version=1.9.0
+        schema:
+          $ref: './src/main/avro/work_order_request.avsc'
+    ForgeEvent:
+      name: ForgeEvent
+      contentType: application/vnd.apache.avro+binary
+      payload:
+        schemaFormat: application/vnd.apache.avro;version=1.9.0
+        schema:
+          $ref: './src/main/avro/forge_event.avsc'

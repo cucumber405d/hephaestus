@@ -1,0 +1,11 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`de.ibikus.appa.hephaestus.cdc.ordering.ordering`
+|Spring components
+|_Services_
+
+* `d.i.a.h.c.o.o.Orders` (via `d.i.a.h.c.o.o.internal.OrderService`)
+|Bean references
+|* `d.i.a.h.c.o.i.Inventory` (in Inventory)
+|===

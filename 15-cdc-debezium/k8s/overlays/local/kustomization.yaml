@@ -1,0 +1,38 @@
+# The application with the images built on this machine (jib:dockerBuild, docker build connect/) and loaded into
+# kind, in hephaestus-15; the topics are applied separately (namespace kafka): scripts/deploy-local.sh.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hephaestus-15
+
+resources:
+  - ../../app
+
+images:
+  - name: ghcr.io/cucumber405d/hephaestus/cdc-debezium-ordering
+    newName: hephaestus/cdc-debezium-ordering
+    newTag: jib
+  - name: ghcr.io/cucumber405d/hephaestus/cdc-debezium-forge-service
+    newName: hephaestus/cdc-debezium-forge-service
+    newTag: jib
+  - name: ghcr.io/cucumber405d/hephaestus/cdc-debezium-supplier-stub
+    newName: hephaestus/cdc-debezium-supplier-stub
+    newTag: jib
+
+patches:
+  # kind has the images locally: never pull
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/name notin (apicurio)
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+  # the local Connect image (tag jib: Strimzi pulls IfNotPresent)
+  - target:
+      kind: KafkaConnect
+      name: cdc-connect
+    patch: |-
+      - op: replace
+        path: /spec/image
+        value: hephaestus/cdc-debezium-connect:jib

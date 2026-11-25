@@ -1,0 +1,113 @@
+# Kafka Connect by Strimzi with the Debezium PostgreSQL plugin (image from connect/Dockerfile), and the connector as a
+# resource: the outbox of ordering-db -> cdc.forge.requests, the Avro bytes copied unchanged.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: cdc-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    # connectors are KafkaConnector resources, not REST calls
+    strimzi.io/use-connector-resources: "true"
+spec:
+  replicas: 1
+  image: connect
+  bootstrapServers: platform-kafka-bootstrap.kafka:9092
+  # Strimzi v1: the group and the storage topics are spec fields (forbidden in config)
+  groupId: cdc-connect
+  configStorageTopic: cdc-connect-configs
+  offsetStorageTopic: cdc-connect-offsets
+  statusStorageTopic: cdc-connect-status
+  config:
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    # ${secrets:<namespace>/<secret>:<key>} in connector configs (Strimzi's provider, part of the Strimzi image)
+    # one replica: after a Kafka outage do not wait the default 5 min for a "lost" worker before reassigning
+    scheduled.rebalance.max.delay.ms: 30000
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 768Mi
+---
+# The provider reads the secret with Connect's service account (<cluster>-connect)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cdc-connect-secrets
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cdc-credentials"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cdc-connect-secrets
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+subjects:
+  - kind: ServiceAccount
+    name: cdc-connect-connect
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cdc-connect-secrets
+---
+# Same settings as connect/ordering-outbox.json (Compose). The table and publication come from Ordering's Flyway
+# migration, so the connector syncs one wave after Ordering is healthy: started earlier it fails before creating
+# the slot, and orders accepted until the slot exists would never be published (snapshot.mode no_data).
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: ordering-outbox
+  labels:
+    strimzi.io/cluster: cdc-connect
+    # deploy-local.sh applies it only after the ordering rollout (Argo: the later wave)
+    hephaestus.io/stage: after-ordering
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  autoRestart:
+    enabled: true
+  config:
+    plugin.name: pgoutput
+    database.hostname: ordering-db-rw
+    database.port: 5432
+    database.user: ${secrets:hephaestus-15/cdc-credentials:username}
+    database.password: ${secrets:hephaestus-15/cdc-credentials:password}
+    database.dbname: ordering
+    topic.prefix: ordering
+    table.include.list: ordering.outbox
+    publication.name: cdc_outbox
+    publication.autocreate.mode: disabled
+    slot.name: cdc_outbox
+    snapshot.mode: no_data
+    tombstones.on.delete: false
+    binary.handling.mode: bytes
+    # commits the last processed LSN even when no new outbox event arrives (WAL written only by other tables
+    # would also need heartbeat.action.query on a captured table)
+    heartbeat.interval.ms: 10000
+    # Heartbeat records (a Struct) would fail the ByteArrayConverter: drop them first; their offsets still commit
+    transforms: heartbeat,outbox
+    transforms.heartbeat.type: org.apache.kafka.connect.transforms.Filter
+    transforms.heartbeat.predicate: isHeartbeat
+    predicates: isHeartbeat
+    predicates.isHeartbeat.type: org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+    predicates.isHeartbeat.pattern: __debezium-heartbeat\..*
+    transforms.outbox.type: io.debezium.transforms.outbox.EventRouter
+    transforms.outbox.table.field.event.id: id
+    transforms.outbox.table.field.event.key: aggregate_id
+    transforms.outbox.table.field.event.payload: payload
+    transforms.outbox.route.by.field: aggregate_type
+    transforms.outbox.route.topic.replacement: cdc.${routedByValue}
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.converters.ByteArrayConverter

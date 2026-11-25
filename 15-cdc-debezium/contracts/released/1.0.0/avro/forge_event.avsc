@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "ForgeEvent",
+  "namespace": "de.ibikus.appa.hephaestus.contracts.events",
+  "doc": "How a work order ended (topic forge.events, key = orderId). eventId lets Ordering drop a redelivery.",
+  "fields": [
+    {"name": "eventId", "type": "string", "doc": "UUID"},
+    {"name": "type", "type": {"type": "enum", "name": "ForgeEventType", "symbols": ["WORK_ORDER_COMPLETED", "WORK_ORDER_FAILED"]}},
+    {"name": "orderId", "type": "string", "doc": "Customer order id (UUID)"},
+    {"name": "workOrderId", "type": "string"},
+    {"name": "reason", "type": ["null", "string"], "default": null}
+  ]
+}

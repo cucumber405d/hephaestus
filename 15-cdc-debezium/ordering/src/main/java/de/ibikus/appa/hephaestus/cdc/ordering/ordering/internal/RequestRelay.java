@@ -1,0 +1,29 @@
+package de.ibikus.appa.hephaestus.cdc.ordering.ordering.internal;
+
+import java.util.concurrent.TimeUnit;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.stereotype.Component;
+
+/**
+ * Delivery mode "modulith" (14, the approach of 10): after the order's transaction commits, sends the Avro
+ * {@code WorkOrderRequest} to cdc.forge.requests, key = customer order, and waits for the broker's ack; until then the
+ * publication stays incomplete and is republished on restart — and only then.
+ */
+@Component
+@ConditionalOnProperty(name = "outbox.mode", havingValue = "modulith")
+class RequestRelay {
+
+    private final KafkaTemplate<String, Object> kafka;
+
+    RequestRelay(KafkaTemplate<String, Object> kafka) {
+        this.kafka = kafka;
+    }
+
+    @ApplicationModuleListener
+    void on(WorkOrderRequestedEvent event) throws Exception {
+        kafka.send(WorkOrderRequests.TOPIC, event.orderId().toString(), WorkOrderRequests.toAvro(event))
+                .get(10, TimeUnit.SECONDS);
+    }
+}
