@@ -22,6 +22,8 @@ spec:
     offset.storage.replication.factor: 1
     status.storage.replication.factor: 1
     # ${secrets:<namespace>/<secret>:<key>} in connector configs (Strimzi's provider, part of the Strimzi image)
+    # one replica: after a Kafka outage do not wait the default 5 min for a "lost" worker before reassigning
+    scheduled.rebalance.max.delay.ms: 30000
     config.providers: secrets
     config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
   resources:

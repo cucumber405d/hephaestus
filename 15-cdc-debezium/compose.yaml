@@ -153,6 +153,9 @@ services:
       OFFSET_FLUSH_INTERVAL_MS: ${OFFSET_FLUSH_INTERVAL_MS:-10000}
       # The image defaults to -Xmx2G: above the container limit the kernel kills Connect while it scans plugins
       HEAP_OPTS: -Xms256M -Xmx512M
+      # A worker that lost its group session (Kafka away) rejoins as a new member; Connect then waits this long for the
+      # "lost" one before reassigning its connector (default 5 min). One worker here: nobody else to wait for.
+      CONNECT_SCHEDULED_REBALANCE_MAX_DELAY_MS: 15000
     mem_limit: 1g
     ports:
       - "127.0.0.1:18083:8083"

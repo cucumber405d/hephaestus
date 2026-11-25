@@ -15,6 +15,9 @@ spring:
           # Forge's QuoteService (plaintext inside the compose network)
           target: ${FORGE_GRPC_TARGET:static://localhost:9090}
   flyway:
+    # Flyway's history stays in public. Without this it goes to the connection's current schema: public on the first
+    # start, but "ordering" ("$user" in search_path) once V1 has created that schema, so a restart found no history
+    default-schema: public
     placeholders:
       # The connector's database user (V2__outbox.sql grants it the outbox)
       cdcUser: ${CDC_USER:cdc}

@@ -28,6 +28,12 @@
   Connect (`offset.flush.interval.ms`, в Compose — 10 с через `OFFSET_FLUSH_INTERVAL_MS`: образ Debezium сам выводит
   из неё `CONNECT_OFFSET_FLUSH_INTERVAL_MS`). `heartbeat.interval.ms` коммитит позицию и без новых событий outbox;
   WAL, который пишут только другие таблицы, освобождает лишь `heartbeat.action.query` в отслеживаемую таблицу.
+- **Простой Kafka задерживает и CDC.** Воркер Connect теряет сессию в группе и входит заново новым участником;
+  Connect ждёт «потерянного» `scheduled.rebalance.max.delay.ms` (по умолчанию 5 мин) и только потом переназначает
+  коннектор. В Compose (один воркер) — 15 с, на k8s — 30 с.
+- **Flyway и схема `"$user"`.** Пользователь БД `ordering` + схема `ordering`: при первом старте текущая схема —
+  `public` (схемы ещё нет), после V1 — `ordering`. Без `spring.flyway.default-schema` история миграций при рестарте
+  «пропадала», и Ordering не стартовал (нашли учения 1 и 2 в modulith — e2e всегда стартует с чистой базы).
 - **At-least-once.** Дубликаты — норма (учение 4), потребитель обязан быть идемпотентным.
 - **Порядок** — по ключу (id заказа), как в 14: Event Router кладёт `aggregate_id` в ключ.
 - **Схема outbox — тоже контракт**: колонки Event Router, `aggregate_type` = маршрут.
