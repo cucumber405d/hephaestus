@@ -26,12 +26,16 @@ spec:
     scheduled.rebalance.max.delay.ms: 30000
     config.providers: secrets
     config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+  # Fixed heap below the limit: with 768Mi and the heap Strimzi derives from it, the pod was OOMKilled (exit 137)
+  jvmOptions:
+    -Xms: 256m
+    -Xmx: 512m
   resources:
     requests:
       cpu: 200m
-      memory: 512Mi
-    limits:
       memory: 768Mi
+    limits:
+      memory: 1Gi
 ---
 # The provider reads the secret with Connect's service account (<cluster>-connect)
 apiVersion: rbac.authorization.k8s.io/v1
