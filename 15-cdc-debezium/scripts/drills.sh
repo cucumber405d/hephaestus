@@ -8,6 +8,8 @@
 # A drill whose failure did not happen fails as NOT STAGED — it never passes without the failure.
 # Each drill runs on a fresh stack (images from scripts/e2e.sh or BUILD=true). Results: target/drills/results.md.
 set -euo pipefail
+# Git Bash: do not rewrite container paths such as /opt/kafka/bin into C:/...
+export MSYS_NO_PATHCONV=1
 
 cd "$(dirname "$0")/.."   # 15-cdc-debezium
 DRILL="${1:?drill 1..5|all}"

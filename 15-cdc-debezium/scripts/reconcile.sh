@@ -4,6 +4,8 @@
 # Prints "accepted=<n> present=<n> missing=<n>"; exit 0 only when missing=0.
 # RECONCILE_FAKE_DIR: read ordering.txt / forge.txt from there instead of the databases (test/reconcile-fixture.sh).
 set -euo pipefail
+# Git Bash: do not rewrite container paths such as /opt/kafka/bin into C:/...
+export MSYS_NO_PATHCONV=1
 
 ORDERS="${1:?orders file}"
 cd "$(dirname "$0")/.."   # 15-cdc-debezium

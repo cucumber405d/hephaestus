@@ -6,6 +6,8 @@
 # OUTBOX_MODE=debezium (default: the outbox and Kafka Connect deliver) | modulith (the relay of 14 delivers).
 # Needs JDK 25, Docker, curl, python3.
 set -euo pipefail
+# Git Bash: do not rewrite container paths such as /opt/kafka/bin into C:/...
+export MSYS_NO_PATHCONV=1
 
 cd "$(dirname "$0")/.."   # 15-cdc-debezium
 PROJECT=hephaestus-15
@@ -132,7 +134,9 @@ compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-serve
     --topic cdc.forge.requests --from-beginning --timeout-ms 30000 \
     --property print.key=true --property print.value=false 2> "$RUN/keys.err" \
     | tr -d '\r' | cut -f1 > "$RUN/keys.txt" || true
-[ -s "$RUN/keys.txt" ] || fail "read no records from cdc.forge.requests ($(tail -3 "$RUN/keys.err"))"
+# keys are order ids: anything else (a docker error, say) means the read itself failed
+grep -qEx '[0-9a-f-]{36}' "$RUN/keys.txt" \
+    || fail "read no order keys from cdc.forge.requests: $(head -c 300 "$RUN/keys.txt") $(tail -3 "$RUN/keys.err")"
 for cid in "${CUSTOM_IDS[@]}"; do
     n=$(grep -cFx "$cid" "$RUN/keys.txt" || true)
     [ "$n" = "1" ] || fail "order $cid has $n records on cdc.forge.requests (expected exactly 1; $RUN/keys.txt)"
