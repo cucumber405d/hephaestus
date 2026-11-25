@@ -52,6 +52,10 @@ jobs:
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/$IMAGE_NAME"
           tag="sha-${GITHUB_SHA::7}"
+          # Modules of the same reactor the service depends on (15: the contracts jar) are not in Maven Central:
+          # install them first, without running jib:build on them
+          ./mvnw -B -ntp -f "$SUBPROJECT/pom.xml" -pl "$MODULE" -am install -DskipTests \
+            -Dspotless.check.skip=true -Djacoco.skip=true
           ./mvnw -B -ntp -f "$SUBPROJECT/pom.xml" -pl "$MODULE" package jib:build -DskipTests \
             -Djib.to.image="$image:$tag" -Djib.to.tags=latest -Dimage.revision="$GITHUB_SHA"
           digest=$(cat "$SUBPROJECT/$MODULE/target/jib-image.digest")
