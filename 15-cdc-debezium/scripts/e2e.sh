@@ -6,8 +6,6 @@
 # OUTBOX_MODE=debezium (default: the outbox and Kafka Connect deliver) | modulith (the relay of 14 delivers).
 # Needs JDK 25, Docker, curl, python3.
 set -euo pipefail
-# Git Bash: do not rewrite container paths such as /opt/kafka/bin into C:/...
-export MSYS_NO_PATHCONV=1
 
 cd "$(dirname "$0")/.."   # 15-cdc-debezium
 PROJECT=hephaestus-15
@@ -27,7 +25,9 @@ fail() {
     compose logs --tail=60 ordering forge-service schema-init connect >&2 || true
     exit 1
 }
-compose() { docker compose -f compose.yaml -p "$PROJECT" "$@"; }
+# Git Bash: MSYS_NO_PATHCONV keeps container paths (/opt/kafka/bin) from becoming C:/... (only here: curl
+# on the host needs /dev/null translated)
+compose() { MSYS_NO_PATHCONV=1 docker compose -f compose.yaml -p "$PROJECT" "$@"; }
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 # json <path> reads a value from stdin, e.g. json status, json 0.id
 json() { python3 -c 'import json,sys

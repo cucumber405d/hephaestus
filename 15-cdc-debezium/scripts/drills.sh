@@ -8,8 +8,6 @@
 # A drill whose failure did not happen fails as NOT STAGED — it never passes without the failure.
 # Each drill runs on a fresh stack (images from scripts/e2e.sh or BUILD=true). Results: target/drills/results.md.
 set -euo pipefail
-# Git Bash: do not rewrite container paths such as /opt/kafka/bin into C:/...
-export MSYS_NO_PATHCONV=1
 
 cd "$(dirname "$0")/.."   # 15-cdc-debezium
 DRILL="${1:?drill 1..5|all}"
@@ -18,7 +16,9 @@ PROJECT=hephaestus-15
 ORDERING=http://localhost:18080
 CONNECT=http://localhost:18083
 RESULTS=target/drills/results.md
-compose() { docker compose -f compose.yaml -p "$PROJECT" "$@"; }
+# Git Bash: MSYS_NO_PATHCONV keeps container paths (/opt/kafka/bin) from becoming C:/... (only here: curl
+# on the host needs /dev/null translated)
+compose() { MSYS_NO_PATHCONV=1 docker compose -f compose.yaml -p "$PROJECT" "$@"; }
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 say() { echo "      $*"; }
 

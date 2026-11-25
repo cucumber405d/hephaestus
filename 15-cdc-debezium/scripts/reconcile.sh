@@ -4,12 +4,12 @@
 # Prints "accepted=<n> present=<n> missing=<n>"; exit 0 only when missing=0.
 # RECONCILE_FAKE_DIR: read ordering.txt / forge.txt from there instead of the databases (test/reconcile-fixture.sh).
 set -euo pipefail
-# Git Bash: do not rewrite container paths such as /opt/kafka/bin into C:/...
-export MSYS_NO_PATHCONV=1
 
 ORDERS="${1:?orders file}"
 cd "$(dirname "$0")/.."   # 15-cdc-debezium
-compose() { docker compose -f compose.yaml -p hephaestus-15 "$@"; }
+# Git Bash: MSYS_NO_PATHCONV keeps container paths (/opt/kafka/bin) from becoming C:/... (only here: curl
+# on the host needs /dev/null translated)
+compose() { MSYS_NO_PATHCONV=1 docker compose -f compose.yaml -p hephaestus-15 "$@"; }
 
 ids=$(grep -E '^[0-9a-f-]{36}$' "$ORDERS" | sed "s/.*/'&'/" | paste -sd, - || true)
 if [[ -n "${RECONCILE_FAKE_DIR:-}" ]]; then
