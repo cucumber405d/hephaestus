@@ -49,9 +49,12 @@ start_stack() {
 
 # orders <seconds> | orders_n <count>: custom IRON-01 x1 every 200 ms; accepted ids to $RUN/orders.txt
 place_one() {
-    curl -s -m 5 -X POST "$ORDERING/api/orders" -H 'Content-Type: application/json' \
+    local id
+    id=$(curl -s -m 5 -X POST "$ORDERING/api/orders" -H 'Content-Type: application/json' \
         -d '{"customerId":"drill","custom":true,"material":"IRON-01","quantity":1}' 2> /dev/null \
-        | sed -n 's/.*"id":"\([0-9a-f-]*\)".*/\1/p' >> "$RUN/orders.txt" || true
+        | sed -n 's/.*"id":"\([0-9a-f-]*\)".*/\1/p' || true)
+    # one id per line: the response has no trailing newline, so sed would glue the ids together
+    if [ -n "$id" ]; then printf '%s\n' "$id" >> "$RUN/orders.txt"; fi
 }
 orders() { local end=$((SECONDS + $1)); while [ $SECONDS -lt $end ]; do place_one; sleep 0.2; done; }
 orders_n() { for _ in $(seq 1 "$1"); do place_one; sleep 0.2; done; }
@@ -63,7 +66,11 @@ incomplete() {
         "select count(*) from event_publication where completion_date is null"
 }
 missing() { { scripts/reconcile.sh "$RUN/orders.txt" || true; } | sed -n 's/.*missing=\([0-9]*\).*/\1/p'; }
-reconcile_ok() { scripts/reconcile.sh "$RUN/orders.txt" > "$RUN/reconcile.txt"; }
+# A reconciliation over zero accepted orders proves nothing: it fails too
+reconcile_ok() {
+    scripts/reconcile.sh "$RUN/orders.txt" > "$RUN/reconcile.txt" || return 1
+    ! grep -q 'accepted=0 ' "$RUN/reconcile.txt" || { echo "no accepted order to reconcile" >> "$RUN/reconcile.txt"; return 1; }
+}
 retained_wal() {
     compose exec -T postgres-ordering psql -U ordering -d ordering -Atc \
         "select coalesce(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn), 0)::bigint
