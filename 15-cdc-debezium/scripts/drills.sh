@@ -100,6 +100,18 @@ print(f"{q[49]:.0f} / {q[94]:.0f} ms (n={len(ms)})")
 PY
 }
 
+# A failed drill keeps its evidence: the next drill starts with "compose down -v"
+on_exit() {
+    local status=$?
+    if [ "$status" -ne 0 ] && [ -n "${RUN:-}" ] && [ -d "$RUN" ]; then
+        compose ps -a > "$RUN/ps.txt" 2>&1 || true
+        compose logs --no-color --tail=400 ordering connect forge-service kafka > "$RUN/logs.txt" 2>&1 || true
+        curl -s -m 5 "$CONNECT/connectors/ordering-outbox/status" > "$RUN/connector-status.json" 2>&1 || true
+        echo "drill failed, logs in $RUN" >&2
+    fi
+}
+trap on_exit EXIT
+
 not_staged() { echo "NOT STAGED: drill $1 ($MODE): $2" >&2; exit 1; }
 row() { printf '| %s | %s | %s | %s | %s | %s | %s |\n' "$@" | tee -a "$RESULTS"; }
 
