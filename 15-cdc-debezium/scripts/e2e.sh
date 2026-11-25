@@ -69,7 +69,9 @@ done
 ok "ordering, forge-service, supplier, Kafka, Apicurio, Kafka Connect, two databases up (mode $OUTBOX_MODE)"
 
 echo "==> connector"
-compose --profile init run --rm --no-deps connector-init > "$RUN/connector.log" 2>&1 || { cat "$RUN/connector.log"; fail "connector"; }
+# From the host, after Ordering is ready (its Flyway migration creates the outbox and the publication)
+scripts/register-connector.sh "$CONNECT" connect/ordering-outbox.json "$ORDERING/actuator/health/readiness" \
+    > "$RUN/connector.log" 2>&1 || { cat "$RUN/connector.log"; fail "connector"; }
 ok "Debezium connector ordering-outbox RUNNING (registered in both modes)"
 # The Debezium image rewrites CONNECT_OFFSET_FLUSH_INTERVAL_MS from OFFSET_FLUSH_INTERVAL_MS: check what Connect got
 flush=$(compose exec -T connect sh -c 'grep "^offset.flush.interval.ms=" "$KAFKA_HOME/config/connect-distributed.properties"' \

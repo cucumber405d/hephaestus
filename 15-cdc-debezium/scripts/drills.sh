@@ -14,6 +14,7 @@ DRILL="${1:?drill 1..5|all}"
 MODE="${2:?debezium|modulith}"
 PROJECT=hephaestus-15
 ORDERING=http://localhost:18080
+CONNECT=http://localhost:18083
 RESULTS=target/drills/results.md
 compose() { docker compose -f compose.yaml -p "$PROJECT" "$@"; }
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
@@ -39,7 +40,8 @@ start_stack() {
     compose down -v > /dev/null 2>&1 || true
     OUTBOX_MODE="$MODE" compose up -d --wait > "$RUN/compose.log" 2>&1 || { cat "$RUN/compose.log"; exit 1; }
     wait_ready
-    OUTBOX_MODE="$MODE" compose --profile init run --rm --no-deps connector-init > "$RUN/connector.log" 2>&1 \
+    scripts/register-connector.sh "$CONNECT" connect/ordering-outbox.json "$ORDERING/actuator/health/readiness" \
+        > "$RUN/connector.log" 2>&1 \
         || { cat "$RUN/connector.log"; exit 1; }
 }
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Registers (or updates) the Debezium connector "ordering-outbox" in Kafka Connect and waits until it and its task
-# run. Idempotent: PUT /connectors/<name>/config. POSIX sh: it runs in the curl image.
+# run. Idempotent: PUT /connectors/<name>/config. POSIX sh (Git Bash, the curl image).
 # Usage: register-connector.sh <connect-url> <config.json> [<url that must answer first>]
 set -eu
 
