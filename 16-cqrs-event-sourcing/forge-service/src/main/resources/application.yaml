@@ -8,6 +8,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  flyway:
+    # The database user "forge" meets schema "forge" (V3): without this, Flyway's history would move from public to
+    # forge ("$user" in search_path) after V3 and a restart would find none (the lesson of 15)
+    default-schema: public
   grpc:
     server:
       # QuoteService (Netty, plaintext inside the cluster/compose network)
