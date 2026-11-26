@@ -135,6 +135,46 @@ class EventStoreIT {
         }
     }
 
+    /**
+     * Transaction ids are numbers: 999 comes before 1000. Ordered as text ("1000" < "999") the batch's last event —
+     * the next checkpoint — would be the wrong one, and the reader would apply events again (drill 3).
+     */
+    @Test
+    void readAllOrdersTransactionIdsAsNumbersAcrossADigit() {
+        var head = head();
+        store.append(stream(), "Test", 0, List.of(event("FEWER-DIGITS", Map.of())));
+        burnTransactionIdsToTheNextPowerOfTen();
+        store.append(stream(), "Test", 0, List.of(event("MORE-DIGITS", Map.of())));
+
+        var events = store.readAll(head, 100);
+
+        assertThat(events).extracting(RecordedEvent::type).containsExactly("FEWER-DIGITS", "MORE-DIGITS");
+        assertThat(events.get(1).txId()).hasSizeGreaterThan(events.get(0).txId().length());
+        assertThat(store.readAll(Checkpoint.of(events.getLast()), 100)).isEmpty();
+    }
+
+    /** Every subtransaction that writes takes an xid of its own: one statement moves the counter as far as needed. */
+    private static void burnTransactionIdsToTheNextPowerOfTen() {
+        JdbcClient.create(dataSource)
+                .sql("""
+                        do $$
+                        declare
+                            top bigint := pg_current_xact_id()::text::bigint;
+                            next bigint := power(10, length(top::text))::bigint;
+                        begin
+                            create temp table if not exists burn (n int);
+                            for i in 1 .. next - top + 1 loop
+                                begin
+                                    insert into burn values (i);
+                                    raise exception 'roll back this subtransaction';
+                                exception when others then
+                                    null;
+                                end;
+                            end loop;
+                        end $$""")
+                .update();
+    }
+
     /** Everything committed so far: the tests share the journal. */
     private static Checkpoint head() {
         var all = store.readAll(Checkpoint.START, Integer.MAX_VALUE);
