@@ -6,8 +6,8 @@ import static org.awaitility.Awaitility.await;
 import de.ibikus.appa.hephaestus.es.forge.Containers;
 import de.ibikus.appa.hephaestus.es.forge.FakeSupplier;
 import de.ibikus.appa.hephaestus.es.forge.Journal;
-import de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderDecider;
 import de.ibikus.appa.hephaestus.es.forge.application.WorkOrders;
+import de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderDecider;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,12 +58,14 @@ class SmithApiIT {
 
     @Test
     void startUnknownIs404() {
-        assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", "FW-missing")).hasStatus(404);
+        assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", "FW-missing"))
+                .hasStatus(404);
     }
 
     @Test
     void completeUnknownIs404() {
-        assertThat(mvc.post().uri("/api/work-orders/{id}/complete", "FW-missing")).hasStatus(404);
+        assertThat(mvc.post().uri("/api/work-orders/{id}/complete", "FW-missing"))
+                .hasStatus(404);
     }
 
     @Test
@@ -109,7 +111,8 @@ class SmithApiIT {
         assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", wo)).hasStatus(409);
 
         FakeSupplier.delayMs = 0;
-        await().atMost(Duration.ofSeconds(10)).until(() -> journal.status(orderId).equals("ALLOCATED"));
+        await().atMost(Duration.ofSeconds(10))
+                .until(() -> journal.status(orderId).equals("ALLOCATED"));
         assertThat(journal.events("material-STEEL-01", "StockReceived")).isPositive();
         assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", wo)).hasStatusOk();
     }

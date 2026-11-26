@@ -41,9 +41,6 @@ public class JdbcCheckpointStore implements CheckpointStore {
     public long lag(String name) {
         return jdbc.sql("""
                         select count(*) from forge.event e, read.projection_checkpoint c
-                         where c.name = ? and (e.tx_id, e.global_position) > (c.tx_id, c.position)""")
-                .param(name)
-                .query(Long.class)
-                .single();
+                         where c.name = ? and (e.tx_id, e.global_position) > (c.tx_id, c.position)""").param(name).query(Long.class).single();
     }
 }

@@ -96,11 +96,13 @@ public class WorkOrders {
         var meta = metadata(state.orderId());
         var material = materials.load(state.material());
         if (material.state().onHand() < state.quantity()) {
-            switch (supplier.order(state.material(), state.quantity() - material.state().onHand())) {
+            switch (supplier.order(
+                    state.material(), state.quantity() - material.state().onHand())) {
                 case Delivered delivered ->
                     material = materials.save(
                             material,
-                            MaterialDecider.decide(new Receive(delivered.quantity(), Source.SUPPLIER), material.state()),
+                            MaterialDecider.decide(
+                                    new Receive(delivered.quantity(), Source.SUPPLIER), material.state()),
                             meta);
                 case PermanentFailure failure -> {
                     var reason = PermanentFailure.NOT_DELIVERABLE.equals(failure.reason())

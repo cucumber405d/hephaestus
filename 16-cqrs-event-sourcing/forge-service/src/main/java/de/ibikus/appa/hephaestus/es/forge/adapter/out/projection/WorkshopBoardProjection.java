@@ -59,8 +59,6 @@ public class WorkshopBoardProjection implements Projection {
                         update read.workshop_board
                            set status = ?, smith = coalesce(?, smith), failure_reason = coalesce(?, failure_reason),
                                last_event_recorded_at = ?, updated_at = clock_timestamp()
-                         where work_order_id = ?""")
-                .params(status, smith, reason, at, workOrderId)
-                .update();
+                         where work_order_id = ?""").params(status, smith, reason, at, workOrderId).update();
     }
 }

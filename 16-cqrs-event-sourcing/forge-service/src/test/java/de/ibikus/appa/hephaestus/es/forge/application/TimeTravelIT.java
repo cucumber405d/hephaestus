@@ -53,7 +53,8 @@ class TimeTravelIT {
     @Test
     void stockAtMiddleExcludesLaterTakes() {
         append(0, new StockReceived(10, Source.SUPPLIER));
-        var afterReceipt = store.readStream(MaterialDecider.streamId(code)).getFirst().recordedAt();
+        var afterReceipt =
+                store.readStream(MaterialDecider.streamId(code)).getFirst().recordedAt();
         append(1, new StockTaken(4, "FW-x"));
 
         assertThat(workOrders.stockAt(code, afterReceipt)).isEqualTo(10);

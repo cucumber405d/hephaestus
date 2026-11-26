@@ -27,7 +27,8 @@ public class WorkOrderRepository {
 
     public Loaded load(String id) {
         var rows = store.readStream(id);
-        var events = rows.stream().map(row -> (WorkOrderEvent) codec.decode(row)).toList();
+        var events =
+                rows.stream().map(row -> (WorkOrderEvent) codec.decode(row)).toList();
         return new Loaded(WorkOrderDecider.fold(events), rows.size());
     }
 

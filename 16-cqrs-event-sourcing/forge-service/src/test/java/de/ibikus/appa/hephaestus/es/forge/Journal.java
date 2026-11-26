@@ -42,7 +42,8 @@ public class Journal {
     }
 
     public int requests(UUID orderId) {
-        return jdbc.sql("select count(*) from forge.event where type = 'WorkOrderRequested' and payload->>'orderId' = ?")
+        return jdbc.sql(
+                        "select count(*) from forge.event where type = 'WorkOrderRequested' and payload->>'orderId' = ?")
                 .param(orderId.toString())
                 .query(Integer.class)
                 .single();

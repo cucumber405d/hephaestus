@@ -34,17 +34,13 @@ public class SmithLoadProjection implements Projection {
                         .update();
                 jdbc.sql("""
                                 insert into read.smith_load (smith, in_progress, done) values (?, 1, 0)
-                                on conflict (smith) do update set in_progress = read.smith_load.in_progress + 1""")
-                        .param(s.smith())
-                        .update();
+                                on conflict (smith) do update set in_progress = read.smith_load.in_progress + 1""").param(s.smith()).update();
             }
             case WorkOrderCompleted ignored ->
                 jdbc.sql("""
                                 update read.smith_load
                                    set in_progress = in_progress - 1, done = done + 1
-                                 where smith = (select smith from read.smith_assignment where work_order_id = ?)""")
-                        .param(meta.streamId())
-                        .update();
+                                 where smith = (select smith from read.smith_assignment where work_order_id = ?)""").param(meta.streamId()).update();
             default -> {}
         }
     }

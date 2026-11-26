@@ -29,8 +29,7 @@ class UnknownEventIT {
         var before = position();
         h.jdbc.sql("""
                         insert into forge.event (stream_id, stream_type, version, type, schema_version, payload, metadata)
-                        values ('bogus-1', 'WorkOrder', 1, 'Bogus', 1, '{}'::jsonb, '{}'::jsonb)""")
-                .update();
+                        values ('bogus-1', 'WorkOrder', 1, 'Bogus', 1, '{}'::jsonb, '{}'::jsonb)""").update();
 
         runner.runOnce();
         runner.runOnce();

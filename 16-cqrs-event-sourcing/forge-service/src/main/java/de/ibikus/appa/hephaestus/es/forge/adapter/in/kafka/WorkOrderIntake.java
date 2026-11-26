@@ -1,9 +1,9 @@
 package de.ibikus.appa.hephaestus.es.forge.adapter.in.kafka;
 
-import de.ibikus.appa.hephaestus.es.forge.application.eventstore.ConcurrencyConflict;
 import de.ibikus.appa.hephaestus.contracts.events.WorkOrderRequest;
 import de.ibikus.appa.hephaestus.es.forge.application.QuoteRef;
 import de.ibikus.appa.hephaestus.es.forge.application.WorkOrders;
+import de.ibikus.appa.hephaestus.es.forge.application.eventstore.ConcurrencyConflict;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.kafka.annotation.KafkaListener;

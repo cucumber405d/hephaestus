@@ -1,8 +1,5 @@
 package de.ibikus.appa.hephaestus.es.forge.adapter.in.kafka;
 
-import de.ibikus.appa.hephaestus.es.forge.Journal;
-import de.ibikus.appa.hephaestus.es.forge.application.WorkOrders;
-import de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderDecider;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -10,8 +7,11 @@ import de.ibikus.appa.hephaestus.contracts.events.WorkOrderRequest;
 import de.ibikus.appa.hephaestus.es.forge.AvroProbe;
 import de.ibikus.appa.hephaestus.es.forge.Containers;
 import de.ibikus.appa.hephaestus.es.forge.FakeSupplier;
+import de.ibikus.appa.hephaestus.es.forge.Journal;
 import de.ibikus.appa.hephaestus.es.forge.KafkaProbe;
 import de.ibikus.appa.hephaestus.es.forge.SchemaRegistry;
+import de.ibikus.appa.hephaestus.es.forge.application.WorkOrders;
+import de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderDecider;
 import java.time.Duration;
 import java.util.UUID;
 import org.apache.avro.Schema;

@@ -121,9 +121,7 @@ class ForgeEventsPublisherIT {
         jdbc.sql("""
                         insert into read.projection_checkpoint(name, tx_id, position)
                         select ?, tx_id, global_position from forge.event
-                        order by tx_id desc, global_position desc limit 1""")
-                .param(name)
-                .update();
+                        order by tx_id desc, global_position desc limit 1""").param(name).update();
         var start = checkpoints.get(name);
         var orderId = completedOrder();
         var sink = new SwitchableSink();
@@ -139,9 +137,8 @@ class ForgeEventsPublisherIT {
         while (publisher.publishOnce() > 0) {
             // drain the whole journal
         }
-        var delivered = sink.delivered.stream()
-                .filter(o -> o.orderId().equals(orderId))
-                .toList();
+        var delivered =
+                sink.delivered.stream().filter(o -> o.orderId().equals(orderId)).toList();
         assertThat(delivered).hasSize(1);
         assertThat(delivered.getFirst().eventId()).isEqualTo(attempted.eventId());
         assertThat(checkpoints.get(name).position()).isGreaterThan(start.position());

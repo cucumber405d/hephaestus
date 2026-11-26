@@ -66,7 +66,9 @@ final class ProjectionHarness implements AutoCloseable {
                 streamId,
                 streamType,
                 expectedVersion,
-                java.util.Arrays.stream(events).map(e -> codec.encode(e, Map.of())).toList()));
+                java.util.Arrays.stream(events)
+                        .map(e -> codec.encode(e, Map.of()))
+                        .toList()));
     }
 
     @Override

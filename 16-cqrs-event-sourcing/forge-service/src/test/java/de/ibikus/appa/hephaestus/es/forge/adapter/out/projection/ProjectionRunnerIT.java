@@ -77,7 +77,8 @@ class ProjectionRunnerIT {
 
     @Test
     void failingHandlerRollsBackBatchAndRetries() {
-        h.jdbc.sql("create table if not exists read.flaky_seen (position bigint primary key)").update();
+        h.jdbc.sql("create table if not exists read.flaky_seen (position bigint primary key)")
+                .update();
         h.jdbc.sql("insert into read.projection_checkpoint (name, tx_id, position) values ('flaky', '0', 0)"
                         + " on conflict do nothing")
                 .update();
@@ -87,7 +88,8 @@ class ProjectionRunnerIT {
 
         runner.runOnce(); // the 2nd event of the batch throws: nothing of the batch may stay
         assertThat(count("select count(*) from read.flaky_seen")).isZero();
-        assertThat(count("select position from read.projection_checkpoint where name = 'flaky'")).isZero();
+        assertThat(count("select position from read.projection_checkpoint where name = 'flaky'"))
+                .isZero();
 
         while (runner.runOnce() > 0) {}
         assertThat(count("select count(*) from read.flaky_seen")).isEqualTo(count("select count(*) from forge.event"));
@@ -161,7 +163,9 @@ class ProjectionRunnerIT {
         var order = UUID.randomUUID();
         var id = WorkOrderDecider.idFor(order);
         var events = new ArrayList<Object>(List.of(
-                new WorkOrderRequested(id, order, "IRON-01", 1), new MaterialAllocated(1), new WorkOrderStarted(smith)));
+                new WorkOrderRequested(id, order, "IRON-01", 1),
+                new MaterialAllocated(1),
+                new WorkOrderStarted(smith)));
         if (complete) {
             events.add(new WorkOrderCompleted());
         }

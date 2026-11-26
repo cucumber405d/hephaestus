@@ -44,9 +44,7 @@ public class StockLedgerProjection implements Projection {
         var material = meta.streamId().substring(STREAM_PREFIX.length());
         jdbc.sql("""
                         insert into read.stock_ledger (material, on_hand) values (?, ?)
-                        on conflict (material) do update set on_hand = read.stock_ledger.on_hand + excluded.on_hand""")
-                .params(material, delta)
-                .update();
+                        on conflict (material) do update set on_hand = read.stock_ledger.on_hand + excluded.on_hand""").params(material, delta).update();
         jdbc.sql("""
                         insert into read.stock_movement (position, material, delta, source, work_order_id, recorded_at)
                         values (?, ?, ?, ?, ?, ?)""")

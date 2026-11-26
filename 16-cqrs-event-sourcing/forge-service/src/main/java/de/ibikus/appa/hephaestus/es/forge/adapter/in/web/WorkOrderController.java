@@ -48,6 +48,12 @@ class WorkOrderController {
     Map<String, Object> stock(@PathVariable String material, @RequestParam Optional<Instant> at) {
         int onHand = at.map(moment -> workOrders.stockAt(material, moment))
                 .orElseGet(() -> ledger.onHand(material).orElse(0));
-        return Map.of("material", material, "onHand", onHand, "at", at.map(Instant::toString).orElse("now"));
+        return Map.of(
+                "material",
+                material,
+                "onHand",
+                onHand,
+                "at",
+                at.map(Instant::toString).orElse("now"));
     }
 }

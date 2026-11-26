@@ -3,8 +3,8 @@ package de.ibikus.appa.hephaestus.es.forge.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import de.ibikus.appa.hephaestus.es.forge.Containers;
-import de.ibikus.appa.hephaestus.es.forge.Journal;
 import de.ibikus.appa.hephaestus.es.forge.FakeSupplier;
+import de.ibikus.appa.hephaestus.es.forge.Journal;
 import de.ibikus.appa.hephaestus.es.forge.MutableClock;
 import java.time.Duration;
 import java.util.Optional;
@@ -125,7 +125,7 @@ class QuoteVerificationIT {
     }
 
     private int failedEvents(UUID orderId) {
-        return journal.events(de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderDecider.idFor(orderId),
-                "WorkOrderFailed");
+        return journal.events(
+                de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderDecider.idFor(orderId), "WorkOrderFailed");
     }
 }
