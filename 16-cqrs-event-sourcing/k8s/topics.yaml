@@ -1,0 +1,57 @@
+# Ordering <-> forge-service on the shared Kafka; "es." so they never meet 13's JSON topics forge.requests/events.
+# In namespace kafka: the platform's Topic Operator watches it. Key = the customer order.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: es-forge-requests
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: es.forge.requests
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: es-forge-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: es.forge.events
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: es-forge-requests-dlt
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: es.forge.requests.DLT
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: es-forge-events-dlt
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  topicName: es.forge.events.DLT
+  partitions: 1
+  replicas: 1

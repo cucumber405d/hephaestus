@@ -1,0 +1,30 @@
+# The application with the images built on this machine (jib:dockerBuild) and loaded into
+# kind, in hephaestus-16; the topics are applied separately (namespace kafka): scripts/deploy-local.sh.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hephaestus-16
+
+resources:
+  - ../../app
+
+images:
+  - name: ghcr.io/cucumber405d/hephaestus/cqrs-es-ordering
+    newName: hephaestus/cqrs-es-ordering
+    newTag: jib
+  - name: ghcr.io/cucumber405d/hephaestus/cqrs-es-forge-service
+    newName: hephaestus/cqrs-es-forge-service
+    newTag: jib
+  - name: ghcr.io/cucumber405d/hephaestus/cqrs-es-supplier-stub
+    newName: hephaestus/cqrs-es-supplier-stub
+    newTag: jib
+
+patches:
+  # kind has the images locally: never pull
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/name notin (apicurio)
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never

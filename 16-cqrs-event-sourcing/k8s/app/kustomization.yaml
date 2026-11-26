@@ -1,0 +1,33 @@
+# The namespaced part of 16 (hephaestus-16): databases, registry, services, route. The KafkaTopics
+# live in namespace kafka (topics.yaml), applied apart.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - databases.yaml
+  - registry.yaml
+  - services.yaml
+  - route.yaml
+
+# Copies of contracts/src/main/avro and scripts/register-schemas.sh (kustomize reads nothing outside this folder);
+# CI checks they are identical to the sources.
+configMapGenerator:
+  - name: avro-schemas
+    files:
+      - schema-init/work_order_request.avsc
+      - schema-init/forge_event.avsc
+  - name: schema-init-script
+    files:
+      - schema-init/register-schemas.sh
+
+# Published by CI on main (sha-<7>); set to the merge commit's sha when the platform app is enabled
+images:
+  - name: ordering
+    newName: ghcr.io/cucumber405d/hephaestus/cqrs-es-ordering
+    newTag: latest
+  - name: forge-service
+    newName: ghcr.io/cucumber405d/hephaestus/cqrs-es-forge-service
+    newTag: latest
+  - name: supplier-stub
+    newName: ghcr.io/cucumber405d/hephaestus/cqrs-es-supplier-stub
+    newTag: latest
