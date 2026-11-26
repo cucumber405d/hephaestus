@@ -18,7 +18,7 @@ class PublisherScheduler {
         this.publisher = publisher;
     }
 
-    @Scheduled(fixedDelayString = "${publisher.poll-interval:200ms}")
+    @Scheduled(fixedDelayString = "${publisher.poll-interval:200ms}", scheduler = Schedulers.PUBLISHER)
     void poll() {
         try {
             while (publisher.publishOnce() > 0) {

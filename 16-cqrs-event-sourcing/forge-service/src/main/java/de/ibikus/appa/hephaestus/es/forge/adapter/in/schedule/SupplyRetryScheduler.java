@@ -14,7 +14,7 @@ class SupplyRetryScheduler {
         this.workOrders = workOrders;
     }
 
-    @Scheduled(fixedDelayString = "${forge.supply-retry}")
+    @Scheduled(fixedDelayString = "${forge.supply-retry}", scheduler = Schedulers.SUPPLY)
     void retry() {
         workOrders.retryWaitingForMaterial();
     }

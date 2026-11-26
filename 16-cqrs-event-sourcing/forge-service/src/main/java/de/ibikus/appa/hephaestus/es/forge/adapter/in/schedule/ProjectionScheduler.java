@@ -14,7 +14,7 @@ class ProjectionScheduler {
         this.runner = runner;
     }
 
-    @Scheduled(fixedDelayString = "${projections.poll-interval:200ms}")
+    @Scheduled(fixedDelayString = "${projections.poll-interval:200ms}", scheduler = Schedulers.PROJECTIONS)
     void poll() {
         while (runner.runOnce() > 0) {
             // keep going while there is work: a backlog is applied batch after batch, not one batch per interval

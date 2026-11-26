@@ -62,8 +62,9 @@ es.forge.requests ─► WorkOrderIntake ─► WorkOrders.request ─► WorkOr
 ## Журнал как outbox
 
 `OutcomePublisher` — такой же читатель журнала со своим checkpoint `forge-events-publisher`. Для
-`WorkOrderCompleted`/`WorkOrderFailed` шлёт `ForgeEvent` в `es.forge.events` (key = orderId), ждёт ack и только потом
-двигает checkpoint. `eventId` = UUID от `stream/version` — повтор после сбоя несёт тот же id, inbox Ordering
+`WorkOrderCompleted`/`WorkOrderFailed` шлёт `ForgeEvent` в `es.forge.events` (key = orderId), ждёт ack и только после
+батча двигает checkpoint (короткая транзакция, compare and set). Пока ждёт брокер, транзакции нет: иначе её xid
+задержал бы xmin журнала и все проекции. У каждого опроса свой поток (`Schedulers`), `max.block.ms` 10 s. `eventId` = UUID от `stream/version` — повтор после сбоя несёт тот же id, inbox Ordering
 отбрасывает дубль ([ADR-0019](../../docs/adr/0019-journal-as-outbox.md)). Исторический fixture `V5` не публикуется:
 миграция ставит checkpoint publisher на голову журнала.
 

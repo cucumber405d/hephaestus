@@ -10,7 +10,10 @@ import java.util.concurrent.TimeoutException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-/** Outcome → Avro {@code ForgeEvent} on es.forge.events, key = customer order; waits up to 10 s for the ack. */
+/**
+ * Outcome → Avro {@code ForgeEvent} on es.forge.events, key = customer order. Waits for the ack: up to max.block.ms
+ * (10 s, application.yaml) for the broker's metadata, then up to 10 s for the acknowledgement.
+ */
 @Component
 class KafkaOutcomeSink implements OutcomeSink {
 

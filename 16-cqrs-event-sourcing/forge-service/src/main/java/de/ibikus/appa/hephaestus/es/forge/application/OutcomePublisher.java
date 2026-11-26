@@ -9,20 +9,26 @@ import de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderEvent.WorkOr
 import de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderEvent.WorkOrderFailed;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The journal as outbox. A reader like the projections — its own checkpoint row, locked for the batch — whose
- * "read model" is the topic: every {@code WorkOrderCompleted} and {@code WorkOrderFailed} after the checkpoint goes to
- * the sink, each send waits for the ack, and only then the checkpoint moves (same transaction). A failed send rolls
- * the batch back: the checkpoint stays, the next call sends again — at least once, with a stable event id. All other
- * event types are skipped, and the checkpoint moves past them.
+ * The journal as outbox. A reader like the projections — its own checkpoint — whose "read model" is the topic: every
+ * {@code WorkOrderCompleted} and {@code WorkOrderFailed} after the checkpoint goes to the sink, each send waits for
+ * the ack, and only after the whole batch the checkpoint moves. The reads and the sends run outside any transaction:
+ * a transaction waiting for the broker would hold an xid and with it the journal's xmin, and every projection would
+ * wait too (ADR-0018). A failed send leaves the checkpoint where it was, the next call sends again — at least once,
+ * with a stable event id. The checkpoint is saved only if no other publisher moved it meanwhile (compare and set
+ * under the row lock). All other event types are skipped, and the checkpoint moves past them.
  */
 @Service
 public class OutcomePublisher {
+
+    private static final Logger log = LoggerFactory.getLogger(OutcomePublisher.class);
 
     private final EventStore store;
     private final EventCodec codec;
@@ -66,31 +72,38 @@ public class OutcomePublisher {
 
     /** One batch; returns the number of journal events passed (0 = caught up). Throws when a send failed. */
     public int publishOnce() {
-        Integer n = tx.execute(status -> batch());
-        return n == null ? 0 : n;
-    }
-
-    private int batch() {
-        var checkpoint = checkpoints.lock(name);
+        var checkpoint = checkpoints.get(name);
         var events = store.readAll(checkpoint, batchSize);
         for (var row : events) {
             var event = codec.decode(row);
-            var kind = switch (event) {
-                case WorkOrderCompleted _ -> Outcome.Kind.COMPLETED;
-                case WorkOrderFailed _ -> Outcome.Kind.FAILED;
-                default -> null;
-            };
+            var kind =
+                    switch (event) {
+                        case WorkOrderCompleted _ -> Outcome.Kind.COMPLETED;
+                        case WorkOrderFailed _ -> Outcome.Kind.FAILED;
+                        default -> null;
+                    };
             if (kind == null) {
                 continue;
             }
             var state = workOrders.load(row.streamId()).state();
             var reason = event instanceof WorkOrderFailed failed ? failed.reason() : null;
-            var eventId =
-                    UUID.nameUUIDFromBytes((row.streamId() + "/" + row.version()).getBytes(StandardCharsets.UTF_8));
+            var eventId = UUID.nameUUIDFromBytes(
+                    (row.streamId() + "/" + row.version()).getBytes(StandardCharsets.UTF_8));
             sink.send(new Outcome(eventId, kind, state.orderId(), row.streamId(), reason));
         }
-        if (!events.isEmpty()) {
-            checkpoints.save(name, Checkpoint.of(events.getLast()));
+        if (events.isEmpty()) {
+            return 0;
+        }
+        var next = Checkpoint.of(events.getLast());
+        Boolean saved = tx.execute(status -> {
+            if (!checkpoints.lock(name).equals(checkpoint)) {
+                return false;
+            }
+            checkpoints.save(name, next);
+            return true;
+        });
+        if (!Boolean.TRUE.equals(saved)) {
+            log.warn("checkpoint {} moved by another publisher; this batch was sent twice", name);
         }
         return events.size();
     }
