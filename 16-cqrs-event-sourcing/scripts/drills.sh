@@ -232,6 +232,11 @@ PY
             done
             sleep 5
             [ "$(sql "select count(*) from read.smith_load")" = "0" ] || not_staged 3 "smith-load was not off"
+            # evidence of the disabled phase (the restart replaces the container and its logs)
+            curl -s -m 5 "$FORGE/admin/projections" > "$RUN/projections-disabled.json" || true
+            compose exec -T forge-service env | grep -i projections > "$RUN/env-disabled.txt" || true
+            compose logs --no-color forge-service > "$RUN/forge-disabled.log" 2>&1 || true
+            sql "select * from read.projection_checkpoint" > "$RUN/checkpoints-disabled.txt" || true
             unset PROJECTIONS_SMITH_LOAD_ENABLED
             compose up -d --wait forge-service > "$RUN/compose-enable.log" 2>&1
             wait_ready
