@@ -152,6 +152,21 @@ Forge: в режиме `debezium` через таблицу `ordering.outbox` и
 - Почему после паузы Kafka коннектор ждал 5 минут (`scheduled.rebalance.max.delay.ms`, incremental cooperative rebalancing)?
 - Почему задержка CDC (~0,5 с) выше, чем у relay (~15 мс)?
 
+### Event sourcing и CQRS
+- Чем event sourcing (состояние = журнал событий) отличается от event-driven architecture (события = сообщения)?
+- Что такое stream (поток событий одного aggregate) и как из него получается состояние (`fold`, decide/evolve)?
+- Как работает optimistic concurrency в журнале (`expectedVersion`, `unique(stream_id, version)`), и почему ответ — 409?
+- Почему `bigserial` не годится как глобальный порядок для чтения, и что делает `pg_snapshot_xmin` (ADR-0018)?
+- Что такое projection (проекция) и read model, что хранит checkpoint, и почему batch и checkpoint — одна транзакция?
+- Как перестроить (rebuild/replay) read model, и почему publisher перестраивать нельзя?
+- Что такое upcasting (подъём старой версии события при чтении), и чем он лучше миграции данных журнала?
+- Что такое snapshot агрегата, и когда он нужен?
+- Как ответить на вопрос «сколько было на складе в прошлый вторник» (time travel)?
+- CQRS: почему запись не читает проекции, и что такое eventual consistency для пользователя?
+- Как журнал служит outbox (ADR-0019), и зачем стабильный `eventId`?
+- GDPR против неизменяемого журнала: crypto-shredding, ссылки на персональные данные.
+- Когда event sourcing не нужен? Чем свой event store отличается от EventStoreDB (Kurrent) и Axon?
+
 ### Kubernetes и платформа
 - Что такое operator и CRD (Custom Resource Definition) на примере Strimzi и CloudNativePG?
 - Чем API Strimzi v1 отличается от v1beta2 для `KafkaConnect`?

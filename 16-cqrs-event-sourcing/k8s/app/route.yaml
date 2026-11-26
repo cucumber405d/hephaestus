@@ -1,0 +1,40 @@
+# http://es.localtest.me — the smith's API, stock and the projection status (GET only: a rebuild stays inside the
+# cluster, kubectl port-forward) to forge-service, everything else (orders) to Ordering.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: es
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  parentRefs:
+    - name: platform
+      namespace: envoy-gateway-system
+  hostnames:
+    - es.localtest.me
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/work-orders
+      backendRefs:
+        - name: forge-service
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/stock
+        - path:
+            type: PathPrefix
+            value: /admin/projections
+          method: GET
+      backendRefs:
+        - name: forge-service
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: ordering
+          port: 80

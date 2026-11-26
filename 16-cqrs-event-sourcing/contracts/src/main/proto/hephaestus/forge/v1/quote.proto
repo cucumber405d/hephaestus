@@ -1,0 +1,27 @@
+// Forge's quote for a custom piece: price and lead time, binding until expires_at.
+// Ordering asks before it accepts a custom order and sends quote_id and price_cents with the work order request.
+syntax = "proto3";
+
+package hephaestus.forge.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "de.ibikus.appa.hephaestus.contracts.api.forge.v1";
+
+service QuoteService {
+  // NOT_FOUND: unknown material; INVALID_ARGUMENT: quantity below 1.
+  rpc Quote(QuoteRequest) returns (QuoteReply);
+}
+
+message QuoteRequest {
+  string material = 1;
+  int32 quantity = 2;
+}
+
+message QuoteReply {
+  string quote_id = 1;
+  int64 price_cents = 2;
+  int32 lead_time_days = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}

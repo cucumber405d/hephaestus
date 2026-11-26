@@ -1,0 +1,170 @@
+{
+  "consumer": {
+    "name": "ordering"
+  },
+  "interactions": [
+    {
+      "comments": {
+        "testname": "de.ibikus.appa.hephaestus.es.ordering.ordering.internal.QuotePactConsumerTest.quoteForUnknownMaterial(MockServer, SynchronousMessages)"
+      },
+      "description": "quote for unknown material",
+      "interactionMarkup": {
+        "markup": "```protobuf\nmessage QuoteRequest {\n    string material = 1;\n    int32 quantity = 2;\n}\n```\n\n```protobuf\nmessage QuoteReply {\n}\n```\n",
+        "markupType": "COMMON_MARK"
+      },
+      "key": "585c7dea",
+      "pending": false,
+      "pluginConfiguration": {
+        "protobuf": {
+          "descriptorKey": "8d050eb61c2c68eb3472f2639d3ee4df",
+          "expectations": {
+            "request": {
+              "material": "FOO",
+              "quantity": "1"
+            },
+            "responseMetadata": {
+              "grpc-status": "NOT_FOUND"
+            }
+          },
+          "service": ".hephaestus.forge.v1.QuoteService/Quote"
+        }
+      },
+      "providerStates": [
+        {
+          "name": "FOO is not on the price list"
+        }
+      ],
+      "request": {
+        "contents": {
+          "content": "CgNGT08QAQ==",
+          "contentType": "application/protobuf; message=.hephaestus.forge.v1.QuoteRequest",
+          "contentTypeHint": "BINARY",
+          "encoded": "base64"
+        },
+        "metadata": {
+          "contentType": "application/protobuf;message=.hephaestus.forge.v1.QuoteRequest"
+        }
+      },
+      "response": [
+        {
+          "contents": {
+            "content": ""
+          },
+          "metadata": {
+            "contentType": "application/protobuf;message=.hephaestus.forge.v1.QuoteReply",
+            "grpc-status": "NOT_FOUND"
+          }
+        }
+      ],
+      "transport": "grpc",
+      "type": "Synchronous/Messages"
+    },
+    {
+      "comments": {
+        "testname": "de.ibikus.appa.hephaestus.es.ordering.ordering.internal.QuotePactConsumerTest.quoteForIron(MockServer, SynchronousMessages)"
+      },
+      "description": "quote for IRON-01 x5",
+      "interactionMarkup": {
+        "markup": "```protobuf\nmessage QuoteRequest {\n    string material = 1;\n    int32 quantity = 2;\n}\n```\n\n```protobuf\nmessage QuoteReply {\n    string quote_id = 1;\n    int64 price_cents = 2;\n    int32 lead_time_days = 3;\n    message .google.protobuf.Timestamp expires_at = 4;\n}\n```\n",
+        "markupType": "COMMON_MARK"
+      },
+      "key": "8f929c62",
+      "pending": false,
+      "pluginConfiguration": {
+        "protobuf": {
+          "descriptorKey": "8d050eb61c2c68eb3472f2639d3ee4df",
+          "expectations": {
+            "request": {
+              "material": "IRON-01",
+              "quantity": "5"
+            },
+            "response": {
+              "expires_at": {
+                "seconds": "matching(integer, 1800000000)"
+              },
+              "lead_time_days": "3",
+              "price_cents": "6000",
+              "quote_id": "matching(regex, '^[0-9a-f-]{36}$', '6f1c2a8e-0000-4000-8000-000000000001')"
+            }
+          },
+          "service": ".hephaestus.forge.v1.QuoteService/Quote"
+        }
+      },
+      "providerStates": [
+        {
+          "name": "IRON-01 costs 1200 per unit and needs 2 base days"
+        }
+      ],
+      "request": {
+        "contents": {
+          "content": "CgdJUk9OLTAxEAU=",
+          "contentType": "application/protobuf; message=.hephaestus.forge.v1.QuoteRequest",
+          "contentTypeHint": "BINARY",
+          "encoded": "base64"
+        },
+        "metadata": {
+          "contentType": "application/protobuf;message=.hephaestus.forge.v1.QuoteRequest"
+        }
+      },
+      "response": [
+        {
+          "contents": {
+            "content": "CiQ2ZjFjMmE4ZS0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEQ8C4YAyIGCICkp9oG",
+            "contentType": "application/protobuf; message=.hephaestus.forge.v1.QuoteReply",
+            "contentTypeHint": "BINARY",
+            "encoded": "base64"
+          },
+          "matchingRules": {
+            "body": {
+              "$.expires_at.seconds": {
+                "combine": "AND",
+                "matchers": [
+                  {
+                    "match": "integer"
+                  }
+                ]
+              },
+              "$.quote_id": {
+                "combine": "AND",
+                "matchers": [
+                  {
+                    "match": "regex",
+                    "regex": "^[0-9a-f-]{36}$"
+                  }
+                ]
+              }
+            }
+          },
+          "metadata": {
+            "contentType": "application/protobuf;message=.hephaestus.forge.v1.QuoteReply"
+          }
+        }
+      ],
+      "transport": "grpc",
+      "type": "Synchronous/Messages"
+    }
+  ],
+  "metadata": {
+    "pact-jvm": {
+      "version": "4.7.5"
+    },
+    "pactSpecification": {
+      "version": "4.0"
+    },
+    "plugins": [
+      {
+        "configuration": {
+          "8d050eb61c2c68eb3472f2639d3ee4df": {
+            "protoDescriptors": "Cv8BCh9nb29nbGUvcHJvdG9idWYvdGltZXN0YW1wLnByb3RvEg9nb29nbGUucHJvdG9idWYiOwoJVGltZXN0YW1wEhgKB3NlY29uZHMYASABKANSB3NlY29uZHMSFAoFbmFub3MYAiABKAVSBW5hbm9zQoUBChNjb20uZ29vZ2xlLnByb3RvYnVmQg5UaW1lc3RhbXBQcm90b1ABWjJnb29nbGUuZ29sYW5nLm9yZy9wcm90b2J1Zi90eXBlcy9rbm93bi90aW1lc3RhbXBwYvgBAaICA0dQQqoCHkdvb2dsZS5Qcm90b2J1Zi5XZWxsS25vd25UeXBlc2IGcHJvdG8zCvkJCgtxdW90ZS5wcm90bxITaGVwaGFlc3R1cy5mb3JnZS52MRofZ29vZ2xlL3Byb3RvYnVmL3RpbWVzdGFtcC5wcm90byJGCgxRdW90ZVJlcXVlc3QSGgoIbWF0ZXJpYWwYASABKAlSCG1hdGVyaWFsEhoKCHF1YW50aXR5GAIgASgFUghxdWFudGl0eSKpAQoKUXVvdGVSZXBseRIZCghxdW90ZV9pZBgBIAEoCVIHcXVvdGVJZBIfCgtwcmljZV9jZW50cxgCIAEoA1IKcHJpY2VDZW50cxIkCg5sZWFkX3RpbWVfZGF5cxgDIAEoBVIMbGVhZFRpbWVEYXlzEjkKCmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUglleHBpcmVzQXQyWwoMUXVvdGVTZXJ2aWNlEksKBVF1b3RlEiEuaGVwaGFlc3R1cy5mb3JnZS52MS5RdW90ZVJlcXVlc3QaHy5oZXBoYWVzdHVzLmZvcmdlLnYxLlF1b3RlUmVwbHlCNAowZGUuaWJpa3VzLmFwcGEuaGVwaGFlc3R1cy5jb250cmFjdHMuYXBpLmZvcmdlLnYxUAFKpAYKBhIEAgAaAQoICgECEgMEABwKCQoCAwASAwYAKQoKCgIEABIEEAATAQoKCgMEAAESAxAIFAoLCgQEAAIAEgMRAhYKDAoFBAACAAESAxEJEQoMCgUEAAIAAxIDERQVCgwKBQQAAgAFEgMRAggKCwoEBAACARIDEgIVCgwKBQQAAgEBEgMSCBAKDAoFBAACAQMSAxITFAoMCgUEAAIBBRIDEgIHCgoKAgQBEgQVABoBCgoKAwQBARIDFQgSCgsKBAQBAgASAxYCFgoMCgUEAQIAARIDFgkRCgwKBQQBAgADEgMWFBUKDAoFBAECAAUSAxYCCAoLCgQEAQIBEgMXAhgKDAoFBAECAQESAxcIEwoMCgUEAQIBAxIDFxYXCgwKBQQBAgEFEgMXAgcKCwoEBAECAhIDGAIbCgwKBQQBAgIBEgMYCBYKDAoFBAECAgMSAxgZGgoMCgUEAQICBRIDGAIHCgsKBAQBAgMSAxkCKwoMCgUEAQIDARIDGRwmCgwKBQQBAgMDEgMZKSoKDAoFBAECAwYSAxkCGwoKCgIGABIECwAOAQoKCgMGAAESAwsIFApPCgQGAAIAEgMNAi8aQiBOT1RfRk9VTkQ6IHVua25vd24gbWF0ZXJpYWw7IElOVkFMSURfQVJHVU1FTlQ6IHF1YW50aXR5IGJlbG93IDEuCgoMCgUGAAIAARIDDQYLCgwKBQYAAgACEgMNDBgKDAoFBgACAAMSAw0jLQoICgEIEgMIACIKCAoBCBIDCQBJCgkKAggKEgMIACIKCQoCCAESAwkASQrNAQoBDBIDAgASGsIBIEZvcmdlJ3MgcXVvdGUgZm9yIGEgY3VzdG9tIHBpZWNlOiBwcmljZSBhbmQgbGVhZCB0aW1lLCBiaW5kaW5nIHVudGlsIGV4cGlyZXNfYXQuCiBPcmRlcmluZyBhc2tzIGJlZm9yZSBpdCBhY2NlcHRzIGEgY3VzdG9tIG9yZGVyIGFuZCBzZW5kcyBxdW90ZV9pZCBhbmQgcHJpY2VfY2VudHMgd2l0aCB0aGUgd29yayBvcmRlciByZXF1ZXN0LgpiBnByb3RvMw==",
+            "protoFile": "// Forge's quote for a custom piece: price and lead time, binding until expires_at.\n// Ordering asks before it accepts a custom order and sends quote_id and price_cents with the work order request.\nsyntax = \"proto3\";\n\npackage hephaestus.forge.v1;\n\nimport \"google/protobuf/timestamp.proto\";\n\noption java_multiple_files = true;\noption java_package = \"de.ibikus.appa.hephaestus.contracts.api.forge.v1\";\n\nservice QuoteService {\n  // NOT_FOUND: unknown material; INVALID_ARGUMENT: quantity below 1.\n  rpc Quote(QuoteRequest) returns (QuoteReply);\n}\n\nmessage QuoteRequest {\n  string material = 1;\n  int32 quantity = 2;\n}\n\nmessage QuoteReply {\n  string quote_id = 1;\n  int64 price_cents = 2;\n  int32 lead_time_days = 3;\n  google.protobuf.Timestamp expires_at = 4;\n}\n"
+          }
+        },
+        "name": "protobuf",
+        "version": "0.8.1"
+      }
+    ]
+  },
+  "provider": {
+    "name": "forge-service-quote"
+  }
+}

@@ -1,0 +1,187 @@
+# 16-cqrs-event-sourcing: verify -> checks (reconcile fixture, manifests) -> e2e -> drills -> publish the three
+# images (main only).
+name: 16-cqrs-event-sourcing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "16-cqrs-event-sourcing/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/16-cqrs-event-sourcing.yml"
+  pull_request:
+    paths:
+      - "16-cqrs-event-sourcing/**"
+      - "pom.xml"
+      - ".mvn/**"
+      - "mvnw"
+      - "mvnw.cmd"
+      - ".gitattributes"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/16-cqrs-event-sourcing.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel stale runs only for PRs; every commit on main gets built
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # The gRPC plugin of Pact is a native binary from GitHub, not a Maven artifact
+      - name: Pact protobuf plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: 16-cqrs-event-sourcing/scripts/install-pact-plugin.sh
+
+      - name: Verify
+        run: ./mvnw -B -ntp -f 16-cqrs-event-sourcing/pom.xml verify
+
+      # untracked counts too: a build that changes or creates the pact needs a commit
+      - name: Pact file is up to date
+        run: |
+          git status --porcelain 16-cqrs-event-sourcing/pacts
+          test -z "$(git status --porcelain 16-cqrs-event-sourcing/pacts)"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: 16-cqrs-event-sourcing-test-reports
+          path: 16-cqrs-event-sourcing/**/target/*-reports/
+          if-no-files-found: ignore
+
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Windows checkouts (core.fileMode=false) lose the executable bit silently: check what git records
+      - name: Scripts are executable in git
+        run: |
+          bad=$(git ls-files -s 16-cqrs-event-sourcing/scripts | awk '$1 != "100755" && ($4 ~ /\.(sh|py)$/) {print $4}')
+          [ -z "$bad" ] || { echo "not executable in git: $bad"; exit 1; }
+
+      - name: Reconciliation self-test
+        run: 16-cqrs-event-sourcing/scripts/test/reconcile-fixture.sh
+
+      - name: Schema registration is idempotent
+        run: 16-cqrs-event-sourcing/scripts/test/register-schemas-fixture.sh
+
+      # kustomize reads nothing outside k8s/app: the schema Job's files are copies, they must not drift
+      - name: Schema Job files equal their sources
+        run: |
+          cd 16-cqrs-event-sourcing
+          cmp scripts/register-schemas.sh k8s/app/schema-init/register-schemas.sh
+          cmp contracts/src/main/avro/work_order_request.avsc k8s/app/schema-init/work_order_request.avsc
+          cmp contracts/src/main/avro/forge_event.avsc k8s/app/schema-init/forge_event.avsc
+
+      - name: Manifests render
+        run: |
+          kubectl kustomize 16-cqrs-event-sourcing/k8s > /tmp/16.yaml
+          for kind in Cluster:2 KafkaTopic:4 Deployment:4 Job:1 HTTPRoute:1 KafkaConnect:0 KafkaConnector:0; do
+            n=$(grep -c "^kind: ${kind%%:*}$" /tmp/16.yaml || true)
+            echo "${kind%%:*}: $n"
+            [ "$n" -eq "${kind##*:}" ]
+          done
+          # the journal is the outbox: no logical replication
+          ! grep -q 'wal_level: logical' /tmp/16.yaml
+          # the local overlay: everything in hephaestus-16, no KafkaTopic (applied separately, namespace kafka)
+          kubectl kustomize 16-cqrs-event-sourcing/k8s/overlays/local > /tmp/16-local.yaml
+          ! grep -q '^kind: KafkaTopic$' /tmp/16-local.yaml
+          grep -q 'image: hephaestus/cqrs-es-forge-service:jib' /tmp/16-local.yaml
+
+      # kustomize does not validate custom resources: check them against the CRDs of the platform's Strimzi
+      - name: Strimzi resources match their CRDs
+        run: |
+          curl -sSfL -o /tmp/strimzi-crds.yaml \
+            https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.2.0/strimzi-crds-1.2.0.yaml
+          pip install --quiet jsonschema pyyaml
+          python3 16-cqrs-event-sourcing/scripts/test/k8s-check.py /tmp/strimzi-crds.yaml /tmp/16.yaml
+
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: End to end
+        run: 16-cqrs-event-sourcing/scripts/e2e.sh
+
+      - name: Run files
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-run
+          path: 16-cqrs-event-sourcing/target/e2e-*
+          if-no-files-found: ignore
+
+  drills:
+    needs: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Drills
+        env:
+          BUILD: "true"
+        run: 16-cqrs-event-sourcing/scripts/drills.sh all
+
+      - name: Drill results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: drills
+          path: 16-cqrs-event-sourcing/target/drills/
+          if-no-files-found: ignore
+
+  publish:
+    needs: [drills, checks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      # one failing module must not cancel the others (their logs then say nothing)
+      fail-fast: false
+      matrix:
+        module: [supplier-stub, ordering, forge-service]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      subproject: 16-cqrs-event-sourcing
+      module: ${{ matrix.module }}
+      image-name: hephaestus/cqrs-es-${{ matrix.module }}

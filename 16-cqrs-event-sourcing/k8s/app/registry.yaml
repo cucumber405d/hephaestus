@@ -1,0 +1,86 @@
+# Apicurio Registry for 16 (the platform has none; in-memory: the schemas come from the Job on every sync).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apicurio
+  labels:
+    app.kubernetes.io/name: apicurio
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apicurio
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apicurio
+    spec:
+      containers:
+        - name: apicurio
+          image: apicurio/apicurio-registry:3.3.5
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /apis/registry/v3/system/info
+              port: http
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apicurio
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  selector:
+    app.kubernetes.io/name: apicurio
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# The pipeline's step: register the schemas with the BACKWARD rule before the services start (wave 1 < wave 2).
+# Argo replaces it on every sync (the registry is in-memory).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: schema-init
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: register
+          image: curlimages/curl:8.11.1
+          command: ["/bin/sh", "-c"]
+          args:
+            - >-
+              for i in $(seq 1 60); do curl -sf http://apicurio:8080/apis/registry/v3/system/info > /dev/null && break;
+              sleep 2; done; /bin/sh /scripts/register-schemas.sh http://apicurio:8080 /avro 1.1.0
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: avro
+              mountPath: /avro
+      volumes:
+        - name: scripts
+          configMap:
+            name: schema-init-script
+        - name: avro
+          configMap:
+            name: avro-schemas
