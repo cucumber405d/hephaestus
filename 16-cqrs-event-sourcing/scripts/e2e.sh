@@ -66,6 +66,8 @@ if [ "${SKIP_BUILD:-false}" != "true" ]; then
 fi
 
 echo "==> stack"
+# a fresh stack: a failed drill leaves its stack and databases up as evidence
+compose down -v > /dev/null 2>&1 || true
 compose up -d --wait > "$RUN/compose.log" 2>&1 || { cat "$RUN/compose.log"; fail "compose up"; }
 for url in "$ORDERING/actuator/health/readiness" "$FORGE/actuator/health/readiness"; do
     for _ in $(seq 1 60); do [ "$(code "$url")" = "200" ] && break; sleep 2; done

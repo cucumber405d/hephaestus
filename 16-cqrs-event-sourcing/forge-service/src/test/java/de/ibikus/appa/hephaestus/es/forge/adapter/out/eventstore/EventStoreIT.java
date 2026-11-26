@@ -155,8 +155,7 @@ class EventStoreIT {
 
     /** Every subtransaction that writes takes an xid of its own: one statement moves the counter as far as needed. */
     private static void burnTransactionIdsToTheNextPowerOfTen() {
-        JdbcClient.create(dataSource)
-                .sql("""
+        JdbcClient.create(dataSource).sql("""
                         do $$
                         declare
                             top bigint := pg_current_xact_id()::text::bigint;
@@ -171,8 +170,7 @@ class EventStoreIT {
                                     null;
                                 end;
                             end loop;
-                        end $$""")
-                .update();
+                        end $$""").update();
     }
 
     /** Everything committed so far: the tests share the journal. */
