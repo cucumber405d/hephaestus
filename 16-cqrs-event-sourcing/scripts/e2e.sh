@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # 16 end to end in Docker Compose (CI): a custom order is quoted by Forge over gRPC, accepted with price and lead
-# time, travels as Avro through Apicurio, and becomes READY when the smith completes it; refusals carry their reason;
-# without Forge the order is rejected at once ("quote unavailable").
+# time, travels as Avro through Apicurio, and becomes READY when smith anna completes it; Forge's state is its event
+# journal: the projections catch up to its head, smith-load counts anna, the stock ledger equals a fold of the
+# journal, and stock "at" a moment before the first order is the seeded 20; refusals carry their reason; without
+# Forge the order is rejected at once ("quote unavailable").
 #   16-cqrs-event-sourcing/scripts/e2e.sh     (SKIP_BUILD=true reuses images, KEEP_STACK=true keeps the stack up)
 # Needs JDK 25, Docker, curl, python3.
 set -euo pipefail
@@ -71,6 +73,8 @@ echo "$rule" | grep -q BACKWARD || fail "es.forge.requests-value has no BACKWARD
 ok "schemas registered by schema-init, rule BACKWARD"
 
 echo "==> a quoted custom order"
+before_orders=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+sleep 1
 id=$(place '{"customerId":"e2e","custom":true,"material":"IRON-01","quantity":5}')
 CUSTOM_IDS+=("$id")
 [ "$(order "$id" | json status)" = "ACCEPTED" ] || fail "IRON-01 x5 not ACCEPTED: $(order "$id")"
@@ -86,10 +90,37 @@ print(next((w["id"] for w in json.load(sys.stdin) if w["orderId"]==sys.argv[1]),
     sleep 1
 done
 [ -n "$wo" ] || fail "no work order in forge-service for $id (Avro request lost?)"
-[ "$(code -X POST "$FORGE/api/work-orders/$wo/start")" = "200" ] || fail "start $wo"
+[ "$(code -X POST "$FORGE/api/work-orders/$wo/start")" = "400" ] || fail "start $wo without smith not 400"
+[ "$(code -X POST "$FORGE/api/work-orders/$wo/start?smith=anna")" = "200" ] || fail "start $wo"
+[ "$(code -X POST "$FORGE/api/work-orders/$wo/start?smith=brokk")" = "409" ] || fail "second start $wo not 409"
 [ "$(code -X POST "$FORGE/api/work-orders/$wo/complete")" = "200" ] || fail "complete $wo"
 wait_status "$id" READY 30
-ok "work order $wo done, order READY (Avro ForgeEvent back)"
+ok "work order $wo done by anna (second smith: 409), order READY (Avro ForgeEvent back from the journal)"
+
+echo "==> projections and time travel"
+caught_up=""
+for _ in $(seq 1 30); do
+    caught_up=$(curl -sf "$FORGE/admin/projections" | python3 -c 'import json,sys
+s=json.load(sys.stdin)
+names={p["name"] for p in s}
+ok=all(p["lag"]==0 and p["lastError"]=="" for p in s) and {"workshop-board","smith-load","stock-ledger"} <= names
+print("yes" if ok else "")')
+    [ -n "$caught_up" ] && break
+    sleep 1
+done
+[ -n "$caught_up" ] || fail "projections not at the journal head: $(curl -s "$FORGE/admin/projections")"
+ok "workshop-board, smith-load, stock-ledger at the journal head, no errors"
+done_by_anna=$(compose exec -T postgres-forge psql -U forge -d forge -Atc \
+    "select done from read.smith_load where smith = 'anna'" | tr -d '\r')
+[ "$done_by_anna" = "1" ] || fail "smith-load for anna: '$done_by_anna' (expected done=1)"
+ok "smith-load: anna has 1 done"
+ledger=$(curl -sf "$FORGE/api/stock/IRON-01" | json onHand)
+folded=$(curl -sf "$FORGE/api/stock/IRON-01?at=$(date -u -d '+1 minute' +%Y-%m-%dT%H:%M:%SZ 2> /dev/null \
+    || python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))')" | json onHand)
+[ "$ledger" = "$folded" ] || fail "IRON-01: ledger $ledger, journal fold $folded"
+seeded=$(curl -sf "$FORGE/api/stock/IRON-01?at=$before_orders" | json onHand)
+[ "$seeded" = "20" ] || fail "IRON-01 at $before_orders: $seeded (expected the seeded 20)"
+ok "IRON-01: ledger $ledger = journal fold; before the first order: 20"
 
 echo "==> refusals"
 id=$(place '{"customerId":"e2e","custom":true,"material":"MITHRIL-01","quantity":1}')
