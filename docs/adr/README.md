@@ -23,3 +23,6 @@
 | [0014](0014-pact-consumer-driven.md) | Синхронный контракт — Pact (consumer-driven), без брокера на старте | accepted | 14 |
 | [0015](0015-outbox-delivery-by-cdc.md) | Доставка outbox через CDC (Debezium), relay — для сравнения | accepted | 15 |
 | [0016](0016-outbox-carries-avro-bytes.md) | В outbox готовые байты Avro, Connect их не конвертирует | accepted | 15 |
+| [0017](0017-own-event-store-on-postgresql.md) | Свой event store на PostgreSQL, без EventStoreDB/Axon | accepted | 16 |
+| [0018](0018-global-order-by-transaction-id.md) | Глобальный порядок чтения журнала — (tx_id, position) ниже xmin | accepted | 16 |
+| [0019](0019-journal-as-outbox.md) | Журнал событий как outbox — publisher со своим checkpoint | accepted | 16 |
