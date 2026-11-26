@@ -62,7 +62,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-grpc-server</artifactId>
         </dependency>
-        <!-- Requests from Ordering over Kafka (Avro); outcomes back through the Modulith outbox and OutcomeRelay -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-kafka</artifactId>
@@ -70,14 +69,6 @@
         <dependency>
             <groupId>io.apicurio</groupId>
             <artifactId>apicurio-registry-avro-serde-kafka</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.modulith</groupId>
-            <artifactId>spring-modulith-starter-jdbc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.modulith</groupId>
-            <artifactId>spring-modulith-events-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>

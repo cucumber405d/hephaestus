@@ -5,13 +5,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Bean;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-/** Forge as a service (from 13): quotes over gRPC, work orders from Kafka (Avro), outcomes back (Avro). */
+/** Forge (from 13): quotes over gRPC, work orders from Kafka (Avro) into its event store, outcomes back (Avro). */
 @SpringBootApplication
 @ConfigurationPropertiesScan
-@EnableAsync
 @EnableScheduling
 public class ForgeServiceApplication {
 

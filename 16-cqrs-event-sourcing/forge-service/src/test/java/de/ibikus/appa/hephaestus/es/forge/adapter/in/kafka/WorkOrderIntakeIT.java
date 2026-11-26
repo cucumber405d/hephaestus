@@ -1,5 +1,8 @@
 package de.ibikus.appa.hephaestus.es.forge.adapter.in.kafka;
 
+import de.ibikus.appa.hephaestus.es.forge.Journal;
+import de.ibikus.appa.hephaestus.es.forge.application.WorkOrders;
+import de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderDecider;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -17,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -25,7 +27,7 @@ import org.testcontainers.kafka.KafkaContainer;
 
 /** es.forge.requests, the test playing Ordering: Avro in, once per customer order, any released producer version. */
 @SpringBootTest
-@Import(Containers.class)
+@Import({Containers.class, Journal.class})
 class WorkOrderIntakeIT {
 
     static final Duration WAIT = Duration.ofSeconds(15);
@@ -37,7 +39,10 @@ class WorkOrderIntakeIT {
     GenericContainer<?> apicurio;
 
     @Autowired
-    JdbcClient jdbc;
+    Journal journal;
+
+    @Autowired
+    WorkOrders workOrders;
 
     @DynamicPropertySource
     static void supplier(DynamicPropertyRegistry registry) {
@@ -65,6 +70,24 @@ class WorkOrderIntakeIT {
         await().atMost(WAIT).until(() -> count(other) == 1);
 
         assertThat(count(orderId)).isEqualTo(1);
+    }
+
+    @Test
+    void redeliveryAfterDoneAppendsNothing() {
+        var orderId = UUID.randomUUID();
+        var id = WorkOrderDecider.idFor(orderId);
+        request(orderId, "IRON-01", 1);
+        await().atMost(WAIT).until(() -> journal.status(orderId).equals("ALLOCATED"));
+        workOrders.start(id, "anna");
+        workOrders.complete(id);
+
+        request(orderId, "IRON-01", 1);
+        var other = UUID.randomUUID(); // same key = same partition: served only after the redelivery
+        request(other, "IRON-01", 1, orderId.toString());
+        await().atMost(WAIT).until(() -> count(other) == 1);
+
+        assertThat(journal.events(id)).isEqualTo(4); // requested, allocated, started, completed — nothing more
+        assertThat(journal.status(orderId)).isEqualTo("DONE");
     }
 
     @Test
@@ -131,6 +154,10 @@ class WorkOrderIntakeIT {
     }
 
     private void request(UUID orderId, String material, int quantity) {
+        request(orderId, material, quantity, orderId.toString());
+    }
+
+    private void request(UUID orderId, String material, int quantity, String key) {
         var request = WorkOrderRequest.newBuilder()
                 .setOrderId(orderId.toString())
                 .setMaterial(material)
@@ -140,15 +167,12 @@ class WorkOrderIntakeIT {
                 kafka.getBootstrapServers(),
                 Containers.url(apicurio),
                 "es.forge.requests",
-                orderId.toString(),
+                key,
                 request,
                 SchemaRegistry.CURRENT);
     }
 
     private int count(UUID orderId) {
-        return jdbc.sql("select count(*) from work_order where order_id = ?")
-                .param(orderId)
-                .query(Integer.class)
-                .single();
+        return journal.requests(orderId);
     }
 }

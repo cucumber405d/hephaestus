@@ -5,6 +5,8 @@ import static org.awaitility.Awaitility.await;
 
 import de.ibikus.appa.hephaestus.es.forge.Containers;
 import de.ibikus.appa.hephaestus.es.forge.FakeSupplier;
+import de.ibikus.appa.hephaestus.es.forge.Journal;
+import de.ibikus.appa.hephaestus.es.forge.domain.workorder.WorkOrderDecider;
 import de.ibikus.appa.hephaestus.es.forge.application.WorkOrders;
 import java.time.Duration;
 import java.util.Optional;
@@ -15,15 +17,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
-/** The smith API as in 13: FW- ids, 409 on a repeated transition, waiting material. */
+/** The smith API on the journal: FW-<order> ids, start by a named smith, 409 on refusals, 404 on unknown ids. */
 @SpringBootTest(properties = {"supplier.timeout=500ms", "forge.supply-retry=300ms"})
 @AutoConfigureMockMvc
-@Import(Containers.class)
+@Import({Containers.class, Journal.class})
 class SmithApiIT {
 
     @Autowired
@@ -33,7 +34,7 @@ class SmithApiIT {
     WorkOrders workOrders;
 
     @Autowired
-    JdbcClient jdbc;
+    Journal journal;
 
     @DynamicPropertySource
     static void supplier(DynamicPropertyRegistry registry) {
@@ -49,31 +50,45 @@ class SmithApiIT {
     void repeatedTransitionIsConflict() {
         var wo = requested("IRON-01", 1);
         assertThat(wo).matches("FW-[0-9a-f-]{36}");
-        assertThat(mvc.post().uri("/api/work-orders/{id}/start", wo)).hasStatusOk();
+        assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", wo)).hasStatusOk();
         assertThat(mvc.post().uri("/api/work-orders/{id}/complete", wo)).hasStatusOk();
         assertThat(mvc.post().uri("/api/work-orders/{id}/complete", wo)).hasStatus(409);
-        assertThat(mvc.post().uri("/api/work-orders/{id}/start", wo)).hasStatus(409);
-        assertThat(mvc.post().uri("/api/work-orders/{id}/start", "FW-missing")).hasStatus(404);
+        assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", wo)).hasStatus(409);
     }
 
     @Test
-    void theListShowsTheServicesOrdersWithTheirOrigin() {
+    void startUnknownIs404() {
+        assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", "FW-missing")).hasStatus(404);
+    }
+
+    @Test
+    void completeUnknownIs404() {
+        assertThat(mvc.post().uri("/api/work-orders/{id}/complete", "FW-missing")).hasStatus(404);
+    }
+
+    @Test
+    void startWithoutSmithIs400() {
         var wo = requested("IRON-01", 1);
-        assertThat(mvc.get().uri("/api/work-orders"))
-                .bodyJson()
-                .extractingPath("$[?(@.id == '" + wo + "')].origin")
-                .asArray()
-                .containsExactly("SERVICE");
+        assertThat(mvc.post().uri("/api/work-orders/{id}/start", wo)).hasStatus(400);
+    }
+
+    @Test
+    void theListIsTheWorkshopBoard() {
+        var wo = requested("IRON-01", 1);
+        await().atMost(Duration.ofSeconds(10))
+                .untilAsserted(() -> assertThat(mvc.get().uri("/api/work-orders?status=ALLOCATED"))
+                        .bodyJson()
+                        .extractingPath("$[?(@.id == '" + wo + "')].material")
+                        .asArray()
+                        .containsExactly("IRON-01"));
     }
 
     @Test
     void undeliverableMaterialFailsTheWorkOrder() {
-        var wo = requested("MITHRIL-01", 1);
-        assertThat(jdbc.sql("select status from work_order where id = ?")
-                        .param(wo)
-                        .query(String.class)
-                        .single())
-                .isEqualTo("FAILED");
+        var orderId = UUID.randomUUID();
+        workOrders.request(orderId, "MITHRIL-01", 1, Optional.empty());
+        assertThat(journal.status(orderId)).isEqualTo("FAILED");
+        assertThat(journal.workOrder(orderId).failureReason()).isEqualTo("material not deliverable: MITHRIL-01");
     }
 
     @Test
@@ -81,34 +96,27 @@ class SmithApiIT {
         var orderId = UUID.randomUUID();
         workOrders.request(orderId, "IRON-01", 1, Optional.empty());
         workOrders.request(orderId, "IRON-01", 1, Optional.empty());
-        assertThat(jdbc.sql("select count(*) from work_order where order_id = ?")
-                        .param(orderId)
-                        .query(Integer.class)
-                        .single())
-                .isEqualTo(1);
+        assertThat(journal.requests(orderId)).isEqualTo(1);
     }
 
     @Test
     void aSlowSupplierLeavesTheWorkOrderWaitingUntilTheRetryGetsTheMaterial() {
         FakeSupplier.delayMs = 2_000;
-        var wo = requested("STEEL-01", 500);
-        assertThat(mvc.post().uri("/api/work-orders/{id}/start", wo)).hasStatus(409);
+        var orderId = UUID.randomUUID();
+        workOrders.request(orderId, "STEEL-01", 500, Optional.empty());
+        var wo = WorkOrderDecider.idFor(orderId);
+        assertThat(journal.status(orderId)).isEqualTo("WAITING_FOR_MATERIAL");
+        assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", wo)).hasStatus(409);
 
         FakeSupplier.delayMs = 0;
-        await().atMost(Duration.ofSeconds(10))
-                .until(() -> jdbc.sql("select material_ready from work_order where id = ?")
-                        .param(wo)
-                        .query(Boolean.class)
-                        .single());
-        assertThat(mvc.post().uri("/api/work-orders/{id}/start", wo)).hasStatusOk();
+        await().atMost(Duration.ofSeconds(10)).until(() -> journal.status(orderId).equals("ALLOCATED"));
+        assertThat(journal.events("material-STEEL-01", "StockReceived")).isPositive();
+        assertThat(mvc.post().uri("/api/work-orders/{id}/start?smith=anna", wo)).hasStatusOk();
     }
 
     private String requested(String material, int quantity) {
         var orderId = UUID.randomUUID();
         workOrders.request(orderId, material, quantity, Optional.empty());
-        return jdbc.sql("select id from work_order where order_id = ?")
-                .param(orderId)
-                .query(String.class)
-                .single();
+        return WorkOrderDecider.idFor(orderId);
     }
 }
