@@ -19,8 +19,10 @@ import tools.jackson.databind.json.JsonMapper;
 @Repository
 public class JdbcEventStore implements EventStore {
 
+    // tx_id as text under another name: "order by tx_id" must sort the xid8 column (numbers), not the text alias
+    // ("1000" < "999")
     private static final String COLUMNS =
-            "global_position, tx_id::text as tx_id, stream_id, stream_type, version, type,"
+            "global_position, tx_id::text as tx_text, stream_id, stream_type, version, type,"
                     + " schema_version, payload::text as payload, metadata::text as metadata, recorded_at";
     private static final TypeReference<Map<String, String>> METADATA = new TypeReference<>() {};
 
@@ -88,7 +90,7 @@ public class JdbcEventStore implements EventStore {
     private RecordedEvent map(ResultSet rs, int row) throws SQLException {
         return new RecordedEvent(
                 rs.getLong("global_position"),
-                rs.getString("tx_id"),
+                rs.getString("tx_text"),
                 rs.getString("stream_id"),
                 rs.getString("stream_type"),
                 rs.getInt("version"),
