@@ -3,12 +3,12 @@ package de.ibikus.appa.hephaestus.es.forge.adapter.out.events;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import de.ibikus.appa.hephaestus.contracts.events.ForgeEvent;
+import de.ibikus.appa.hephaestus.contracts.events.ForgeEventType;
 import de.ibikus.appa.hephaestus.es.forge.AvroProbe;
 import de.ibikus.appa.hephaestus.es.forge.Containers;
 import de.ibikus.appa.hephaestus.es.forge.FakeSupplier;
 import de.ibikus.appa.hephaestus.es.forge.application.WorkOrders;
-import de.ibikus.appa.hephaestus.contracts.events.ForgeEvent;
-import de.ibikus.appa.hephaestus.contracts.events.ForgeEventType;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;

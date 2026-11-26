@@ -3,12 +3,12 @@ package de.ibikus.appa.hephaestus.es.forge.adapter.in.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import de.ibikus.appa.hephaestus.contracts.events.WorkOrderRequest;
 import de.ibikus.appa.hephaestus.es.forge.AvroProbe;
 import de.ibikus.appa.hephaestus.es.forge.Containers;
 import de.ibikus.appa.hephaestus.es.forge.FakeSupplier;
 import de.ibikus.appa.hephaestus.es.forge.KafkaProbe;
 import de.ibikus.appa.hephaestus.es.forge.SchemaRegistry;
-import de.ibikus.appa.hephaestus.contracts.events.WorkOrderRequest;
 import java.time.Duration;
 import java.util.UUID;
 import org.apache.avro.Schema;

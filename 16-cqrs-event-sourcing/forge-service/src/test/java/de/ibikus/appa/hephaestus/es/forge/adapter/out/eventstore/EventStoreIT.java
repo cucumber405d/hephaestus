@@ -129,14 +129,18 @@ class EventStoreIT {
 
             a.commit();
             var after = new Checkpoint(first.getLast().txId(), first.getLast().position());
-            assertThat(store.readAll(after, 100)).extracting(RecordedEvent::type).containsExactly("A1");
+            assertThat(store.readAll(after, 100))
+                    .extracting(RecordedEvent::type)
+                    .containsExactly("A1");
         }
     }
 
     /** Everything committed so far: the tests share the journal. */
     private static Checkpoint head() {
         var all = store.readAll(Checkpoint.START, Integer.MAX_VALUE);
-        return all.isEmpty() ? Checkpoint.START : new Checkpoint(all.getLast().txId(), all.getLast().position());
+        return all.isEmpty()
+                ? Checkpoint.START
+                : new Checkpoint(all.getLast().txId(), all.getLast().position());
     }
 
     private static Connection open() throws Exception {

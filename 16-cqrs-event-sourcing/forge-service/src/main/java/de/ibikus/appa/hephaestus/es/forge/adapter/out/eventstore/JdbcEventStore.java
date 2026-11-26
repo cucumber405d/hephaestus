@@ -19,8 +19,9 @@ import tools.jackson.databind.json.JsonMapper;
 @Repository
 public class JdbcEventStore implements EventStore {
 
-    private static final String COLUMNS = "global_position, tx_id::text as tx_id, stream_id, stream_type, version, type,"
-            + " schema_version, payload::text as payload, metadata::text as metadata, recorded_at";
+    private static final String COLUMNS =
+            "global_position, tx_id::text as tx_id, stream_id, stream_type, version, type,"
+                    + " schema_version, payload::text as payload, metadata::text as metadata, recorded_at";
     private static final TypeReference<Map<String, String>> METADATA = new TypeReference<>() {};
 
     private final JdbcClient jdbc;

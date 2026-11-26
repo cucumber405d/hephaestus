@@ -33,7 +33,12 @@ class WorkOrderDeciderTest {
     @Test
     void requestAgainGivesNothing() {
         assertThat(decide(List.of(REQUESTED), new Request(ORDER, "IRON-01", 5))).isEmpty();
-        assertThat(decide(List.of(REQUESTED, new MaterialAllocated(5), new WorkOrderStarted("anna"), new WorkOrderCompleted()),
+        assertThat(decide(
+                        List.of(
+                                REQUESTED,
+                                new MaterialAllocated(5),
+                                new WorkOrderStarted("anna"),
+                                new WorkOrderCompleted()),
                         new Request(ORDER, "IRON-01", 5)))
                 .isEmpty();
     }

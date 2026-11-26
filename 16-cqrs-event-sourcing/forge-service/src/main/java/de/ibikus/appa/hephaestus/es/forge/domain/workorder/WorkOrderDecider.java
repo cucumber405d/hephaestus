@@ -53,14 +53,32 @@ public final class WorkOrderDecider {
         return switch (event) {
             case WorkOrderRequested r ->
                 new WorkOrderState(
-                        r.workOrderId(), r.orderId(), r.material(), r.quantity(), Status.WAITING_FOR_MATERIAL, null, null);
+                        r.workOrderId(),
+                        r.orderId(),
+                        r.material(),
+                        r.quantity(),
+                        Status.WAITING_FOR_MATERIAL,
+                        null,
+                        null);
             case WorkOrderFailed f ->
                 new WorkOrderState(
-                        state.id(), state.orderId(), state.material(), state.quantity(), Status.FAILED, null, f.reason());
+                        state.id(),
+                        state.orderId(),
+                        state.material(),
+                        state.quantity(),
+                        Status.FAILED,
+                        null,
+                        f.reason());
             case MaterialAllocated ignored -> state.with(Status.ALLOCATED);
             case WorkOrderStarted s ->
                 new WorkOrderState(
-                        state.id(), state.orderId(), state.material(), state.quantity(), Status.IN_PROGRESS, s.smith(), null);
+                        state.id(),
+                        state.orderId(),
+                        state.material(),
+                        state.quantity(),
+                        Status.IN_PROGRESS,
+                        s.smith(),
+                        null);
             case WorkOrderCompleted ignored -> state.with(Status.DONE);
         };
     }
