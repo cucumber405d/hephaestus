@@ -62,6 +62,32 @@ public final class AvroProbe {
         }
     }
 
+    /** Every record with {@code key} that arrives within {@code timeout} (waits the whole timeout). */
+    public static List<Object> readAll(
+            String bootstrap, String registryUrl, String topic, String key, Duration timeout) {
+        var config = new HashMap<String, Object>(serde(registryUrl));
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "probe-" + UUID.randomUUID());
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                "io.apicurio.registry.serde.avro.AvroKafkaDeserializer");
+        var values = new java.util.ArrayList<Object>();
+        try (var consumer = new KafkaConsumer<String, Object>(config)) {
+            consumer.subscribe(List.of(topic));
+            var deadline = System.nanoTime() + timeout.toNanos();
+            while (System.nanoTime() < deadline) {
+                for (var record : consumer.poll(Duration.ofMillis(250))) {
+                    if (key.equals(record.key())) {
+                        values.add(record.value());
+                    }
+                }
+            }
+        }
+        return values;
+    }
+
     private static Map<String, Object> serde(String registryUrl) {
         return Map.of(
                 "apicurio.registry.url", registryUrl + "/apis/registry/v3",
