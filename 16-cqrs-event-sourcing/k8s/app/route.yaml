@@ -1,4 +1,5 @@
-# http://es.localtest.me — the smith's API to forge-service, everything else (orders) to Ordering.
+# http://es.localtest.me — the smith's API, stock and the projection status (GET only: a rebuild stays inside the
+# cluster, kubectl port-forward) to forge-service, everything else (orders) to Ordering.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -16,6 +17,17 @@ spec:
         - path:
             type: PathPrefix
             value: /api/work-orders
+      backendRefs:
+        - name: forge-service
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/stock
+        - path:
+            type: PathPrefix
+            value: /admin/projections
+          method: GET
       backendRefs:
         - name: forge-service
           port: 80

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 16 on kind, through the Envoy Gateway: a quoted custom order travels Ordering -> es.forge.requests -> Forge's
-# journal; the smith takes and completes it and the order becomes READY.
+# journal; smith "live" takes and completes it, the order becomes READY and the projections reach the journal's
+# head.
 #   16-cqrs-event-sourcing/scripts/live.sh          (after scripts/deploy-local.sh or the Argo app)
 # Env: GATEWAY (127.0.0.1), NAMESPACE (hephaestus-16).
 set -euo pipefail
@@ -30,7 +31,7 @@ done
 [ -n "$wo" ] || fail "no work order for $id: the request did not reach Forge"
 ok "work order $wo in Forge"
 
-api -X POST "http://$GATEWAY/api/work-orders/$wo/start" > /dev/null || fail "start $wo"
+api -X POST "http://$GATEWAY/api/work-orders/$wo/start?smith=live" > /dev/null || fail "start $wo"
 api -X POST "http://$GATEWAY/api/work-orders/$wo/complete" > /dev/null || fail "complete $wo"
 for _ in $(seq 1 60); do
     [ "$(api "http://$GATEWAY/api/orders/$id" | json status)" = "READY" ] && break
@@ -38,4 +39,15 @@ for _ in $(seq 1 60); do
 done
 [ "$(api "http://$GATEWAY/api/orders/$id" | json status)" = "READY" ] || fail "order $id not READY"
 ok "order $id READY"
+
+caught_up=""
+for _ in $(seq 1 30); do
+    caught_up=$(api "http://$GATEWAY/admin/projections" | python3 -c 'import json,sys
+s=json.load(sys.stdin)
+print("yes" if s and all(p["lag"]==0 and p["lastError"]=="" for p in s) else "")')
+    [ -n "$caught_up" ] && break
+    sleep 1
+done
+[ -n "$caught_up" ] || fail "projections not at the journal head: $(api "http://$GATEWAY/admin/projections")"
+ok "projections at the journal head"
 echo "LIVE OK"

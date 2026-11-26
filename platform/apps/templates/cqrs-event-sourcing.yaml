@@ -1,0 +1,23 @@
+{{- if .Values.components.cqrsEventSourcing }}
+# 16-cqrs-event-sourcing: Forge's work orders and stock as an event journal with projections (http://es.localtest.me).
+# Needs gateway, cnpg, strimzi and kafka.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cqrs-event-sourcing
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision | quote }}
+    path: 16-cqrs-event-sourcing/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hephaestus-16
+  {{- include "platform.syncPolicy" . | nindent 2 }}
+{{- end }}

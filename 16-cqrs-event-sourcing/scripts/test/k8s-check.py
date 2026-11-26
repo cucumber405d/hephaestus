@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Checks rendered manifests of subproject 15 without a cluster.
+"""Checks rendered manifests of subproject 16 without a cluster.
 
 usage: k8s-check.py <strimzi-crds.yaml> <rendered.yaml>
 
 1. Every Strimzi resource validates against the served v1 schema of its CRD.
 2. KafkaConnect.spec.config carries no key that Strimzi v1 moved into spec fields.
-3. The KafkaConnector syncs in a later Argo wave than the ordering Deployment (its Flyway migration creates the
-   publication the connector needs; a connector started earlier creates no slot and loses those orders).
+3. A KafkaConnector, if any (16 has none: its outbox is the event journal), syncs in a later Argo wave than the
+   ordering Deployment (15's rule, kept so a copied connector cannot start before its publication exists).
 """
 import sys
 
