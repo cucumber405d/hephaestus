@@ -76,19 +76,18 @@ public class OutcomePublisher {
         var events = store.readAll(checkpoint, batchSize);
         for (var row : events) {
             var event = codec.decode(row);
-            var kind =
-                    switch (event) {
-                        case WorkOrderCompleted _ -> Outcome.Kind.COMPLETED;
-                        case WorkOrderFailed _ -> Outcome.Kind.FAILED;
-                        default -> null;
-                    };
+            var kind = switch (event) {
+                case WorkOrderCompleted _ -> Outcome.Kind.COMPLETED;
+                case WorkOrderFailed _ -> Outcome.Kind.FAILED;
+                default -> null;
+            };
             if (kind == null) {
                 continue;
             }
             var state = workOrders.load(row.streamId()).state();
             var reason = event instanceof WorkOrderFailed failed ? failed.reason() : null;
-            var eventId = UUID.nameUUIDFromBytes(
-                    (row.streamId() + "/" + row.version()).getBytes(StandardCharsets.UTF_8));
+            var eventId =
+                    UUID.nameUUIDFromBytes((row.streamId() + "/" + row.version()).getBytes(StandardCharsets.UTF_8));
             sink.send(new Outcome(eventId, kind, state.orderId(), row.streamId(), reason));
         }
         if (events.isEmpty()) {

@@ -83,7 +83,8 @@ class BlockedPublisherIT {
         var orderId = UUID.randomUUID();
         workOrders.request(orderId, "IRON-01", 1, Optional.empty());
 
-        await().atMost(Duration.ofSeconds(5)).until(() -> board.list(Optional.empty()).stream()
-                .anyMatch(entry -> entry.orderId().equals(orderId)));
+        await().atMost(Duration.ofSeconds(5))
+                .until(() -> board.list(Optional.empty()).stream()
+                        .anyMatch(entry -> entry.orderId().equals(orderId)));
     }
 }

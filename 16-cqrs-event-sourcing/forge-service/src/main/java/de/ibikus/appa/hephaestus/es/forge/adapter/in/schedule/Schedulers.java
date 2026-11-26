@@ -6,27 +6,28 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
  * One thread per poller: a fixed-delay task runs on a single scheduler thread, so with a shared one a publisher
- * waiting for the broker or a slow supplier would stop the projections too.
+ * waiting for the broker or a slow supplier would stop the projections too. Bean names end in TaskScheduler: the
+ * pollers themselves (PublisherScheduler, ...) already are beans named *Scheduler.
  */
 @Configuration(proxyBeanMethods = false)
 class Schedulers {
 
-    static final String PROJECTIONS = "projectionsScheduler";
-    static final String PUBLISHER = "publisherScheduler";
-    static final String SUPPLY = "supplyScheduler";
+    static final String PROJECTIONS = "projectionsTaskScheduler";
+    static final String PUBLISHER = "publisherTaskScheduler";
+    static final String SUPPLY = "supplyTaskScheduler";
 
     @Bean(PROJECTIONS)
-    ThreadPoolTaskScheduler projectionsScheduler() {
+    ThreadPoolTaskScheduler projectionsTaskScheduler() {
         return single("projections-");
     }
 
     @Bean(PUBLISHER)
-    ThreadPoolTaskScheduler publisherScheduler() {
+    ThreadPoolTaskScheduler publisherTaskScheduler() {
         return single("publisher-");
     }
 
     @Bean(SUPPLY)
-    ThreadPoolTaskScheduler supplyScheduler() {
+    ThreadPoolTaskScheduler supplyTaskScheduler() {
         return single("supply-retry-");
     }
 
