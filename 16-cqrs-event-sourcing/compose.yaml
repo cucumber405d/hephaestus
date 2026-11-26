@@ -95,6 +95,8 @@ services:
       SUPPLIER_URL: http://supplier-stub:8080
       # drill 3 starts with this projection off and turns it on later
       PROJECTIONS_SMITH_LOAD_ENABLED: ${PROJECTIONS_SMITH_LOAD_ENABLED:-true}
+      # drill 4 slows the publisher down so that the kill finds outcomes not yet sent
+      PUBLISHER_POLL_INTERVAL: ${PUBLISHER_POLL_INTERVAL:-200ms}
     mem_limit: 640m
     ports:
       - "127.0.0.1:18081:8080"

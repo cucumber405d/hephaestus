@@ -32,6 +32,12 @@ v=json.load(sys.stdin)
 for k in sys.argv[1].split("."):
     v=v[int(k)] if isinstance(v,list) else v.get(k)
 print("" if v is None else v)' "$1"; }
+# db_now [<interval expression>]: the moment by Forge's database clock (recorded_at is clock_timestamp() there; the
+# host clock of Docker Desktop's VM can be seconds off)
+db_now() {
+    compose exec -T postgres-forge psql -U forge -d forge -Atc \
+        "select to_char((clock_timestamp() ${1:-}) at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')" | tr -d '\r'
+}
 cleanup() {
     if [ "${KEEP_STACK:-false}" != "true" ]; then
         compose down -v > /dev/null 2>&1 || true
@@ -73,8 +79,7 @@ echo "$rule" | grep -q BACKWARD || fail "es.forge.requests-value has no BACKWARD
 ok "schemas registered by schema-init, rule BACKWARD"
 
 echo "==> a quoted custom order"
-before_orders=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-sleep 1
+before_orders=$(db_now)
 id=$(place '{"customerId":"e2e","custom":true,"material":"IRON-01","quantity":5}')
 CUSTOM_IDS+=("$id")
 [ "$(order "$id" | json status)" = "ACCEPTED" ] || fail "IRON-01 x5 not ACCEPTED: $(order "$id")"
@@ -115,8 +120,7 @@ done_by_anna=$(compose exec -T postgres-forge psql -U forge -d forge -Atc \
 [ "$done_by_anna" = "1" ] || fail "smith-load for anna: '$done_by_anna' (expected done=1)"
 ok "smith-load: anna has 1 done"
 ledger=$(curl -sf "$FORGE/api/stock/IRON-01" | json onHand)
-folded=$(curl -sf "$FORGE/api/stock/IRON-01?at=$(date -u -d '+1 minute' +%Y-%m-%dT%H:%M:%SZ 2> /dev/null \
-    || python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))')" | json onHand)
+folded=$(curl -sf "$FORGE/api/stock/IRON-01?at=$(db_now "+ interval '1 minute'")" | json onHand)
 [ "$ledger" = "$folded" ] || fail "IRON-01: ledger $ledger, journal fold $folded"
 seeded=$(curl -sf "$FORGE/api/stock/IRON-01?at=$before_orders" | json onHand)
 [ "$seeded" = "20" ] || fail "IRON-01 at $before_orders: $seeded (expected the seeded 20)"

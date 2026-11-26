@@ -146,18 +146,29 @@ drill() {
             : > "$RUN/codes.txt"
             while read -r wo; do
                 for smith in anna brokk sindri eitri volund; do
-                    curl -s -o /dev/null -w "$wo %{http_code}\n" -X POST "$FORGE/api/work-orders/$wo/start?smith=$smith" \
-                        >> "$RUN/codes.txt" &
+                    # "<work order> <code> race|refused|-": a 409 is either a lost race on the stream version
+                    # (Concurrent change) or a start after another smith's start committed (Refused)
+                    {
+                        body=$(curl -s -w ' %{http_code}' -X POST "$FORGE/api/work-orders/$wo/start?smith=$smith")
+                        kind=-
+                        case "$body" in
+                            *"Concurrent change"*) kind=race ;;
+                            *"Refused by the work order"*) kind=refused ;;
+                        esac
+                        printf '%s %s %s\n' "$wo" "${body##* }" "$kind" >> "$RUN/codes.txt"
+                    } &
                 done
                 wait
             done < "$RUN/work-orders.txt"
-            conflicts=$(grep -c ' 409$' "$RUN/codes.txt" || true)
-            [ "$conflicts" -gt 0 ] || not_staged 1 "no smith was refused: the starts did not collide"
+            races=$(grep -c ' 409 race$' "$RUN/codes.txt" || true)
+            refused=$(grep -c ' 409 refused$' "$RUN/codes.txt" || true)
+            # a refusal alone means the starts ran one after another: the optimistic lock was never tested
+            [ "$races" -gt 0 ] || not_staged 1 "no start lost a race on the stream version ($refused refused one by one)"
             python3 - "$RUN/codes.txt" <<'PY' || exit 1
 import collections, sys
 codes = collections.defaultdict(list)
 for line in open(sys.argv[1]):
-    wo, code = line.split()
+    wo, code, _ = line.split()
     codes[wo].append(code)
 bad = {wo: c for wo, c in codes.items() if c.count("200") != 1 or len(c) - c.count("200") != c.count("409")}
 for wo, c in bad.items():
@@ -165,7 +176,8 @@ for wo, c in bad.items():
 sys.exit(1 if bad or len(codes) != 20 else 0)
 PY
             reconcile_ok
-            row 1 "20 work orders, 5 smiths start each at once" "one 200 per work order, $conflicts × 409" \
+            row 1 "20 work orders, 5 smiths start each at once" \
+                "one 200 per work order; 409: $races lost the race, $refused refused" \
                 "$(reconciled)" -
             ;;
         2)
@@ -221,6 +233,8 @@ PY
                 "$(reconciled)" -
             ;;
         4)
+            # outcomes wait in the journal until the kill: the publisher polls only every 5 minutes here
+            export PUBLISHER_POLL_INTERVAL=300s
             start_stack
             orders 20 &
             flow=$!
@@ -238,8 +252,14 @@ PY
                 code -X POST "$FORGE/api/work-orders/$wo/complete" > /dev/null
             done
             # outcomes still in the journal only: the publisher resumes from its checkpoint after the restart
+            # (with its default interval again)
+            pending=$(sql "select count(*) from forge.event e, read.projection_checkpoint c
+                where c.name = 'forge-events-publisher' and e.type = 'WorkOrderCompleted'
+                and (e.tx_id, e.global_position) > (c.tx_id, c.position)")
             compose kill -s SIGKILL forge-service > /dev/null
-            compose start forge-service > /dev/null
+            [ "$pending" -gt 0 ] || not_staged 4 "the publisher had sent every outcome before the kill"
+            unset PUBLISHER_POLL_INTERVAL
+            compose up -d --wait forge-service > "$RUN/compose-restart.log" 2>&1
             wait_ready
             wait_caught_up 90
             sleep 10
@@ -252,7 +272,7 @@ PY
             [ "$unpublished" -eq 0 ] || { echo "$unpublished done orders without ForgeEvent" >&2; exit 1; }
             dups=$({ grep -Fxf "$RUN/orders.txt" "$RUN/event-keys.txt" || true; } | sort | uniq -d | wc -l | tr -d ' ')
             reconcile_ok
-            row 4 "kill -9 forge-service twice (orders flowing; outcomes pending)" \
+            row 4 "kill -9 forge-service twice (orders flowing; $pending outcomes pending)" \
                 "$(echo "$done_ids" | wc -w | tr -d ' ') done, each published; $dups duplicates" "$(reconciled)" -
             ;;
         5)

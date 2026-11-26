@@ -17,13 +17,17 @@ class ErrorHandling {
     /** The command does not fit the work order's state (already taken, not yet allocated, ...). */
     @ExceptionHandler(WorkOrderRefused.class)
     ProblemDetail refused(WorkOrderRefused e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+        problem.setTitle("Refused by the work order");
+        return problem;
     }
 
     /** Another writer appended to the stream first; the client may reload and decide again. */
     @ExceptionHandler(ConcurrencyConflict.class)
     ProblemDetail concurrency(ConcurrencyConflict e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+        problem.setTitle("Concurrent change");
+        return problem;
     }
 
     @ExceptionHandler(ProjectionNotFound.class)
