@@ -130,6 +130,12 @@ on_exit() {
         compose ps -a > "$RUN/ps.txt" 2>&1 || true
         compose logs --no-color --tail=400 ordering forge-service kafka > "$RUN/logs.txt" 2>&1 || true
         curl -s -m 5 "$FORGE/admin/projections" > "$RUN/projections.json" 2>&1 || true
+        # the journal and the read models as they were: enough to replay the failure by hand
+        for table in "forge.event" read.projection_checkpoint read.workshop_board read.smith_load \
+            read.smith_assignment read.stock_ledger; do
+            compose exec -T postgres-forge psql -U forge -d forge -c "copy (select * from $table) to stdout with csv header" \
+                > "$RUN/$table.csv" 2>&1 || true
+        done
         echo "drill failed, logs in $RUN" >&2
     fi
 }
