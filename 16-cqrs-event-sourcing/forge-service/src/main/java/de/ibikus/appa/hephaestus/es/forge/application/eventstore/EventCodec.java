@@ -28,7 +28,8 @@ public class EventCodec {
 
     public EventCodec(JsonMapper json, List<Upcaster> upcasters) {
         // events without fields (WorkOrderCompleted) are valid payloads: {}
-        this.json = json.rebuild().disable(SerializationFeature.FAIL_ON_EMPTY_BEANS).build();
+        this.json =
+                json.rebuild().disable(SerializationFeature.FAIL_ON_EMPTY_BEANS).build();
         this.types = Stream.of(WorkOrderEvent.class, MaterialEvent.class)
                 .flatMap(root -> Stream.of(root.getPermittedSubclasses()))
                 .collect(Collectors.toMap(Class::getSimpleName, type -> type));
