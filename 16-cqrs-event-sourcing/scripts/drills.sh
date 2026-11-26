@@ -20,7 +20,14 @@ RESULTS=target/drills/results.md
 # Git Bash: MSYS_NO_PATHCONV keeps container paths (/opt/kafka/bin) from becoming C:/... (only here: curl
 # on the host needs /dev/null translated)
 compose() { MSYS_NO_PATHCONV=1 docker compose -f compose.yaml -p "$PROJECT" "$@"; }
-code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+# the status code, 000 when curl itself failed (never an exit under set -e)
+code() { curl -s -o /dev/null -w '%{http_code}' "$@" || true; }
+# post_ok <url>: POST that must answer 200
+post_ok() {
+    local status
+    status=$(code -X POST "$1")
+    [ "$status" = "200" ] || { echo "POST $1 -> $status" >&2; exit 1; }
+}
 sql() { compose exec -T postgres-forge psql -U forge -d forge -Atc "$1" | tr -d '\r'; }
 
 mkdir -p target/drills
@@ -60,7 +67,7 @@ board() {
     curl -sf "$FORGE/api/work-orders?status=$1" | python3 -c 'import json,sys
 placed={l.strip() for l in open(sys.argv[1]) if l.strip()}
 for w in json.load(sys.stdin):
-    if w["orderId"] in placed: print(w["id"])' "$RUN/orders.txt"
+    if w["orderId"] in placed: print(w["id"])' "$RUN/orders.txt" | tr -d '\r'
 }
 # wait_board <status> <count> <seconds>
 wait_board() {
@@ -92,7 +99,7 @@ reconcile_ok() {
     scripts/reconcile.sh "$RUN/orders.txt" > "$RUN/reconcile.txt" || { cat "$RUN/reconcile.txt" >&2; return 1; }
     ! grep -q 'accepted=0 ' "$RUN/reconcile.txt" || { echo "no accepted order to reconcile" >&2; return 1; }
 }
-reconciled() { head -1 "$RUN/reconcile.txt"; }
+reconciled() { head -1 "$RUN/reconcile.txt" | tr -d '\r'; }
 board_checksum() {
     sql "select md5(coalesce(string_agg(concat_ws('|', work_order_id, order_id, material, quantity, status, smith,
              failure_reason, last_event_recorded_at), ',' order by work_order_id), '')) from read.workshop_board"
@@ -127,6 +134,8 @@ on_exit() {
     fi
 }
 trap on_exit EXIT
+# under set -e a failing command ends the drill: say which one
+trap 'echo "failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 not_staged() { echo "NOT STAGED: drill $1: $2" >&2; exit 1; }
 row() { printf '| %s | %s | %s | %s | %s |\n' "$@" | tee -a "$RESULTS"; }
@@ -187,8 +196,8 @@ PY
             i=0
             for wo in $(board ALLOCATED); do
                 i=$((i + 1))
-                code -X POST "$FORGE/api/work-orders/$wo/start?smith=anna" > /dev/null
-                [ $((i % 2)) -eq 0 ] && code -X POST "$FORGE/api/work-orders/$wo/complete" > /dev/null
+                post_ok "$FORGE/api/work-orders/$wo/start?smith=anna"
+                if [ $((i % 2)) -eq 0 ]; then post_ok "$FORGE/api/work-orders/$wo/complete"; fi
             done
             wait_caught_up
             rows=$(sql "select count(*) from read.workshop_board")
@@ -211,8 +220,8 @@ PY
             i=0
             for wo in $(board ALLOCATED); do
                 smiths=(anna brokk sindri)
-                code -X POST "$FORGE/api/work-orders/$wo/start?smith=${smiths[$((i % 3))]}" > /dev/null
-                code -X POST "$FORGE/api/work-orders/$wo/complete" > /dev/null
+                post_ok "$FORGE/api/work-orders/$wo/start?smith=${smiths[$((i % 3))]}"
+                post_ok "$FORGE/api/work-orders/$wo/complete"
                 i=$((i + 1))
             done
             sleep 5
@@ -248,8 +257,8 @@ PY
             [ "$want" -gt 0 ] || not_staged 4 "no order accepted"
             wait_board ALLOCATED "$want" 120
             for wo in $(board ALLOCATED); do
-                code -X POST "$FORGE/api/work-orders/$wo/start?smith=anna" > /dev/null
-                code -X POST "$FORGE/api/work-orders/$wo/complete" > /dev/null
+                post_ok "$FORGE/api/work-orders/$wo/start?smith=anna"
+                post_ok "$FORGE/api/work-orders/$wo/complete"
             done
             # outcomes still in the journal only: the publisher resumes from its checkpoint after the restart
             # (with its default interval again)
